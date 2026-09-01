@@ -25,6 +25,8 @@ set(SOURCES
     src/EntityInspector.cpp
 )
 
+set(MANIFEST_OBJ "${CMAKE_CURRENT_SOURCE_DIR}/src/app_manifest.o")
+
 set(HEADERS
     src/MainWindow.h
     src/MapCanvas.h
@@ -41,10 +43,10 @@ set(HEADERS
     src/miniz_deflate.h
 )
 
-add_executable(FPSCMapViewer WIN32 ${SOURCES} ${HEADERS})
+add_executable(FPSCMapViewer WIN32 ${SOURCES} ${HEADERS} ${MANIFEST_OBJ})
 target_link_libraries(FPSCMapViewer PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets)
 
-add_executable(FPSCMapViewerTool ${SOURCES} ${HEADERS})
+add_executable(FPSCMapViewerTool ${SOURCES} ${HEADERS} ${MANIFEST_OBJ})
 target_link_libraries(FPSCMapViewerTool PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets)
 
 add_executable(test_standalone
