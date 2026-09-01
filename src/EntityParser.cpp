@@ -121,35 +121,46 @@ std::shared_ptr<FPSCEntityProfile> EntityParser::parseProfile(const QString& rel
         prof->category = EntityCategory::Unknown;
     }
 
-    // Measure memory metrics
+    // Locate BMP icon / thumbnail
+    QFileInfo fi(fullPath);
+    QString dir = fi.absolutePath();
+    QString base = fi.completeBaseName();
+
+    QString candidateBmp = dir + "/" + base + ".bmp";
+    if (QFileInfo::exists(candidateBmp)) {
+        prof->iconBmpPath = candidateBmp;
+    } else if (QFileInfo::exists(dir + "/icon.bmp")) {
+        prof->iconBmpPath = dir + "/icon.bmp";
+    } else if (QFileInfo::exists(dir + "/thumb.bmp")) {
+        prof->iconBmpPath = dir + "/thumb.bmp";
+    } else if (!prof->texturePath.isEmpty()) {
+        prof->iconBmpPath = prof->texturePath;
+    }
+
+    // Measure memory footprint metrics
     if (!prof->modelPath.isEmpty()) {
-        QString modelFull = AssetManager::instance().resolvePath(prof->modelPath);
-        if (!modelFull.isEmpty()) {
-            QFileInfo mfi(modelFull);
-            prof->meshSizeBytes = mfi.size();
-        }
+        prof->meshSizeBytes = AssetManager::instance().getFileSizeBytes(prof->modelPath);
     }
-
     if (!prof->texturePath.isEmpty()) {
-        QString texFull = AssetManager::instance().resolvePath(prof->texturePath);
-        if (!texFull.isEmpty()) {
-            QFileInfo tfi(texFull);
-            prof->diffuseSizeBytes = tfi.size();
-            QImage img(texFull);
-            if (!img.isNull()) {
-                prof->texWidth = img.width();
-                prof->texHeight = img.height();
-            }
-        }
+        qint64 ramBytes = 0, diskBytes = 0;
+        int w = 0, h = 0;
+        AssetManager::instance().getTextureMetrics(prof->texturePath, w, h, ramBytes, diskBytes);
+        prof->diffuseSizeBytes = ramBytes;
+        prof->texWidth = w;
+        prof->texHeight = h;
+    }
+    if (!prof->altTexturePath.isEmpty()) {
+        prof->otherTexturesSizeBytes += AssetManager::instance().getFileSizeBytes(prof->altTexturePath);
+    }
+    if (!prof->soundSet.isEmpty()) {
+        prof->audioSizeBytes += AssetManager::instance().getFileSizeBytes(prof->soundSet);
+    }
+    if (!prof->soundSet1.isEmpty()) {
+        prof->audioSizeBytes += AssetManager::instance().getFileSizeBytes(prof->soundSet1);
     }
 
-    qint64 totalEst = prof->meshSizeBytes * 2;
-    if (prof->texWidth > 0 && prof->texHeight > 0) {
-        totalEst += static_cast<qint64>(prof->texWidth) * prof->texHeight * 4;
-    } else {
-        totalEst += prof->diffuseSizeBytes * 4;
-    }
-    prof->estimatedRAMBytes = totalEst;
+    // Compute base RAM estimate: Mesh + Texture RAM + Audio + ~2KB struct
+    prof->estimatedRAMBytes = prof->meshSizeBytes + prof->diffuseSizeBytes + prof->otherTexturesSizeBytes + prof->audioSizeBytes + 2048;
 
     return prof;
 }
