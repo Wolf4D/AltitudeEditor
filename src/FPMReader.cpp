@@ -1,0 +1,337 @@
+#include "FPMReader.h"
+#include "SegmentParser.h"
+#include "EntityParser.h"
+#include "miniz_deflate.h"
+#include <QFile>
+#include <QFileInfo>
+#include <QDataStream>
+#include <QDebug>
+#include <cstring>
+
+#pragma pack(push, 1)
+struct ZipLocalHeader {
+    uint32_t signature; // 0x04034b50
+    uint16_t version;
+    uint16_t flags;
+    uint16_t method;
+    uint16_t modTime;
+    uint16_t modDate;
+    uint32_t crc32;
+    uint32_t compSize;
+    uint32_t uncompSize;
+    uint16_t nameLen;
+    uint16_t extraLen;
+};
+
+struct ZipCentralDirHeader {
+    uint32_t signature; // 0x02014b50
+    uint16_t verMade;
+    uint16_t verNeed;
+    uint16_t flags;
+    uint16_t method;
+    uint16_t modTime;
+    uint16_t modDate;
+    uint32_t crc32;
+    uint32_t compSize;
+    uint32_t uncompSize;
+    uint16_t nameLen;
+    uint16_t extraLen;
+    uint16_t commentLen;
+    uint16_t diskStart;
+    uint16_t intAttr;
+    uint32_t extAttr;
+    uint32_t localOffset;
+};
+
+struct ZipEOCD {
+    uint32_t signature; // 0x06054b50
+    uint16_t diskNum;
+    uint16_t cdDisk;
+    uint16_t numEntriesDisk;
+    uint16_t numEntries;
+    uint32_t cdSize;
+    uint32_t cdOffset;
+    uint16_t commentLen;
+};
+#pragma pack(pop)
+
+bool FPMReader::extractZipEntries(
+    const QString& zipPath,
+    const QString& password,
+    QMap<QString, QByteArray>& outEntries)
+{
+    QFile file(zipPath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "Failed to open FPM file:" << zipPath;
+        return false;
+    }
+
+    QByteArray fileData = file.readAll();
+    file.close();
+
+    const uint8_t* raw = reinterpret_cast<const uint8_t*>(fileData.constData());
+    size_t fileSize = fileData.size();
+    if (fileSize < sizeof(ZipEOCD)) return false;
+
+    // Search for EOCD from end of file
+    int eocdPos = -1;
+    for (int i = static_cast<int>(fileSize) - sizeof(ZipEOCD); i >= 0 && i >= static_cast<int>(fileSize) - 65557; --i) {
+        if (*reinterpret_cast<const uint32_t*>(raw + i) == 0x06054b50) {
+            eocdPos = i;
+            break;
+        }
+    }
+    if (eocdPos < 0) return false;
+
+    const ZipEOCD* eocd = reinterpret_cast<const ZipEOCD*>(raw + eocdPos);
+    uint32_t cdOffset = eocd->cdOffset;
+    uint16_t numEntries = eocd->numEntries;
+
+    size_t curCD = cdOffset;
+    for (int entryIdx = 0; entryIdx < numEntries; ++entryIdx) {
+        if (curCD + sizeof(ZipCentralDirHeader) > fileSize) break;
+
+        const ZipCentralDirHeader* cd = reinterpret_cast<const ZipCentralDirHeader*>(raw + curCD);
+        if (cd->signature != 0x02014b50) break;
+
+        QString name = QString::fromLatin1(reinterpret_cast<const char*>(raw + curCD + sizeof(ZipCentralDirHeader)), cd->nameLen);
+        curCD += sizeof(ZipCentralDirHeader) + cd->nameLen + cd->extraLen + cd->commentLen;
+
+        uint32_t locOffset = cd->localOffset;
+        if (locOffset + sizeof(ZipLocalHeader) > fileSize) continue;
+
+        const ZipLocalHeader* loc = reinterpret_cast<const ZipLocalHeader*>(raw + locOffset);
+        if (loc->signature != 0x04034b50) continue;
+
+        const uint8_t* compData = raw + locOffset + sizeof(ZipLocalHeader) + loc->nameLen + loc->extraLen;
+        uint32_t compSize = loc->compSize;
+        if (compSize == 0) compSize = cd->compSize;
+        uint32_t uncompSize = loc->uncompSize;
+        if (uncompSize == 0) uncompSize = cd->uncompSize;
+
+        bool isEncrypted = (loc->flags & 1) != 0;
+
+        std::vector<uint8_t> decryptedData;
+        const uint8_t* payload = compData;
+        size_t payloadSize = compSize;
+
+        if (isEncrypted) {
+            if (compSize < 12) continue;
+            ZipUtils::ZipCryptoKey key;
+            key.init(password.toStdString());
+
+            decryptedData.resize(compSize);
+            for (size_t k = 0; k < compSize; ++k) {
+                decryptedData[k] = key.decrypt(compData[k]);
+            }
+            // First 12 bytes are encryption header
+            payload = decryptedData.data() + 12;
+            payloadSize = compSize - 12;
+        }
+
+        QByteArray entryBytes;
+        if (loc->method == 0) { // Stored
+            entryBytes = QByteArray(reinterpret_cast<const char*>(payload), payloadSize);
+        } else if (loc->method == 8) { // Deflated
+            std::vector<uint8_t> decomp;
+            if (ZipUtils::DeflateDecompressor::decompress(payload, payloadSize, decomp, uncompSize)) {
+                entryBytes = QByteArray(reinterpret_cast<const char*>(decomp.data()), decomp.size());
+            } else {
+                qWarning() << "Deflate decompression failed for entry:" << name;
+            }
+        }
+
+        outEntries[name.toLower()] = entryBytes;
+    }
+
+    return !outEntries.isEmpty();
+}
+
+std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QString& password) {
+    auto map = std::make_shared<FPSCMap>();
+    map->filePath = fpmPath;
+    map->mapName = QFileInfo(fpmPath).completeBaseName();
+
+    QMap<QString, QByteArray> entries;
+    if (!extractZipEntries(fpmPath, password, entries)) {
+        qWarning() << "Failed to extract FPM entries from:" << fpmPath;
+        return nullptr;
+    }
+
+    // 1. Parse header.dat
+    if (entries.contains("header.dat")) {
+        const QByteArray& hData = entries["header.dat"];
+        if (hData.size() >= 16) {
+            const int32_t* h = reinterpret_cast<const int32_t*>(hData.constData());
+            map->header.layerMax = h[0];
+            map->header.maxX = h[1];
+            map->header.maxY = h[2];
+            map->header.tileSize = h[3];
+            if (hData.size() >= 20) map->header.olayListMax = h[4];
+            if (hData.size() >= 24) map->header.multiplayer = h[5];
+        }
+    } else {
+        map->header.layerMax = 20;
+        map->header.maxX = 40;
+        map->header.maxY = 40;
+        map->header.tileSize = 100;
+    }
+
+    int layers = map->header.layerMax + 1;
+    int rows = map->header.maxY + 1;
+    int cols = map->header.maxX + 1;
+
+    // Allocate 3D grid
+    map->gridBlocks.resize(layers);
+    map->gridRotation.resize(layers);
+    for (int l = 0; l < layers; ++l) {
+        map->gridBlocks[l].resize(rows);
+        map->gridRotation[l].resize(rows);
+        for (int y = 0; y < rows; ++y) {
+            map->gridBlocks[l][y].fill(0, cols);
+            map->gridRotation[l][y].fill(0, cols);
+        }
+    }
+
+    // 2. Parse map.seg
+    if (entries.contains("map.seg")) {
+        const QByteArray& sData = entries["map.seg"];
+        QString segText;
+        if (sData.size() >= 4) {
+            segText = QString::fromLatin1(sData.constData() + 4, sData.size() - 4);
+        } else {
+            segText = QString::fromLatin1(sData);
+        }
+        QStringList lines = segText.split(QRegExp("[\r\n]+"), Qt::SkipEmptyParts);
+        for (int i = 0; i < lines.size(); ++i) {
+            QString sPath = lines[i].trimmed();
+            if (!sPath.isEmpty()) {
+                map->segmentsBank.append(sPath);
+                int segId = i + 1; // 1-based index
+                map->segments[segId] = SegmentParser::parse(sPath, segId);
+            }
+        }
+    }
+
+    // 3. Parse map.ent
+    if (entries.contains("map.ent")) {
+        const QByteArray& eData = entries["map.ent"];
+        QString entText;
+        if (eData.size() >= 4) {
+            entText = QString::fromLatin1(eData.constData() + 4, eData.size() - 4);
+        } else {
+            entText = QString::fromLatin1(eData);
+        }
+        QStringList lines = entText.split(QRegExp("[\r\n]+"), Qt::SkipEmptyParts);
+        for (int i = 0; i < lines.size(); ++i) {
+            QString ePath = lines[i].trimmed();
+            if (!ePath.isEmpty()) {
+                map->entitiesBank.append(ePath);
+                int bankId = i + 1; // 1-based index
+                map->entityProfiles[bankId] = EntityParser::parseProfile(ePath, bankId);
+            }
+        }
+    }
+
+    // 4. Parse map.fpmb & map.fpmo (3D Segment Grid)
+    // DarkBasic Pro 3D array dim map(layermax, maxx, maxy) serialization:
+    // Stride 1: layer (0..layermax), Stride 2: x (0..maxx), Stride 3: y (0..maxy)
+    // index = layer + x * layers + y * (layers * cols)
+    if (entries.contains("map.fpmb")) {
+        const QByteArray& bData = entries["map.fpmb"];
+        const QByteArray& oData = entries.contains("map.fpmo") ? entries["map.fpmo"] : QByteArray();
+
+        if (bData.size() >= 8) {
+            const int32_t* bHdr = reinterpret_cast<const int32_t*>(bData.constData());
+            int totalCells = bHdr[1];
+
+            const int32_t* bStream = reinterpret_cast<const int32_t*>(bData.constData() + 8);
+            const int32_t* oStream = (oData.size() >= 8) ? reinterpret_cast<const int32_t*>(oData.constData() + 8) : nullptr;
+
+            int availCells = (bData.size() - 8) / 8;
+            int cellsToRead = qMin(totalCells, availCells);
+
+            for (int i = 0; i < cellsToRead; ++i) {
+                int32_t mapid = bStream[i * 2 + 1];
+                if (mapid != 0) {
+                    // DBP column-major 3D array indexing:
+                    int layer = i % layers;
+                    int rem = i / layers;
+                    int x = rem % cols;
+                    int y = rem / cols;
+
+                    // Bitfield extraction according to FPSC-Game.DBA:
+                    // mapselection (bits 20..31): segment bank 1-based index
+                    // maprotate (bits 12..13): cell rotation (0=0 deg, 1=90 deg, 2=180 deg, 3=270 deg)
+                    int segId = (mapid >> 20) & 0xFFF;
+                    int rotVal = (mapid >> 12) & 0x3;
+
+                    if (oStream && i * 2 + 1 < (oData.size() - 8) / 4) {
+                        int32_t oMapId = oStream[i * 2 + 1];
+                        if (oMapId != 0) {
+                            rotVal = (oMapId >> 12) & 0x3;
+                            if (rotVal == 0 && (oMapId & 0x3) != 0) {
+                                rotVal = oMapId & 0x3;
+                            }
+                        }
+                    }
+
+                    if (layer < layers && y < rows && x < cols && segId > 0) {
+                        map->gridBlocks[layer][y][x] = segId;
+                        map->gridRotation[layer][y][x] = rotVal & 3;
+                    }
+                }
+            }
+        }
+    }
+
+    // 5. Parse map.ele (Placed Entities)
+    if (entries.contains("map.ele")) {
+        map->placedEntities = EntityParser::parseMapEle(
+            entries["map.ele"],
+            map->entitiesBank,
+            map->entityProfiles
+        );
+    }
+
+    // 6. Parse map.way (AI Waypoints)
+    if (entries.contains("map.way")) {
+        const QByteArray& wData = entries["map.way"];
+        if (wData.size() >= 8) {
+            const int32_t* wHdr = reinterpret_cast<const int32_t*>(wData.constData());
+            int wpCount = wHdr[0];
+            int pathCount = wHdr[1];
+
+            if (wpCount > 0 && wData.size() >= 8 + wpCount * 12) {
+                const float* pStream = reinterpret_cast<const float*>(wData.constData() + 8);
+                for (int i = 0; i < wpCount; ++i) {
+                    AIWaypoint wp;
+                    wp.x = pStream[i * 3 + 0];
+                    wp.y = pStream[i * 3 + 1];
+                    wp.z = pStream[i * 3 + 2];
+                    map->waypoints.append(wp);
+                }
+            }
+        }
+    }
+
+    // 7. Parse cfg.cfg
+    if (entries.contains("cfg.cfg")) {
+        const QByteArray& cData = entries["cfg.cfg"];
+        if (cData.size() >= 16) {
+            const float* fCam = reinterpret_cast<const float*>(cData.constData());
+            const int32_t* iCam = reinterpret_cast<const int32_t*>(cData.constData());
+            map->cameraX = fCam[0];
+            map->cameraY = fCam[1];
+            map->cameraZoom = fCam[2];
+            map->activeEditorLayer = qBound(0, iCam[3], map->header.layerMax);
+        }
+    }
+
+    qDebug() << "FPM Loaded:" << map->mapName
+             << "Segments:" << map->segmentsBank.size()
+             << "Entities:" << map->placedEntities.size()
+             << "Waypoints:" << map->waypoints.size();
+
+    return map;
+}
