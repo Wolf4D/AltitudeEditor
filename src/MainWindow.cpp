@@ -311,6 +311,7 @@ void MainWindow::loadMapFile(const QString& filePath) {
 
     m_currentMap = map;
     m_canvas->setMap(m_currentMap);
+    m_searchDock->setCurrentFloor(m_canvas->currentFloor());
     m_searchDock->setMap(m_currentMap);
     m_inspectorDock->clear();
 

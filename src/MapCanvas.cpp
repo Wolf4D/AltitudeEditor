@@ -43,6 +43,7 @@ void MapCanvas::setMap(std::shared_ptr<FPSCMap> map) {
     m_hoveredEntityIndex = -1;
     if (m_map) {
         m_currentFloor = qBound(0, m_map->activeEditorLayer, m_map->header.layerMax);
+        emit floorChanged(m_currentFloor);
         zoomFit();
     }
     update();
