@@ -1,4 +1,4 @@
-﻿#include "FPMWriter.h"
+#include "FPMWriter.h"
 #include "EntityParser.h"
 #include "miniz_deflate.h"
 #include <QFile>
@@ -79,9 +79,33 @@ bool FPMWriter::saveMap(
 
     bool useEncryption = !password.isEmpty();
 
+    // Standard DarkBasic Pro file ordering
+    QStringList orderedNames = {
+        QStringLiteral("header.dat"),
+        QStringLiteral("map.ele"),
+        QStringLiteral("map.ent"),
+        QStringLiteral("map.seg"),
+        QStringLiteral("map.way"),
+        QStringLiteral("map.fpmb"),
+        QStringLiteral("map.fpmo"),
+        QStringLiteral("map.fpml"),
+        QStringLiteral("cfg.cfg")
+    };
+
+    // Add any remaining keys that weren't in standard list
     for (auto it = map->rawEntries.constBegin(); it != map->rawEntries.constEnd(); ++it) {
-        QString name = it.key();
-        QByteArray uncompData = it.value();
+        if (!orderedNames.contains(it.key())) {
+            orderedNames.append(it.key());
+        }
+    }
+
+    uint16_t modTime = 0x5000;
+    uint16_t modDate = 0x5000;
+
+    for (const QString& name : orderedNames) {
+        if (!map->rawEntries.contains(name)) continue;
+
+        QByteArray uncompData = map->rawEntries[name];
         QByteArray nameBytes = name.toLatin1();
 
         uint32_t crc = ZipUtils::calcCRC32(
@@ -89,12 +113,28 @@ bool FPMWriter::saveMap(
             uncompData.size()
         );
 
+        // Compress with Deflate (RFC 1951)
+        QByteArray defBytes;
+        if (uncompData.isEmpty()) {
+            defBytes = QByteArray();
+        } else {
+            QByteArray z = qCompress(uncompData, 6);
+            if (z.size() >= 10) {
+                defBytes = z.mid(6, z.size() - 10);
+            } else {
+                defBytes = uncompData;
+            }
+        }
+
+        uint16_t flags = useEncryption ? 0x000B : 0x0002;
+        uint16_t method = 8; // Deflate
+
         EntryMeta meta;
         meta.name = name;
         meta.crc32 = crc;
         meta.uncompSize = static_cast<uint32_t>(uncompData.size());
         meta.localOffset = static_cast<uint32_t>(zipBuffer.size());
-        meta.flags = useEncryption ? 1 : 0;
+        meta.flags = flags;
 
         QByteArray payload;
         if (useEncryption) {
@@ -106,28 +146,30 @@ bool FPMWriter::saveMap(
             for (int i = 0; i < 11; ++i) {
                 encHdr[i] = static_cast<uint8_t>(std::rand() & 0xFF);
             }
-            // Byte 11 is MSB of CRC32 (standard PKZIP encryption check)
+            // Byte 11 is MSB of CRC32
             encHdr[11] = static_cast<uint8_t>((crc >> 24) & 0xFF);
 
-            payload.resize(12 + uncompData.size());
+            payload.resize(12 + defBytes.size());
             for (int i = 0; i < 12; ++i) {
                 payload[i] = static_cast<char>(key.encrypt(encHdr[i]));
             }
 
-            const uint8_t* pRaw = reinterpret_cast<const uint8_t*>(uncompData.constData());
-            for (int i = 0; i < uncompData.size(); ++i) {
-                payload[12 + i] = static_cast<char>(key.encrypt(pRaw[i]));
+            const uint8_t* pDef = reinterpret_cast<const uint8_t*>(defBytes.constData());
+            for (int i = 0; i < defBytes.size(); ++i) {
+                payload[12 + i] = static_cast<char>(key.encrypt(pDef[i]));
             }
 
             meta.compSize = static_cast<uint32_t>(payload.size());
         } else {
-            payload = uncompData;
-            meta.compSize = meta.uncompSize;
+            payload = defBytes;
+            meta.compSize = static_cast<uint32_t>(payload.size());
         }
 
         LocalFileHeader lfh;
         lfh.flags = meta.flags;
-        lfh.method = 0; // Store
+        lfh.method = method;
+        lfh.modTime = modTime;
+        lfh.modDate = modDate;
         lfh.crc32 = meta.crc32;
         lfh.compSize = meta.compSize;
         lfh.uncompSize = meta.uncompSize;
@@ -137,6 +179,13 @@ bool FPMWriter::saveMap(
         zipBuffer.append(reinterpret_cast<const char*>(&lfh), sizeof(LocalFileHeader));
         zipBuffer.append(nameBytes);
         zipBuffer.append(payload);
+
+        // Data descriptor (PK\x07\x08)
+        uint32_t ddSig = 0x08074b50;
+        zipBuffer.append(reinterpret_cast<const char*>(&ddSig), 4);
+        zipBuffer.append(reinterpret_cast<const char*>(&meta.crc32), 4);
+        zipBuffer.append(reinterpret_cast<const char*>(&meta.compSize), 4);
+        zipBuffer.append(reinterpret_cast<const char*>(&meta.uncompSize), 4);
 
         metaList.append(meta);
     }
@@ -148,7 +197,9 @@ bool FPMWriter::saveMap(
 
         CentralDirHeader cdh;
         cdh.flags = meta.flags;
-        cdh.method = 0; // Store
+        cdh.method = 8; // Deflate
+        cdh.modTime = modTime;
+        cdh.modDate = modDate;
         cdh.crc32 = meta.crc32;
         cdh.compSize = meta.compSize;
         cdh.uncompSize = meta.uncompSize;
