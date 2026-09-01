@@ -29,7 +29,8 @@ EntityInspector::EntityInspector(QWidget* parent)
 
     m_tree = new QTreeWidget(container);
     m_tree->setHeaderLabels({QStringLiteral("Property"), QStringLiteral("Value")});
-    m_tree->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    m_tree->header()->setSectionResizeMode(0, QHeaderView::Interactive);
+    m_tree->header()->resizeSection(0, 140);
     m_tree->header()->setSectionResizeMode(1, QHeaderView::Stretch);
     m_tree->setAlternatingRowColors(true);
     layout->addWidget(m_tree, 1);
@@ -370,12 +371,18 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
     addWidgetProperty(grpSpecial, QStringLiteral("Light Range"), spinLRange);
 
     QPushButton* btnCol = new QPushButton();
+    btnCol->setFixedHeight(22);
+    btnCol->setCursor(Qt::PointingHandCursor);
     auto updateColStyle = [btnCol](const QColor& c) {
-        btnCol->setText(QString("RGB(%1, %2, %3)").arg(c.red()).arg(c.green()).arg(c.blue()));
-        btnCol->setStyleSheet(QString("background-color: %1; color: %2; font-weight: bold; border-radius: 3px;")
-            .arg(c.name())
-            .arg(c.lightness() > 128 ? "black" : "white"));
+        QColor col = (c.isValid() && (c.red() > 0 || c.green() > 0 || c.blue() > 0)) ? c : QColor(255, 255, 255);
+        btnCol->setText(QString("RGB(%1, %2, %3)").arg(col.red()).arg(col.green()).arg(col.blue()));
+        btnCol->setStyleSheet(QString("QPushButton { background-color: %1; color: %2; font-weight: bold; border: 1px solid #555; border-radius: 3px; padding: 2px 6px; } "
+                                      "QPushButton:hover { border: 1px solid #fff; }")
+            .arg(col.name())
+            .arg(col.lightness() > 128 ? "#111111" : "#ffffff"));
     };
+    updateColStyle(ent.lightColor);
+
     connect(btnCol, &QPushButton::clicked, this, [this, updateColStyle, spinLRange]() {
         if (!m_map || m_currentIndex < 0) return;
         QColor cur = m_map->placedEntities[m_currentIndex].lightColor;

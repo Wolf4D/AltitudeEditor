@@ -90,10 +90,16 @@ std::shared_ptr<FPSCEntityProfile> EntityParser::parseProfile(const QString& rel
     if (kv.contains("soundset1")) prof->soundSet1 = kv["soundset1"];
 
     if (kv.contains("lightrange")) prof->lightRange = kv["lightrange"].toFloat();
-    int lr = kv.value("lightred", "255").toInt();
-    int lg = kv.value("lightgreen", "255").toInt();
-    int lb = kv.value("lightblue", "255").toInt();
-    prof->lightColor = QColor(qBound(0, lr, 255), qBound(0, lg, 255), qBound(0, lb, 255));
+    if (kv.contains("lightcolor")) {
+        qint64 cVal = kv["lightcolor"].toLongLong();
+        uint32_t col = static_cast<uint32_t>(cVal);
+        prof->lightColor = QColor((col >> 16) & 0xFF, (col >> 8) & 0xFF, col & 0xFF);
+    } else if (kv.contains("lightred") || kv.contains("lightgreen") || kv.contains("lightblue")) {
+        int lr = kv.value("lightred", "255").toInt();
+        int lg = kv.value("lightgreen", "255").toInt();
+        int lb = kv.value("lightblue", "255").toInt();
+        prof->lightColor = QColor(qBound(0, lr, 255), qBound(0, lg, 255), qBound(0, lb, 255));
+    }
 
     // Determine Entity Category
     QString pLower = relPath.toLower();

@@ -390,8 +390,10 @@ void MapCanvas::drawZonesAndLights(QPainter& p) {
             float radScreen = ent.lightRange * m_zoom;
             QRadialGradient grad(entScreen, radScreen);
             QColor lColor = ent.lightColor;
-            lColor.setAlpha(80);
+            lColor.setAlpha(140);
             grad.setColorAt(0.0f, lColor);
+            lColor.setAlpha(40);
+            grad.setColorAt(0.5f, lColor);
             lColor.setAlpha(0);
             grad.setColorAt(1.0f, lColor);
 
@@ -430,6 +432,7 @@ void MapCanvas::drawEntities(QPainter& p) {
         QPointF entScreen = worldToScreen(QPointF(ent.x, -ent.z));
         bool isSelected = (i == m_selectedEntityIndex);
         bool isHovered = (i == m_hoveredEntityIndex);
+        EntityCategory cat = ent.profile ? ent.profile->category : EntityCategory::Unknown;
 
         float iconSize = qBound(24.0f, 36.0f * m_zoom, 64.0f);
         QRectF iconRect(entScreen.x() - iconSize / 2.0f, entScreen.y() - iconSize / 2.0f, iconSize, iconSize);
@@ -448,6 +451,14 @@ void MapCanvas::drawEntities(QPainter& p) {
             p.drawEllipse(hovRect);
         }
 
+        // Draw colored base ring for light sources
+        if (cat == EntityCategory::Light || ent.lightRange > 0) {
+            QRectF lRing = iconRect.adjusted(-3, -3, 3, 3);
+            p.setPen(QPen(ent.lightColor, 2.5f));
+            p.setBrush(QColor(ent.lightColor.red(), ent.lightColor.green(), ent.lightColor.blue(), 75));
+            p.drawEllipse(lRing);
+        }
+
         // B. Draw Entity Icon Image (.BMP / Billboard / Marker)
         QPixmap iconPx;
         if (ent.profile && !ent.profile->iconBmpPath.isEmpty()) {
@@ -460,8 +471,6 @@ void MapCanvas::drawEntities(QPainter& p) {
         if (!iconPx.isNull()) {
             p.drawPixmap(iconRect.toRect(), iconPx);
         } else {
-            // Category Fallback Badge
-            EntityCategory cat = ent.profile ? ent.profile->category : EntityCategory::Unknown;
             QColor catColor = entityCategoryColor(cat);
             p.setBrush(catColor);
             p.setPen(QPen(Qt::white, 1.5f));
@@ -475,7 +484,6 @@ void MapCanvas::drawEntities(QPainter& p) {
         }
 
         // C. Draw Player Start Green Direction Arrow or Orientation Pointer
-        EntityCategory cat = ent.profile ? ent.profile->category : EntityCategory::Unknown;
         float yawRad = (ent.ry - 90.0f) * 3.14159265f / 180.0f; // Compass angle
         float arrowLen = iconSize * 0.75f;
         QPointF arrowEnd(entScreen.x() + arrowLen * std::cos(yawRad), entScreen.y() + arrowLen * std::sin(yawRad));

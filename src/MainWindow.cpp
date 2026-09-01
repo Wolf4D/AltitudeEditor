@@ -25,10 +25,12 @@ MainWindow::MainWindow(QWidget* parent)
 
     // Left Dock: Entity Search
     m_searchDock = new EntitySearchDock(this);
+    m_searchDock->setMinimumWidth(260);
     addDockWidget(Qt::LeftDockWidgetArea, m_searchDock);
 
     // Right Dock: Entity Inspector
     m_inspectorDock = new EntityInspector(this);
+    m_inspectorDock->setMinimumWidth(330);
     addDockWidget(Qt::RightDockWidgetArea, m_inspectorDock);
 
     createMenusAndToolbars();
