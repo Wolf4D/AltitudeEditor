@@ -11,11 +11,30 @@
 #include <QColorDialog>
 #include <QFileDialog>
 
+#include <QEvent>
+
+namespace {
+class NoWheelFilter : public QObject {
+public:
+    explicit NoWheelFilter(QObject* parent = nullptr) : QObject(parent) {}
+protected:
+    bool eventFilter(QObject* obj, QEvent* event) override {
+        if (event->type() == QEvent::Wheel) {
+            event->ignore();
+            return true; // Consume wheel event so spinbox doesn't change
+        }
+        return QObject::eventFilter(obj, event);
+    }
+};
+}
+
 EntityInspector::EntityInspector(QWidget* parent)
     : QDockWidget(QStringLiteral("Entity Properties Inspector"), parent)
 {
     setObjectName("EntityInspector");
     setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+
+    m_noWheelFilter = new NoWheelFilter(this);
 
     QWidget* container = new QWidget(this);
     QVBoxLayout* layout = new QVBoxLayout(container);
@@ -40,9 +59,22 @@ EntityInspector::EntityInspector(QWidget* parent)
 
 void EntityInspector::clear() {
     m_currentIndex = -1;
+    m_spinX = nullptr;
+    m_spinY = nullptr;
+    m_spinZ = nullptr;
     m_map.reset();
     m_headerLabel->setText(QStringLiteral("Select an entity on map or list to edit properties"));
     m_tree->clear();
+}
+
+void EntityInspector::refreshValues() {
+    if (!m_map || m_currentIndex < 0 || m_currentIndex >= m_map->placedEntities.size()) return;
+    const PlacedEntity& ent = m_map->placedEntities[m_currentIndex];
+    m_isPopulating = true;
+    if (m_spinX) m_spinX->setValue(ent.x);
+    if (m_spinY) m_spinY->setValue(ent.y);
+    if (m_spinZ) m_spinZ->setValue(ent.z);
+    m_isPopulating = false;
 }
 
 void EntityInspector::addProperty(QTreeWidgetItem* parent, const QString& name, const QString& value, const QString& tip) {
@@ -53,6 +85,13 @@ void EntityInspector::addProperty(QTreeWidgetItem* parent, const QString& name, 
 void EntityInspector::addWidgetProperty(QTreeWidgetItem* parent, const QString& name, QWidget* widget, const QString& tip) {
     QTreeWidgetItem* item = new QTreeWidgetItem(parent, {name, QString()});
     if (!tip.isEmpty()) item->setToolTip(0, tip);
+    if (widget && m_noWheelFilter) {
+        widget->installEventFilter(m_noWheelFilter);
+        const auto children = widget->findChildren<QWidget*>();
+        for (QWidget* child : children) {
+            child->installEventFilter(m_noWheelFilter);
+        }
+    }
     m_tree->setItemWidget(item, 1, widget);
 }
 
@@ -115,47 +154,47 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
     grpTransform->setExpanded(true);
 
     // Pos X
-    QDoubleSpinBox* spinX = new QDoubleSpinBox();
-    spinX->setRange(-50000.0, 50000.0);
-    spinX->setSingleStep(10.0);
-    spinX->setDecimals(1);
-    spinX->setValue(ent.x);
-    connect(spinX, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double val) {
+    m_spinX = new QDoubleSpinBox();
+    m_spinX->setRange(-50000.0, 50000.0);
+    m_spinX->setSingleStep(10.0);
+    m_spinX->setDecimals(1);
+    m_spinX->setValue(ent.x);
+    connect(m_spinX, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double val) {
         if (m_isPopulating || !m_map || m_currentIndex < 0) return;
         m_map->placedEntities[m_currentIndex].x = static_cast<float>(val);
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpTransform, QStringLiteral("Position X"), spinX);
+    addWidgetProperty(grpTransform, QStringLiteral("Position X"), m_spinX);
 
     // Pos Y (Height)
-    QDoubleSpinBox* spinY = new QDoubleSpinBox();
-    spinY->setRange(-10000.0, 50000.0);
-    spinY->setSingleStep(10.0);
-    spinY->setDecimals(1);
-    spinY->setValue(ent.y);
-    connect(spinY, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double val) {
+    m_spinY = new QDoubleSpinBox();
+    m_spinY->setRange(-10000.0, 50000.0);
+    m_spinY->setSingleStep(10.0);
+    m_spinY->setDecimals(1);
+    m_spinY->setValue(ent.y);
+    connect(m_spinY, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double val) {
         if (m_isPopulating || !m_map || m_currentIndex < 0) return;
         m_map->placedEntities[m_currentIndex].y = static_cast<float>(val);
         m_map->placedEntities[m_currentIndex].floorLayer = qBound(0, static_cast<int>(std::floor((val + 25.0) / 100.0)), 20);
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpTransform, QStringLiteral("Position Y (Height)"), spinY);
+    addWidgetProperty(grpTransform, QStringLiteral("Position Y (Height)"), m_spinY);
 
     // Pos Z (Depth)
-    QDoubleSpinBox* spinZ = new QDoubleSpinBox();
-    spinZ->setRange(-50000.0, 50000.0);
-    spinZ->setSingleStep(10.0);
-    spinZ->setDecimals(1);
-    spinZ->setValue(ent.z);
-    connect(spinZ, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double val) {
+    m_spinZ = new QDoubleSpinBox();
+    m_spinZ->setRange(-50000.0, 50000.0);
+    m_spinZ->setSingleStep(10.0);
+    m_spinZ->setDecimals(1);
+    m_spinZ->setValue(ent.z);
+    connect(m_spinZ, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double val) {
         if (m_isPopulating || !m_map || m_currentIndex < 0) return;
         m_map->placedEntities[m_currentIndex].z = static_cast<float>(val);
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpTransform, QStringLiteral("Position Z (Depth)"), spinZ);
+    addWidgetProperty(grpTransform, QStringLiteral("Position Z (Depth)"), m_spinZ);
 
     // Rotation Y (Yaw)
     QDoubleSpinBox* spinRotY = new QDoubleSpinBox();
@@ -199,18 +238,14 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
     });
     addWidgetProperty(grpTransform, QStringLiteral("Rotation Roll (Z°)"), spinRotZ);
 
-    // Scale
+    // Scale (Inactive in classic FPS Creator engine)
     QDoubleSpinBox* spinScale = new QDoubleSpinBox();
-    spinScale->setRange(1.0, 2000.0);
-    spinScale->setSingleStep(10.0);
+    spinScale->setRange(0.0, 2000.0);
+    spinScale->setDecimals(2);
     spinScale->setValue(ent.scale);
-    connect(spinScale, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double val) {
-        if (m_isPopulating || !m_map || m_currentIndex < 0) return;
-        m_map->placedEntities[m_currentIndex].scale = static_cast<float>(val);
-        m_map->isModified = true;
-        emit entityModified(m_currentIndex);
-    });
-    addWidgetProperty(grpTransform, QStringLiteral("Scale (%)"), spinScale);
+    spinScale->setEnabled(false);
+    spinScale->setToolTip(QStringLiteral("Scale is defined globally in the entity .FPE file and is not supported per-instance in classic FPS Creator."));
+    addWidgetProperty(grpTransform, QStringLiteral("Scale (%) (Inactive)"), spinScale, QStringLiteral("Fixed in .FPE definition; not editable in classic engine"));
 
     // Static Flag
     QComboBox* comboStatic = new QComboBox();

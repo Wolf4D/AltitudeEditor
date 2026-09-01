@@ -203,7 +203,10 @@ void MapCanvas::renderMap(QPainter& p) {
         drawEntities(p);
     }
 
-    // 7. HUD Overlays
+    // 7. Interactive Translation Gizmo on selected entity
+    drawGizmo(p);
+
+    // 8. HUD Overlays
     drawHUD(p);
 }
 
@@ -531,6 +534,127 @@ void MapCanvas::drawEntities(QPainter& p) {
     p.restore();
 }
 
+void MapCanvas::drawGizmo(QPainter& p) {
+    if (!m_map || m_selectedEntityIndex < 0 || m_selectedEntityIndex >= m_map->placedEntities.size()) return;
+    const PlacedEntity& ent = m_map->placedEntities[m_selectedEntityIndex];
+    if (ent.floorLayer != m_currentFloor) return;
+
+    QPointF origin = worldToScreen(QPointF(ent.x, -ent.z));
+    const float axisLen = 65.0f;
+    const float centerBoxSize = 9.0f;
+
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+
+    // 1. Center Handle (Free 2D move)
+    bool centerActive = (m_activeGizmo == GizmoHandle::CenterFree || m_hoveredGizmo == GizmoHandle::CenterFree);
+    QRectF centerRect(origin.x() - centerBoxSize, origin.y() - centerBoxSize, centerBoxSize * 2.0f, centerBoxSize * 2.0f);
+
+    // Subtle 2D quadrant plane between +X and +Z
+    QRectF quadRect(origin.x() + 2, origin.y() - 20, 18, 18);
+    p.setPen(QPen(centerActive ? QColor(255, 235, 100, 220) : QColor(255, 200, 50, 100), 1.5f, Qt::DashLine));
+    p.setBrush(centerActive ? QColor(255, 235, 100, 140) : QColor(255, 200, 50, 45));
+    p.drawRect(quadRect);
+
+    // Center handle circle/rounded rect
+    p.setPen(QPen(centerActive ? Qt::white : QColor(30, 30, 30), centerActive ? 2.0f : 1.5f));
+    p.setBrush(centerActive ? QColor(255, 240, 80) : QColor(255, 190, 0, 220));
+    p.drawRoundedRect(centerRect, 3.0f, 3.0f);
+
+    // Crosshair inside center handle
+    p.setPen(QPen(centerActive ? QColor(40, 40, 40) : QColor(60, 40, 0), 1.5f));
+    p.drawLine(origin.x() - 4, origin.y(), origin.x() + 4, origin.y());
+    p.drawLine(origin.x(), origin.y() - 4, origin.x(), origin.y() + 4);
+
+    // 2. X Axis (Red -> screen right)
+    bool xActive = (m_activeGizmo == GizmoHandle::AxisX || m_hoveredGizmo == GizmoHandle::AxisX);
+    QPointF xShaftStart = origin + QPointF(centerBoxSize + 1, 0);
+    QPointF xShaftEnd = origin + QPointF(axisLen, 0);
+    QColor xColor = xActive ? QColor(255, 90, 110) : QColor(240, 45, 60);
+
+    // X shaft
+    p.setPen(QPen(xColor, xActive ? 4.5f : 3.0f, Qt::SolidLine, Qt::RoundCap));
+    p.drawLine(xShaftStart, xShaftEnd);
+
+    // X arrow cone
+    QPolygonF xArrow;
+    xArrow << origin + QPointF(axisLen + 12, 0)
+           << origin + QPointF(axisLen - 2, -6)
+           << origin + QPointF(axisLen, 0)
+           << origin + QPointF(axisLen - 2, 6);
+    p.setPen(QPen(xActive ? Qt::white : QColor(180, 20, 30), 1.0f));
+    p.setBrush(xColor);
+    p.drawPolygon(xArrow);
+
+    // X label
+    p.setFont(QFont("Segoe UI", 9, QFont::Bold));
+    p.setPen(xActive ? Qt::white : QColor(255, 120, 130));
+    p.drawText(QRectF(origin.x() + axisLen + 15, origin.y() - 8, 20, 16), Qt::AlignCenter, "X");
+
+    // 3. Z Axis (Blue/Cyan -> screen up, representing world +Z)
+    bool zActive = (m_activeGizmo == GizmoHandle::AxisZ || m_hoveredGizmo == GizmoHandle::AxisZ);
+    QPointF zShaftStart = origin + QPointF(0, -(centerBoxSize + 1));
+    QPointF zShaftEnd = origin + QPointF(0, -axisLen);
+    QColor zColor = zActive ? QColor(80, 190, 255) : QColor(30, 135, 255);
+
+    // Z shaft
+    p.setPen(QPen(zColor, zActive ? 4.5f : 3.0f, Qt::SolidLine, Qt::RoundCap));
+    p.drawLine(zShaftStart, zShaftEnd);
+
+    // Z arrow cone
+    QPolygonF zArrow;
+    zArrow << origin + QPointF(0, -axisLen - 12)
+           << origin + QPointF(-6, -axisLen + 2)
+           << origin + QPointF(0, -axisLen)
+           << origin + QPointF(6, -axisLen + 2);
+    p.setPen(QPen(zActive ? Qt::white : QColor(10, 80, 180), 1.0f));
+    p.setBrush(zColor);
+    p.drawPolygon(zArrow);
+
+    // Z label
+    p.setFont(QFont("Segoe UI", 9, QFont::Bold));
+    p.setPen(zActive ? Qt::white : QColor(120, 200, 255));
+    p.drawText(QRectF(origin.x() - 10, origin.y() - axisLen - 28, 20, 16), Qt::AlignCenter, "Z");
+
+    p.restore();
+}
+
+MapCanvas::GizmoHandle MapCanvas::hitTestGizmo(const QPointF& screenPos) const {
+    if (!m_map || m_selectedEntityIndex < 0 || m_selectedEntityIndex >= m_map->placedEntities.size())
+        return GizmoHandle::None;
+    const PlacedEntity& ent = m_map->placedEntities[m_selectedEntityIndex];
+    if (ent.floorLayer != m_currentFloor)
+        return GizmoHandle::None;
+
+    QPointF origin = worldToScreen(QPointF(ent.x, -ent.z));
+    const float axisLen = 65.0f;
+    const float centerBoxSize = 9.0f;
+
+    // 1. Center Handle & Quadrant
+    QRectF centerHit(origin.x() - centerBoxSize - 3, origin.y() - centerBoxSize - 3, (centerBoxSize + 3) * 2, (centerBoxSize + 3) * 2);
+    if (centerHit.contains(screenPos)) {
+        return GizmoHandle::CenterFree;
+    }
+    QRectF quadHit(origin.x(), origin.y() - 22, 22, 22);
+    if (quadHit.contains(screenPos)) {
+        return GizmoHandle::CenterFree;
+    }
+
+    // 2. X Axis (Shaft + Arrow)
+    QRectF xShaftHit(origin.x() + centerBoxSize, origin.y() - 10, axisLen - centerBoxSize + 25, 20);
+    if (xShaftHit.contains(screenPos)) {
+        return GizmoHandle::AxisX;
+    }
+
+    // 3. Z Axis (Shaft + Arrow)
+    QRectF zShaftHit(origin.x() - 10, origin.y() - axisLen - 25, 20, axisLen - centerBoxSize + 25);
+    if (zShaftHit.contains(screenPos)) {
+        return GizmoHandle::AxisZ;
+    }
+
+    return GizmoHandle::None;
+}
+
 void MapCanvas::drawHUD(QPainter& p) {
     p.save();
     p.setFont(QFont("Segoe UI", 10, QFont::Bold));
@@ -577,6 +701,22 @@ void MapCanvas::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton) {
         if (!m_map) return;
 
+        // 1. First check if clicking on the Gizmo of selected entity
+        if (m_selectedEntityIndex >= 0 && m_selectedEntityIndex < m_map->placedEntities.size()) {
+            GizmoHandle hitG = hitTestGizmo(event->pos());
+            if (hitG != GizmoHandle::None) {
+                m_activeGizmo = hitG;
+                m_dragStartMousePos = screenToWorld(event->pos());
+                const PlacedEntity& ent = m_map->placedEntities[m_selectedEntityIndex];
+                m_dragStartEntX = ent.x;
+                m_dragStartEntZ = ent.z;
+                event->accept();
+                update();
+                return;
+            }
+        }
+
+        // 2. Otherwise perform entity selection
         QPointF worldPos = screenToWorld(event->pos());
         int clickedEntity = -1;
         float bestDist = 24.0f / m_zoom; // Hit tolerance in world units
@@ -610,6 +750,44 @@ void MapCanvas::mouseMoveEvent(QMouseEvent* event) {
     }
 
     if (!m_map) return;
+
+    // 1. Handle Active Gizmo Dragging
+    if (m_activeGizmo != GizmoHandle::None && m_selectedEntityIndex >= 0 && m_selectedEntityIndex < m_map->placedEntities.size()) {
+        QPointF currentWorldMouse = screenToWorld(event->pos());
+        QPointF delta = currentWorldMouse - m_dragStartMousePos;
+
+        PlacedEntity& ent = m_map->placedEntities[m_selectedEntityIndex];
+        if (m_activeGizmo == GizmoHandle::AxisX) {
+            ent.x = m_dragStartEntX + delta.x();
+        } else if (m_activeGizmo == GizmoHandle::AxisZ) {
+            ent.z = m_dragStartEntZ - delta.y(); // screen -Y corresponds to world +Z
+        } else if (m_activeGizmo == GizmoHandle::CenterFree) {
+            ent.x = m_dragStartEntX + delta.x();
+            ent.z = m_dragStartEntZ - delta.y();
+        }
+
+        m_map->isModified = true;
+        emit entityModified(m_selectedEntityIndex);
+        update();
+        event->accept();
+        return;
+    }
+
+    // 2. Handle Gizmo Hover Cursor
+    GizmoHandle hitG = (m_selectedEntityIndex >= 0) ? hitTestGizmo(event->pos()) : GizmoHandle::None;
+    if (hitG != m_hoveredGizmo) {
+        m_hoveredGizmo = hitG;
+        if (m_hoveredGizmo == GizmoHandle::CenterFree) {
+            setCursor(Qt::SizeAllCursor);
+        } else if (m_hoveredGizmo == GizmoHandle::AxisX) {
+            setCursor(Qt::SizeHorCursor);
+        } else if (m_hoveredGizmo == GizmoHandle::AxisZ) {
+            setCursor(Qt::SizeVerCursor);
+        } else {
+            setCursor(Qt::ArrowCursor);
+        }
+        update();
+    }
 
     QPointF worldPos = screenToWorld(event->pos());
     int tileX = static_cast<int>(std::floor(worldPos.x() / TILE_SIZE));
@@ -672,14 +850,25 @@ void MapCanvas::leaveEvent(QEvent* event) {
     QWidget::leaveEvent(event);
     m_hoveredTile = QPoint(-1, -1);
     m_hoveredEntityIndex = -1;
+    m_hoveredGizmo = GizmoHandle::None;
+    setCursor(Qt::ArrowCursor);
     update();
 }
 
 void MapCanvas::mouseReleaseEvent(QMouseEvent* event) {
     if (event->button() == Qt::RightButton || event->button() == Qt::MiddleButton) {
         m_isPanning = false;
-        unsetCursor();
+        setCursor(Qt::ArrowCursor);
         event->accept();
+        return;
+    }
+
+    if (event->button() == Qt::LeftButton && m_activeGizmo != GizmoHandle::None) {
+        m_activeGizmo = GizmoHandle::None;
+        setCursor(Qt::ArrowCursor);
+        update();
+        event->accept();
+        return;
     }
 }
 

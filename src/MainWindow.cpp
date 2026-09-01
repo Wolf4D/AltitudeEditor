@@ -44,6 +44,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_searchDock, &EntitySearchDock::entitySelected, this, &MainWindow::onEntitySelected);
     connect(m_searchDock, &EntitySearchDock::focusEntityRequested, this, &MainWindow::onFocusEntityRequested);
     connect(m_inspectorDock, &EntityInspector::entityModified, this, &MainWindow::onEntityModified);
+    connect(m_canvas, &MapCanvas::entityModified, this, &MainWindow::onEntityModified);
 
     // Status bar setup
     m_statusMapName = new QLabel(QStringLiteral("No map loaded"), this);
@@ -276,6 +277,7 @@ void MainWindow::onEntityModified(int) {
     m_currentMap->isModified = true;
     updateWindowTitle();
     m_canvas->update();
+    m_inspectorDock->refreshValues();
     m_searchDock->rebuildTable();
     updateStatusBar();
 }

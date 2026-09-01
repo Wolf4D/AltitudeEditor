@@ -1,4 +1,4 @@
-﻿#ifndef ENTITYINSPECTOR_H
+#ifndef ENTITYINSPECTOR_H
 #define ENTITYINSPECTOR_H
 
 #include "FPSCData.h"
@@ -14,6 +14,7 @@ public:
     ~EntityInspector() override = default;
 
     void setEntity(std::shared_ptr<FPSCMap> map, int index);
+    void refreshValues();
     void clear();
 
 signals:
@@ -25,6 +26,12 @@ private:
 
     QTreeWidget* m_tree = nullptr;
     QLabel* m_headerLabel = nullptr;
+    QObject* m_noWheelFilter = nullptr;
+
+    class QDoubleSpinBox* m_spinX = nullptr;
+    class QDoubleSpinBox* m_spinY = nullptr;
+    class QDoubleSpinBox* m_spinZ = nullptr;
+
     std::shared_ptr<FPSCMap> m_map;
     int m_currentIndex = -1;
     bool m_isPopulating = false;

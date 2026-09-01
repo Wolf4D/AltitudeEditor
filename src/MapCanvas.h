@@ -18,8 +18,14 @@ public:
 
     int currentFloor() const { return m_currentFloor; }
     int selectedEntityIndex() const { return m_selectedEntityIndex; }
-
     void renderMap(QPainter& p);
+
+    enum class GizmoHandle {
+        None,
+        CenterFree,
+        AxisX,
+        AxisZ
+    };
 
 public slots:
     void setFloor(int floor);
@@ -46,6 +52,7 @@ public slots:
 signals:
     void floorChanged(int floor);
     void entitySelected(int index);
+    void entityModified(int index);
     void hoverInfoChanged(const QString& info);
     void zoomChanged(float zoom);
 
@@ -71,13 +78,22 @@ private:
     void drawWaypoints(QPainter& p);
     void drawZonesAndLights(QPainter& p);
     void drawEntities(QPainter& p);
+    void drawGizmo(QPainter& p);
     void drawHUD(QPainter& p);
+
+    GizmoHandle hitTestGizmo(const QPointF& screenPos) const;
 
     std::shared_ptr<FPSCMap> m_map;
     int m_currentFloor = 0;
     int m_selectedEntityIndex = -1;
     int m_hoveredEntityIndex = -1;
     QPoint m_hoveredTile = {-1, -1};
+
+    GizmoHandle m_hoveredGizmo = GizmoHandle::None;
+    GizmoHandle m_activeGizmo = GizmoHandle::None;
+    QPointF m_dragStartMousePos;
+    float m_dragStartEntX = 0.0f;
+    float m_dragStartEntZ = 0.0f;
 
     float m_zoom = 1.0f;
     QPointF m_panOffset = {200.0f, 200.0f};
