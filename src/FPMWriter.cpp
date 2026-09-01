@@ -143,11 +143,18 @@ bool FPMWriter::saveMap(
 
             // 12-byte encryption header
             uint8_t encHdr[12];
-            for (int i = 0; i < 11; ++i) {
+            for (int i = 0; i < 10; ++i) {
                 encHdr[i] = static_cast<uint8_t>(std::rand() & 0xFF);
             }
-            // Byte 11 is MSB of CRC32
-            encHdr[11] = static_cast<uint8_t>((crc >> 24) & 0xFF);
+            if (flags & 0x0008) {
+                // PKZIP specification: when bit 3 (Data Descriptor) is set,
+                // byte 10 is (modTime & 0xFF) and byte 11 is (modTime >> 8) & 0xFF
+                encHdr[10] = static_cast<uint8_t>(modTime & 0xFF);
+                encHdr[11] = static_cast<uint8_t>((modTime >> 8) & 0xFF);
+            } else {
+                encHdr[10] = static_cast<uint8_t>(std::rand() & 0xFF);
+                encHdr[11] = static_cast<uint8_t>((crc >> 24) & 0xFF);
+            }
 
             payload.resize(12 + defBytes.size());
             for (int i = 0; i < 12; ++i) {

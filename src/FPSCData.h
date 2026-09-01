@@ -123,7 +123,7 @@ struct FPSCEntityProfile {
     QString soundSet1;
     
     float lightRange = 0;
-    QColor lightColor = Qt::white;
+    QColor lightColor;
     
     // Memory profiling metrics
     qint64 meshSizeBytes = 0;
@@ -193,7 +193,7 @@ struct PlacedEntity {
     int markerIndex = 0;
     
     float lightRange = 0;
-    QColor lightColor = Qt::white;
+    QColor lightColor;
     int lightIndex = 0;
     
     int trigX1 = 0, trigY1 = 0, trigZ1 = 0;

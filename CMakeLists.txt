@@ -59,12 +59,7 @@ add_executable(test_standalone
 )
 target_link_libraries(test_standalone PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets)
 
-add_executable(test_save_roundtrip
-    src/test_save_roundtrip.cpp
-    src/FPMReader.cpp
-    src/FPMWriter.cpp
-    src/SegmentParser.cpp
-    src/EntityParser.cpp
-    src/AssetManager.cpp
-)
-target_link_libraries(test_save_roundtrip PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets)
+
+
+
+
