@@ -4,6 +4,24 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QPainter>
+#include <QMenu>
+#include <QKeyEvent>
+
+namespace {
+class NumericTableWidgetItem : public QTableWidgetItem {
+public:
+    explicit NumericTableWidgetItem(int val) : QTableWidgetItem(QString::number(val)), m_val(val) {}
+    bool operator<(const QTableWidgetItem& other) const override {
+        const auto* numOther = dynamic_cast<const NumericTableWidgetItem*>(&other);
+        if (numOther) {
+            return m_val < numOther->m_val;
+        }
+        return QTableWidgetItem::operator<(other);
+    }
+private:
+    int m_val = 0;
+};
+}
 
 EntitySearchDock::EntitySearchDock(QWidget* parent)
     : QDockWidget(QStringLiteral("Entity Search & Palette"), parent)
@@ -16,11 +34,20 @@ EntitySearchDock::EntitySearchDock(QWidget* parent)
     layout->setContentsMargins(8, 8, 8, 8);
     layout->setSpacing(6);
 
-    // Search input
+    // Search bar with explicit Search button
+    QHBoxLayout* searchLayout = new QHBoxLayout();
+    searchLayout->setSpacing(4);
+
     m_searchEdit = new QLineEdit(container);
     m_searchEdit->setPlaceholderText(QStringLiteral("Search entity name or script..."));
     m_searchEdit->setClearButtonEnabled(true);
-    layout->addWidget(m_searchEdit);
+    searchLayout->addWidget(m_searchEdit, 1);
+
+    m_searchBtn = new QPushButton(QStringLiteral("🔍 Search"), container);
+    m_searchBtn->setCursor(Qt::PointingHandCursor);
+    m_searchBtn->setStyleSheet(QStringLiteral("QPushButton { padding: 3px 8px; font-weight: bold; }"));
+    searchLayout->addWidget(m_searchBtn);
+    layout->addLayout(searchLayout);
 
     // Category filter combo
     m_categoryCombo = new QComboBox(container);
@@ -35,6 +62,17 @@ EntitySearchDock::EntitySearchDock(QWidget* parent)
     m_categoryCombo->addItem(QStringLiteral("Items & Pickups"), static_cast<int>(EntityCategory::Item));
     m_categoryCombo->addItem(QStringLiteral("Scenery & Props"), static_cast<int>(EntityCategory::Scenery));
     layout->addWidget(m_categoryCombo);
+
+    // Trait / Property Filter combo
+    m_traitCombo = new QComboBox(container);
+    m_traitCombo->addItem(QStringLiteral("All Types & Properties"), 0);
+    m_traitCombo->addItem(QStringLiteral("Characters / AI (Enemies & NPCs)"), 1);
+    m_traitCombo->addItem(QStringLiteral("Light Sources (Color/Range)"), 2);
+    m_traitCombo->addItem(QStringLiteral("Trigger Zones (Areas)"), 3);
+    m_traitCombo->addItem(QStringLiteral("Dynamic Physics (ODE)"), 4);
+    m_traitCombo->addItem(QStringLiteral("Static (Pre-baked)"), 5);
+    m_traitCombo->addItem(QStringLiteral("With Custom AI Scripts"), 6);
+    layout->addWidget(m_traitCombo);
 
     // Current floor toggle
     m_currentFloorOnlyCheck = new QCheckBox(QStringLiteral("Show current floor only"), container);
@@ -53,20 +91,41 @@ EntitySearchDock::EntitySearchDock(QWidget* parent)
     m_table->setSelectionMode(QAbstractItemView::SingleSelection);
     m_table->verticalHeader()->setVisible(false);
     m_table->setIconSize(QSize(28, 28));
+    m_table->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_table->setSortingEnabled(true);
+    m_table->installEventFilter(this);
     layout->addWidget(m_table, 1);
 
-    // Count label
+    // Bottom action row: count label and Delete button
+    QHBoxLayout* bottomLayout = new QHBoxLayout();
     m_countLabel = new QLabel(QStringLiteral("0 entities found"), container);
     m_countLabel->setStyleSheet("color: #888899; font-size: 11px;");
-    layout->addWidget(m_countLabel);
+    bottomLayout->addWidget(m_countLabel, 1);
+
+    m_deleteBtn = new QPushButton(QStringLiteral("🗑️ Delete"), container);
+    m_deleteBtn->setEnabled(false);
+    m_deleteBtn->setToolTip(QStringLiteral("Delete the selected entity from map (Del)"));
+    m_deleteBtn->setCursor(Qt::PointingHandCursor);
+    m_deleteBtn->setStyleSheet(QStringLiteral(
+        "QPushButton { background-color: #382428; color: #ff8899; border: 1px solid #773344; padding: 3px 10px; border-radius: 3px; font-weight: bold; } "
+        "QPushButton:hover { background-color: #552830; color: #ffb0c0; border: 1px solid #aa4455; } "
+        "QPushButton:disabled { background-color: #22252a; color: #555566; border: 1px solid #333640; }"
+    ));
+    bottomLayout->addWidget(m_deleteBtn);
+    layout->addLayout(bottomLayout);
 
     setWidget(container);
 
     connect(m_searchEdit, &QLineEdit::textChanged, this, &EntitySearchDock::onFilterChanged);
+    connect(m_searchEdit, &QLineEdit::returnPressed, this, &EntitySearchDock::onFilterChanged);
+    connect(m_searchBtn, &QPushButton::clicked, this, &EntitySearchDock::onFilterChanged);
     connect(m_categoryCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EntitySearchDock::onFilterChanged);
+    connect(m_traitCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EntitySearchDock::onFilterChanged);
     connect(m_currentFloorOnlyCheck, &QCheckBox::toggled, this, &EntitySearchDock::onFilterChanged);
     connect(m_table, &QTableWidget::itemDoubleClicked, this, &EntitySearchDock::onItemDoubleClicked);
     connect(m_table, &QTableWidget::itemSelectionChanged, this, &EntitySearchDock::onItemSelectionChanged);
+    connect(m_table, &QTableWidget::customContextMenuRequested, this, &EntitySearchDock::showTableContextMenu);
+    connect(m_deleteBtn, &QPushButton::clicked, this, &EntitySearchDock::onDeleteClicked);
 }
 
 void EntitySearchDock::setMap(std::shared_ptr<FPSCMap> map) {
@@ -81,12 +140,21 @@ void EntitySearchDock::setCurrentFloor(int floor) {
     }
 }
 
+int EntitySearchDock::selectedEntityIndex() const {
+    auto selectedItems = m_table->selectedItems();
+    if (selectedItems.isEmpty()) return -1;
+    int row = selectedItems.first()->row();
+    QTableWidgetItem* idItem = m_table->item(row, 0);
+    return idItem ? idItem->data(Qt::UserRole).toInt() : -1;
+}
+
 void EntitySearchDock::selectEntity(int index) {
     if (m_isUpdatingSelection || !m_map) return;
 
     m_isUpdatingSelection = true;
     if (index < 0) {
         m_table->clearSelection();
+        m_deleteBtn->setEnabled(false);
         m_isUpdatingSelection = false;
         return;
     }
@@ -96,6 +164,7 @@ void EntitySearchDock::selectEntity(int index) {
         if (item && item->data(Qt::UserRole).toInt() == index) {
             m_table->selectRow(r);
             m_table->scrollToItem(item);
+            m_deleteBtn->setEnabled(true);
             break;
         }
     }
@@ -119,6 +188,7 @@ void EntitySearchDock::onItemDoubleClicked(QTableWidgetItem* item) {
 void EntitySearchDock::onItemSelectionChanged() {
     if (m_isUpdatingSelection) return;
     auto selectedItems = m_table->selectedItems();
+    m_deleteBtn->setEnabled(!selectedItems.isEmpty());
     if (selectedItems.isEmpty()) return;
     int row = selectedItems.first()->row();
     QTableWidgetItem* idItem = m_table->item(row, 0);
@@ -128,15 +198,60 @@ void EntitySearchDock::onItemSelectionChanged() {
     }
 }
 
+void EntitySearchDock::onDeleteClicked() {
+    int entIdx = selectedEntityIndex();
+    if (entIdx >= 0) {
+        emit entityDeleteRequested(entIdx);
+    }
+}
+
+void EntitySearchDock::showTableContextMenu(const QPoint& pos) {
+    QTableWidgetItem* item = m_table->itemAt(pos);
+    if (!item) return;
+    int row = item->row();
+    QTableWidgetItem* idItem = m_table->item(row, 0);
+    if (!idItem) return;
+    int entIdx = idItem->data(Qt::UserRole).toInt();
+
+    QMenu menu(this);
+    QAction* actInspect = menu.addAction(QStringLiteral("Inspect Properties"));
+    QAction* actFocus = menu.addAction(QStringLiteral("Focus on Canvas (Double-Click)"));
+    menu.addSeparator();
+    QAction* actDelete = menu.addAction(QStringLiteral("🗑️ Delete Entity (Del)"));
+
+    QAction* chosen = menu.exec(m_table->viewport()->mapToGlobal(pos));
+    if (chosen == actInspect) {
+        emit entitySelected(entIdx);
+    } else if (chosen == actFocus) {
+        emit focusEntityRequested(entIdx);
+    } else if (chosen == actDelete) {
+        emit entityDeleteRequested(entIdx);
+    }
+}
+
+bool EntitySearchDock::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == m_table && event->type() == QEvent::KeyPress) {
+        QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+        if (keyEvent->key() == Qt::Key_Delete || keyEvent->key() == Qt::Key_Backspace) {
+            onDeleteClicked();
+            return true;
+        }
+    }
+    return QDockWidget::eventFilter(watched, event);
+}
+
 void EntitySearchDock::rebuildTable() {
+    m_table->setSortingEnabled(false);
     m_table->setRowCount(0);
     if (!m_map) {
         m_countLabel->setText(QStringLiteral("0 entities found"));
+        m_deleteBtn->setEnabled(false);
         return;
     }
 
     QString search = m_searchEdit->text().trimmed().toLower();
     int selectedCat = m_categoryCombo->currentData().toInt();
+    int traitFilter = m_traitCombo->currentIndex();
     bool currentFloorOnly = m_currentFloorOnlyCheck->isChecked();
 
     int matchedCount = 0;
@@ -151,6 +266,28 @@ void EntitySearchDock::rebuildTable() {
         EntityCategory cat = ent.profile ? ent.profile->category : EntityCategory::Unknown;
         if (selectedCat >= 0 && static_cast<int>(cat) != selectedCat) {
             continue;
+        }
+
+        // Trait filter
+        if (traitFilter == 1) { // Characters / AI
+            if (cat != EntityCategory::Character && (!ent.profile || !ent.profile->isCharacter)) {
+                continue;
+            }
+        } else if (traitFilter == 2) { // Lights
+            if (cat != EntityCategory::Light && ent.lightRange <= 0 && (!ent.profile || ent.profile->lightRange <= 0))
+                continue;
+        } else if (traitFilter == 3) { // Trigger Zones
+            if (cat != EntityCategory::Zone && ent.trigX1 == 0 && ent.trigX2 == 0)
+                continue;
+        } else if (traitFilter == 4) { // Dynamic Physics
+            if (ent.physics != 1)
+                continue;
+        } else if (traitFilter == 5) { // Static
+            if (ent.staticFlag != 1 && ent.physics != 0)
+                continue;
+        } else if (traitFilter == 6) { // Custom Scripts
+            if (ent.aiMain.isEmpty() && ent.aiInit.isEmpty() && ent.aiShoot.isEmpty())
+                continue;
         }
 
         QString name = ent.instanceName;
@@ -196,9 +333,11 @@ void EntitySearchDock::rebuildTable() {
             iconPx = tinted;
         }
 
-        QTableWidgetItem* iconItem = new QTableWidgetItem();
+        QTableWidgetItem* iconItem = new NumericTableWidgetItem(i);
         iconItem->setIcon(QIcon(iconPx));
         iconItem->setData(Qt::UserRole, i);
+        iconItem->setText(QString::number(i));
+        iconItem->setForeground(QColor(120, 130, 150));
         m_table->setItem(row, 0, iconItem);
 
         // Column 1: Name
@@ -215,12 +354,14 @@ void EntitySearchDock::rebuildTable() {
         m_table->setItem(row, 2, catItem);
 
         // Column 3: Floor
-        QTableWidgetItem* floorItem = new QTableWidgetItem(QString::number(ent.floorLayer));
+        QTableWidgetItem* floorItem = new NumericTableWidgetItem(ent.floorLayer);
         floorItem->setTextAlignment(Qt::AlignCenter);
         m_table->setItem(row, 3, floorItem);
 
         matchedCount++;
     }
+
+    m_table->setSortingEnabled(true);
 
     m_countLabel->setText(QString("%1 entities found (out of %2 total)")
         .arg(matchedCount)

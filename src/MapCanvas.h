@@ -53,6 +53,7 @@ signals:
     void floorChanged(int floor);
     void entitySelected(int index);
     void entityModified(int index);
+    void entityDeleteRequested(int index);
     void hoverInfoChanged(const QString& info);
     void zoomChanged(float zoom);
 

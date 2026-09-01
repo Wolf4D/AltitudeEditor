@@ -41,6 +41,7 @@ private slots:
     void onEntitySelected(int index);
     void onEntityModified(int index);
     void onFocusEntityRequested(int index);
+    void deleteEntity(int index);
     void onHoverInfoChanged(const QString& info);
     void onZoomChanged(float zoom);
 

@@ -43,8 +43,10 @@ MainWindow::MainWindow(QWidget* parent)
 
     connect(m_searchDock, &EntitySearchDock::entitySelected, this, &MainWindow::onEntitySelected);
     connect(m_searchDock, &EntitySearchDock::focusEntityRequested, this, &MainWindow::onFocusEntityRequested);
+    connect(m_searchDock, &EntitySearchDock::entityDeleteRequested, this, &MainWindow::deleteEntity);
     connect(m_inspectorDock, &EntityInspector::entityModified, this, &MainWindow::onEntityModified);
     connect(m_canvas, &MapCanvas::entityModified, this, &MainWindow::onEntityModified);
+    connect(m_canvas, &MapCanvas::entityDeleteRequested, this, &MainWindow::deleteEntity);
 
     // Status bar setup
     m_statusMapName = new QLabel(QStringLiteral("No map loaded"), this);
@@ -280,6 +282,30 @@ void MainWindow::onEntityModified(int) {
     m_inspectorDock->refreshValues();
     m_searchDock->rebuildTable();
     updateStatusBar();
+}
+
+void MainWindow::deleteEntity(int index) {
+    if (!m_currentMap || index < 0 || index >= m_currentMap->placedEntities.size()) return;
+
+    QString entName = m_currentMap->placedEntities[index].instanceName;
+    if (entName.isEmpty() && m_currentMap->placedEntities[index].profile)
+        entName = m_currentMap->placedEntities[index].profile->name;
+    if (entName.isEmpty()) entName = QString("Entity #%1").arg(index);
+
+    m_currentMap->placedEntities.erase(m_currentMap->placedEntities.begin() + index);
+    m_currentMap->isModified = true;
+
+    m_canvas->selectEntity(-1);
+    m_searchDock->selectEntity(-1);
+    m_inspectorDock->clear();
+
+    m_canvas->update();
+    m_searchDock->rebuildTable();
+    updateFloorControls();
+    updateStatusBar();
+    updateWindowTitle();
+
+    statusBar()->showMessage(QString("Deleted %1").arg(entName), 4000);
 }
 
 void MainWindow::populateRecentMapsMenu() {

@@ -5,8 +5,7 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QKeyEvent>
-#include <QToolTip>
-#include <QFontMetrics>
+#include <QMenu>
 #include <cmath>
 
 static const float TILE_SIZE = 100.0f;
@@ -857,7 +856,59 @@ void MapCanvas::leaveEvent(QEvent* event) {
 }
 
 void MapCanvas::mouseReleaseEvent(QMouseEvent* event) {
-    if (event->button() == Qt::RightButton || event->button() == Qt::MiddleButton) {
+    if (event->button() == Qt::RightButton) {
+        m_isPanning = false;
+        setCursor(Qt::ArrowCursor);
+
+        // Check if right clicked on an entity to show context menu
+        if ((event->pos() - m_lastMousePos).manhattanLength() < 6 && m_map) {
+            QPointF worldPos = screenToWorld(event->pos());
+            int clickedEntity = -1;
+            float bestDist = 24.0f / m_zoom;
+
+            for (int i = 0; i < m_map->placedEntities.size(); ++i) {
+                const PlacedEntity& ent = m_map->placedEntities[i];
+                if (ent.floorLayer != m_currentFloor) continue;
+
+                float dx = ent.x - worldPos.x();
+                float dz = (-ent.z) - worldPos.y();
+                float dist = std::sqrt(dx * dx + dz * dz);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    clickedEntity = i;
+                }
+            }
+
+            if (clickedEntity >= 0) {
+                selectEntity(clickedEntity);
+                QMenu menu(this);
+                const PlacedEntity& ent = m_map->placedEntities[clickedEntity];
+                QString name = ent.instanceName.isEmpty() ? (ent.profile ? ent.profile->name : QString("Entity #%1").arg(clickedEntity)) : ent.instanceName;
+                QAction* titleAct = menu.addAction(QString("Entity #%1: %2").arg(clickedEntity).arg(name));
+                titleAct->setEnabled(false);
+                menu.addSeparator();
+                QAction* actInspect = menu.addAction(QStringLiteral("Inspect Properties"));
+                QAction* actFocus = menu.addAction(QStringLiteral("Focus View"));
+                menu.addSeparator();
+                QAction* actDelete = menu.addAction(QStringLiteral("🗑️ Delete Entity (Del)"));
+
+                QAction* chosen = menu.exec(mapToGlobal(event->pos()));
+                if (chosen == actInspect) {
+                    emit entitySelected(clickedEntity);
+                } else if (chosen == actFocus) {
+                    focusOnEntity(clickedEntity);
+                } else if (chosen == actDelete) {
+                    emit entityDeleteRequested(clickedEntity);
+                }
+                event->accept();
+                return;
+            }
+        }
+        event->accept();
+        return;
+    }
+
+    if (event->button() == Qt::MiddleButton) {
         m_isPanning = false;
         setCursor(Qt::ArrowCursor);
         event->accept();
@@ -904,6 +955,12 @@ void MapCanvas::wheelEvent(QWheelEvent* event) {
 
 void MapCanvas::keyPressEvent(QKeyEvent* event) {
     switch (event->key()) {
+        case Qt::Key_Delete:
+        case Qt::Key_Backspace:
+            if (m_selectedEntityIndex >= 0) {
+                emit entityDeleteRequested(m_selectedEntityIndex);
+            }
+            break;
         case Qt::Key_PageUp:
         case Qt::Key_Plus:
         case Qt::Key_Equal:
