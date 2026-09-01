@@ -458,20 +458,17 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
 
     QComboBox* comboPhys = new QComboBox();
     comboPhys->addItems({
-        QStringLiteral("0 - None (Standard / Scripted)"),
-        QStringLiteral("1 - Dynamic (ODE/Newton Rigid Body)"),
-        QStringLiteral("2 - Immobile Polylist Collision"),
-        QStringLiteral("3 - Dynamic (Pushable)"),
-        QStringLiteral("4 - Character Capsule Controller")
+        QStringLiteral("0 - No (Physics Off / Scripted)"),
+        QStringLiteral("1 - Yes (ODE Dynamic Rigid Body)")
     });
-    comboPhys->setCurrentIndex(qBound(0, ent.physics, 4));
+    comboPhys->setCurrentIndex(ent.physics == 1 ? 1 : 0);
     connect(comboPhys, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) {
         if (m_isPopulating || !m_map || m_currentIndex < 0) return;
         m_map->placedEntities[m_currentIndex].physics = idx;
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpPhysics, QStringLiteral("Physics Mode"), comboPhys);
+    addWidgetProperty(grpPhysics, QStringLiteral("Physics On?"), comboPhys);
 
     QSpinBox* spinWeight = new QSpinBox();
     spinWeight->setRange(0, 100000);
