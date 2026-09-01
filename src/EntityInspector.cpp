@@ -238,15 +238,6 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
     });
     addWidgetProperty(grpTransform, QStringLiteral("Rotation Roll (Z°)"), spinRotZ);
 
-    // Scale (Inactive in classic FPS Creator engine)
-    QDoubleSpinBox* spinScale = new QDoubleSpinBox();
-    spinScale->setRange(0.0, 2000.0);
-    spinScale->setDecimals(2);
-    spinScale->setValue(ent.scale);
-    spinScale->setEnabled(false);
-    spinScale->setToolTip(QStringLiteral("Scale is defined globally in the entity .FPE file and is not supported per-instance in classic FPS Creator."));
-    addWidgetProperty(grpTransform, QStringLiteral("Scale (%) (Inactive)"), spinScale, QStringLiteral("Fixed in .FPE definition; not editable in classic engine"));
-
     // Static Flag
     QComboBox* comboStatic = new QComboBox();
     comboStatic->addItems({QStringLiteral("0 - Dynamic (Active AI/Physics)"), QStringLiteral("1 - Static (Optimized Pre-baked)")});
