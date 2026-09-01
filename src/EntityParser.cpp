@@ -346,9 +346,16 @@ QVector<PlacedEntity> EntityParser::parseMapEle(
         // In FPSC world coords, floor 0 is Y=0..100 (midpoint 50), floor 5 is Y=500..600 (midpoint 550)
         ent.floorLayer = qBound(0, static_cast<int>(std::floor((ent.y + 25.0f) / 100.0f)), 20);
 
-        // If light range / color set on instance
+        // Fallback light range only if instance range was not set
         if (ent.lightRange <= 0 && ent.profile && ent.profile->lightRange > 0) {
             ent.lightRange = ent.profile->lightRange;
+        }
+
+        // Fallback light color only if map.ele had 0 (no color) and profile has default color
+        uint32_t rawCol = (static_cast<uint32_t>(ent.lightColor.red()) << 16) |
+                          (static_cast<uint32_t>(ent.lightColor.green()) << 8) |
+                           static_cast<uint32_t>(ent.lightColor.blue());
+        if (rawCol == 0 && ent.profile && ent.profile->lightColor.isValid()) {
             ent.lightColor = ent.profile->lightColor;
         }
 

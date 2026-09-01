@@ -1,4 +1,4 @@
-﻿#include "EntityInspector.h"
+#include "EntityInspector.h"
 #include "AssetManager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -376,13 +376,21 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
             .arg(c.name())
             .arg(c.lightness() > 128 ? "black" : "white"));
     };
-    updateColStyle(ent.lightColor);
-    connect(btnCol, &QPushButton::clicked, this, [this, updateColStyle]() {
+    connect(btnCol, &QPushButton::clicked, this, [this, updateColStyle, spinLRange]() {
         if (!m_map || m_currentIndex < 0) return;
         QColor cur = m_map->placedEntities[m_currentIndex].lightColor;
+        if (!cur.isValid() || (cur.red() == 0 && cur.green() == 0 && cur.blue() == 0)) {
+            cur = QColor(255, 255, 255);
+        }
         QColor chosen = QColorDialog::getColor(cur, this, QStringLiteral("Select Light Color"));
         if (chosen.isValid()) {
             m_map->placedEntities[m_currentIndex].lightColor = chosen;
+            if (m_map->placedEntities[m_currentIndex].lightRange <= 0) {
+                float defRange = (m_map->placedEntities[m_currentIndex].profile && m_map->placedEntities[m_currentIndex].profile->lightRange > 0)
+                    ? m_map->placedEntities[m_currentIndex].profile->lightRange : 300.0f;
+                m_map->placedEntities[m_currentIndex].lightRange = defRange;
+                spinLRange->setValue(defRange);
+            }
             updateColStyle(chosen);
             m_map->isModified = true;
             emit entityModified(m_currentIndex);
