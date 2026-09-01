@@ -58,6 +58,12 @@ struct ZipCryptoKey {
         return static_cast<uint8_t>(((temp * (temp ^ 1)) >> 8) & 0xFF);
     }
 
+    uint8_t encrypt(uint8_t plain) {
+        uint8_t k = decryptByte();
+        update(plain);
+        return plain ^ k;
+    }
+
     uint8_t decrypt(uint8_t c) {
         uint8_t k = decryptByte();
         uint8_t plain = c ^ k;

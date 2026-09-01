@@ -15,6 +15,7 @@ set(SOURCES
     src/MainWindow.cpp
     src/MapCanvas.cpp
     src/FPMReader.cpp
+    src/FPMWriter.cpp
     src/SegmentParser.cpp
     src/EntityParser.cpp
     src/AssetManager.cpp
@@ -28,6 +29,7 @@ set(HEADERS
     src/MainWindow.h
     src/MapCanvas.h
     src/FPMReader.h
+    src/FPMWriter.h
     src/FPSCData.h
     src/SegmentParser.h
     src/EntityParser.h
@@ -49,9 +51,20 @@ add_executable(test_standalone
     src/test_standalone.cpp
     src/MapCanvas.cpp
     src/FPMReader.cpp
+    src/FPMWriter.cpp
     src/SegmentParser.cpp
     src/EntityParser.cpp
     src/AssetManager.cpp
     src/MemoryAnalyzer.cpp
 )
 target_link_libraries(test_standalone PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets)
+
+add_executable(test_save_roundtrip
+    src/test_save_roundtrip.cpp
+    src/FPMReader.cpp
+    src/FPMWriter.cpp
+    src/SegmentParser.cpp
+    src/EntityParser.cpp
+    src/AssetManager.cpp
+)
+target_link_libraries(test_save_roundtrip PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets)

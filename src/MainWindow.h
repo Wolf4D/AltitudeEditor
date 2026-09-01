@@ -21,8 +21,13 @@ public:
 
     void loadMapFile(const QString& filePath);
 
+protected:
+    void closeEvent(QCloseEvent* event) override;
+
 private slots:
     void onOpenMap();
+    void onSaveMap();
+    void onSaveMapAs();
     void onOpenRecentMap(const QString& filePath);
     void onReloadMap();
     void onConfigureEnginePath();
@@ -34,11 +39,14 @@ private slots:
     void onCanvasFloorChanged(int floor);
 
     void onEntitySelected(int index);
+    void onEntityModified(int index);
     void onFocusEntityRequested(int index);
     void onHoverInfoChanged(const QString& info);
     void onZoomChanged(float zoom);
 
 private:
+    bool maybeSave();
+    void updateWindowTitle();
     void createMenusAndToolbars();
     void populateRecentMapsMenu();
     void updateFloorControls();
@@ -55,6 +63,8 @@ private:
     QSpinBox* m_floorSpin = nullptr;
     QSlider* m_floorSlider = nullptr;
     QLabel* m_floorLabel = nullptr;
+    QAction* m_actSave = nullptr;
+    QAction* m_actSaveAs = nullptr;
     QAction* m_actFloorUp = nullptr;
     QAction* m_actFloorDown = nullptr;
     QAction* m_actGhostLayer = nullptr;

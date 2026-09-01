@@ -16,6 +16,7 @@ public:
         const QVector<QString>& entBank,
         const QMap<int, std::shared_ptr<FPSCEntityProfile>>& profiles
     );
+    static QByteArray serializeMapEle(const std::shared_ptr<FPSCMap>& map);
 };
 
 #endif // ENTITYPARSER_H

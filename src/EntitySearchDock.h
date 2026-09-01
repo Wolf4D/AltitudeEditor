@@ -19,6 +19,7 @@ public:
     void setMap(std::shared_ptr<FPSCMap> map);
     void setCurrentFloor(int floor);
     void selectEntity(int index);
+    void rebuildTable();
 
 signals:
     void entitySelected(int index);
@@ -30,8 +31,6 @@ private slots:
     void onItemSelectionChanged();
 
 private:
-    void rebuildTable();
-
     std::shared_ptr<FPSCMap> m_map;
     int m_currentFloor = 0;
 

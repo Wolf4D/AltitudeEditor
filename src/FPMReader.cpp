@@ -285,10 +285,19 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
         }
     }
 
+    map->filePath = fpmPath;
+    map->password = password;
+    map->rawEntries = entries;
+    map->isModified = false;
+
     // 5. Parse map.ele (Placed Entities)
     if (entries.contains("map.ele")) {
+        const QByteArray& eleData = entries["map.ele"];
+        if (eleData.size() >= 4) {
+            map->eleVersion = *reinterpret_cast<const int32_t*>(eleData.constData());
+        }
         map->placedEntities = EntityParser::parseMapEle(
-            entries["map.ele"],
+            eleData,
             map->entitiesBank,
             map->entityProfiles
         );

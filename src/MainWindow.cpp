@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 #include "FPMReader.h"
+#include "FPMWriter.h"
 #include "AssetManager.h"
 #include "MemoryAnalyzerDialog.h"
 #include <QMenuBar>
@@ -11,11 +12,12 @@
 #include <QDirIterator>
 #include <QFileInfo>
 #include <QApplication>
+#include <QCloseEvent>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
-    setWindowTitle(QStringLiteral("FPS Creator 2D Map Viewer (Doom-Style Segment Textures & Memory Analyzer)"));
+    updateWindowTitle();
     resize(1360, 860);
 
     m_canvas = new MapCanvas(this);
@@ -39,6 +41,7 @@ MainWindow::MainWindow(QWidget* parent)
 
     connect(m_searchDock, &EntitySearchDock::entitySelected, this, &MainWindow::onEntitySelected);
     connect(m_searchDock, &EntitySearchDock::focusEntityRequested, this, &MainWindow::onFocusEntityRequested);
+    connect(m_inspectorDock, &EntityInspector::entityModified, this, &MainWindow::onEntityModified);
 
     // Status bar setup
     m_statusMapName = new QLabel(QStringLiteral("No map loaded"), this);
@@ -58,6 +61,8 @@ void MainWindow::createMenusAndToolbars() {
     // -------------------------------------------------------------
     QMenu* fileMenu = menuBar()->addMenu(QStringLiteral("&File"));
     QAction* actOpen = fileMenu->addAction(QStringLiteral("&Open Map (.FPM)..."), this, &MainWindow::onOpenMap, QKeySequence::Open);
+    m_actSave = fileMenu->addAction(QStringLiteral("&Save Map"), this, &MainWindow::onSaveMap, QKeySequence::Save);
+    m_actSaveAs = fileMenu->addAction(QStringLiteral("Save Map &As..."), this, &MainWindow::onSaveMapAs, QKeySequence::SaveAs);
     QAction* actReload = fileMenu->addAction(QStringLiteral("&Reload Map"), this, &MainWindow::onReloadMap, QKeySequence::Refresh);
 
     m_recentMapsMenu = fileMenu->addMenu(QStringLiteral("&Stock / Recent Maps"));
@@ -66,7 +71,7 @@ void MainWindow::createMenusAndToolbars() {
     fileMenu->addSeparator();
     fileMenu->addAction(QStringLiteral("&Configure FPS Creator Path..."), this, &MainWindow::onConfigureEnginePath);
     fileMenu->addSeparator();
-    fileMenu->addAction(QStringLiteral("E&xit"), qApp, &QApplication::quit, QKeySequence::Quit);
+    fileMenu->addAction(QStringLiteral("E&xit"), this, &MainWindow::close, QKeySequence::Quit);
 
     QMenu* viewMenu = menuBar()->addMenu(QStringLiteral("&View"));
     QAction* actZoomIn = viewMenu->addAction(QStringLiteral("Zoom &In"), m_canvas, &MapCanvas::zoomIn, QKeySequence::ZoomIn);
@@ -144,6 +149,7 @@ void MainWindow::createMenusAndToolbars() {
     mainBar->setMovable(false);
 
     mainBar->addAction(actOpen);
+    mainBar->addAction(m_actSave);
     mainBar->addAction(actReload);
     mainBar->addSeparator();
 
@@ -187,6 +193,91 @@ void MainWindow::createMenusAndToolbars() {
     actLaunchMem->setToolTip(QStringLiteral("Measure entity RAM weight in Megabytes and inspect memory budget"));
 }
 
+void MainWindow::updateWindowTitle() {
+    QString title = QStringLiteral("FPS Creator 2D Map Viewer (Doom-Style Segment Textures & Memory Analyzer)");
+    if (m_currentMap) {
+        QString fName = QFileInfo(m_currentMap->filePath).fileName();
+        if (fName.isEmpty()) fName = m_currentMap->mapName;
+        title = QString("FPS Creator 2D Map Viewer - [%1%2]").arg(fName).arg(m_currentMap->isModified ? "*" : "");
+    }
+    setWindowTitle(title);
+}
+
+bool MainWindow::maybeSave() {
+    if (!m_currentMap || !m_currentMap->isModified) return true;
+
+    auto res = QMessageBox::question(
+        this,
+        QStringLiteral("Unsaved Changes"),
+        QString("The map '%1' has unsaved modifications.\nDo you want to save your changes?")
+            .arg(QFileInfo(m_currentMap->filePath).fileName()),
+        QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel
+    );
+
+    if (res == QMessageBox::Save) {
+        onSaveMap();
+        return !m_currentMap->isModified;
+    } else if (res == QMessageBox::Cancel) {
+        return false;
+    }
+    return true;
+}
+
+void MainWindow::closeEvent(QCloseEvent* event) {
+    if (maybeSave()) {
+        event->accept();
+    } else {
+        event->ignore();
+    }
+}
+
+void MainWindow::onSaveMap() {
+    if (!m_currentMap) return;
+    if (m_currentMap->filePath.isEmpty()) {
+        onSaveMapAs();
+        return;
+    }
+    bool ok = FPMWriter::saveMap(m_currentMap, m_currentMap->filePath, m_currentMap->password);
+    if (ok) {
+        updateWindowTitle();
+        statusBar()->showMessage(QString("Saved %1").arg(m_currentMap->filePath), 4000);
+    } else {
+        QMessageBox::critical(this, QStringLiteral("Save Error"), QString("Failed to save map to:\n%1").arg(m_currentMap->filePath));
+    }
+}
+
+void MainWindow::onSaveMapAs() {
+    if (!m_currentMap) return;
+    QString curPath = m_currentMap->filePath;
+    if (curPath.isEmpty()) {
+        curPath = AssetManager::instance().engineRoot() + "/Files/mapbank/" + m_currentMap->mapName + ".fpm";
+    }
+    QString savePath = QFileDialog::getSaveFileName(
+        this,
+        QStringLiteral("Save FPS Creator Map As"),
+        curPath,
+        QStringLiteral("FPS Creator Project Map (*.fpm);;All Files (*.*)")
+    );
+    if (savePath.isEmpty()) return;
+
+    bool ok = FPMWriter::saveMap(m_currentMap, savePath, m_currentMap->password);
+    if (ok) {
+        updateWindowTitle();
+        statusBar()->showMessage(QString("Saved as %1").arg(savePath), 4000);
+    } else {
+        QMessageBox::critical(this, QStringLiteral("Save Error"), QString("Failed to save map to:\n%1").arg(savePath));
+    }
+}
+
+void MainWindow::onEntityModified(int) {
+    if (!m_currentMap) return;
+    m_currentMap->isModified = true;
+    updateWindowTitle();
+    m_canvas->update();
+    m_searchDock->rebuildTable();
+    updateStatusBar();
+}
+
 void MainWindow::populateRecentMapsMenu() {
     m_recentMapsMenu->clear();
     QString mapBankDir = AssetManager::instance().engineRoot() + "/Files/mapbank";
@@ -198,7 +289,9 @@ void MainWindow::populateRecentMapsMenu() {
         QString fPath = it.next();
         QString name = QFileInfo(fPath).fileName();
         QAction* act = m_recentMapsMenu->addAction(name, this, [this, fPath]() {
-            loadMapFile(fPath);
+            if (maybeSave()) {
+                loadMapFile(fPath);
+            }
         });
         act->setToolTip(fPath);
         count++;
@@ -217,17 +310,19 @@ void MainWindow::loadMapFile(const QString& filePath) {
     m_searchDock->setMap(m_currentMap);
     m_inspectorDock->clear();
 
+    updateWindowTitle();
     updateFloorControls();
     updateStatusBar();
 }
 
 void MainWindow::onOpenRecentMap(const QString& filePath) {
-    if (!filePath.isEmpty()) {
+    if (!filePath.isEmpty() && maybeSave()) {
         loadMapFile(filePath);
     }
 }
 
 void MainWindow::onOpenMap() {
+    if (!maybeSave()) return;
     QString startDir = AssetManager::instance().engineRoot() + "/Files/mapbank";
     QString file = QFileDialog::getOpenFileName(this, QStringLiteral("Open FPS Creator Map"), startDir, QStringLiteral("FPS Creator Project Map (*.fpm);;All Files (*.*)"));
     if (!file.isEmpty()) {
@@ -237,6 +332,7 @@ void MainWindow::onOpenMap() {
 
 void MainWindow::onReloadMap() {
     if (m_currentMap && !m_currentMap->filePath.isEmpty()) {
+        if (!maybeSave()) return;
         loadMapFile(m_currentMap->filePath);
     }
 }

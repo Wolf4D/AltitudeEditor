@@ -153,18 +153,44 @@ struct PlacedEntity {
     QString aiShoot;
     QString aiDestroy;
     
+    int isObjective = 0;
     QString useKey;
     QString ifUsed;
     QString ifUsedNear;
+    int uniqueElement = 0;
     
     QString texd;
     QString texaltd;
     QString effect;
+    int transparency = 0;
+    int editorFixed = 0;
+    
+    QString soundSet;
+    QString soundSet1;
+    
+    int spawnMax = 0;
+    int spawnDelay = 0;
+    int spawnQty = 0;
+    int hurtFall = 0;
+    int castShadow = 1;
+    int reduceTexture = 0;
+    int speed = 100;
+    
+    QString hasWeapon;
+    
+    int lives = 1;
+    int spawnSubMax = 0;
+    int spawnSubDelay = 0;
+    int spawnSubQty = 0;
     
     float scale = 100;
-    int health = 100;
-    int lives = 1;
-    int speed = 100;
+    float coneHeight = 0;
+    float coneAngle = 0;
+    int strength = 100;
+    int isImmobile = 0;
+    int canTakeWeapon = 1;
+    int quantity = 1;
+    int markerIndex = 0;
     
     float lightRange = 0;
     QColor lightColor = Qt::white;
@@ -172,10 +198,20 @@ struct PlacedEntity {
     
     int trigX1 = 0, trigY1 = 0, trigZ1 = 0;
     int trigX2 = 0, trigY2 = 0, trigZ2 = 0;
+    QString baseDecal;
     
+    int health = 100;
     int physics = 0;
     int phyWeight = 0;
+    int phyFriction = 0;
+    int phyForceDamage = 0;
+    int rotateThrow = 0;
     int explodable = 0;
+    int explodeDamage = 0;
+    int phyAlways = 0;
+    
+    QByteArray rawExtension102;
+    QByteArray rawExtension103_218;
     
     int floorLayer = 0;
     std::shared_ptr<FPSCEntityProfile> profile;
@@ -200,6 +236,12 @@ struct FPSCMap {
     QString mapName;
     MapHeader header;
     
+    int eleVersion = 218;
+    bool isEncrypted = true;
+    QString password = QStringLiteral("mypassword");
+    QMap<QString, QByteArray> rawEntries;
+    bool isModified = false;
+    
     QVector<QString> segmentsBank;
     QVector<QString> entitiesBank;
     
@@ -221,6 +263,11 @@ struct FPSCMap {
         filePath.clear();
         mapName.clear();
         header = MapHeader();
+        eleVersion = 218;
+        isEncrypted = true;
+        password = QStringLiteral("mypassword");
+        rawEntries.clear();
+        isModified = false;
         segmentsBank.clear();
         entitiesBank.clear();
         segments.clear();

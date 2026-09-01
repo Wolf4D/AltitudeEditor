@@ -108,6 +108,33 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    if (args.contains("--snapshot-window")) {
+        int idx = args.indexOf("--snapshot-window");
+        if (args.size() >= idx + 3) {
+            QString mapPath = args.value(idx + 1);
+            QString outPath = args.value(idx + 2);
+            int entIdx = (args.size() > idx + 3) ? args.value(idx + 3).toInt() : 0;
+
+            MainWindow window;
+            window.resize(1400, 900);
+            window.loadMapFile(mapPath);
+            window.show();
+            app.processEvents();
+
+            // Select entity to show in inspector
+            // Focus on entity
+            QMetaObject::invokeMethod(&window, "onFocusEntityRequested", Q_ARG(int, entIdx));
+            app.processEvents();
+
+            QPixmap pix(window.size());
+            window.render(&pix);
+            bool ok = pix.save(outPath);
+            fprintf(stdout, "Saved window snapshot to: %s (Result: %d)\n", qPrintable(outPath), ok ? 1 : 0);
+            fflush(stdout);
+            std::exit(ok ? 0 : 1);
+        }
+    }
+
     MainWindow window;
     if (args.size() > 1 && !args[1].startsWith('-')) {
         window.loadMapFile(args[1]);
