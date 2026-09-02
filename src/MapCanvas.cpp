@@ -367,8 +367,13 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                                 seg->name.contains("roof", Qt::CaseInsensitive) ||
                                 (!seg->roofTexture.isEmpty() && seg->floorTexture.isEmpty());
 
-            // Every valid segment tile has a floor/slab surface in 2D top-down view
-            bool drawFloor = true;
+            int symbol = (layer < m_map->gridSymbol.size() && y < m_map->gridSymbol[layer].size() && x < m_map->gridSymbol[layer][y].size())
+                         ? m_map->gridSymbol[layer][y][x] : 0;
+
+            // Only draw floor if segment actually has a floor surface on this layer
+            // (wall extensions like Mid/Top do not have floors)
+            // and mapsymbol != 1 (symbol=1 in FPS Creator explicitly hides floor & roof)
+            bool drawFloor = (isCeilingSeg || seg->hasFloorOnThisLayer) && (symbol != 1);
             // Roof slabs capping a room below do not have interior room walls
             bool drawWalls = !isCeilingSeg;
 

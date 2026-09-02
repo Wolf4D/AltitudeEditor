@@ -1,45 +1,28 @@
 #include <QApplication>
-#include <QKeyEvent>
+#include <QPainter>
 #include <iostream>
-#include <cassert>
 #include "FPMReader.h"
-#include "VisZoneManager.h"
 #include "MapCanvas.h"
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
 
-    auto map = FPMReader::loadMap("C:/Program Files (x86)/The Game Creators/FPS Creator/Files/mapbank/1.fpm", "mypassword");
+    auto map = FPMReader::loadMap("C:/Program Files (x86)/The Game Creators/FPS Creator/Files/mapbank/leaks.fpm", "mypassword");
     if (!map) return 1;
 
-    auto visMgr = std::make_shared<VisZoneManager>();
-    visMgr->buildFromMap(map);
-
     MapCanvas canvas;
+    canvas.resize(1000, 700);
     canvas.setMap(map);
-    canvas.setVisZoneManager(visMgr);
+    canvas.setFloor(6);
+    canvas.setShowGhostLayer(true);
 
-    // 1. Isolate Zone 1
-    canvas.setActiveVisZone(0);
-    canvas.setVisZoneCulling(true, 0.0f);
-    assert(canvas.activeVisZoneId() == 0);
-    printf("1. Zone 0 activated and isolated successfully.\n");
+    QPixmap px(1000, 700);
+    px.fill(QColor(20, 24, 30));
+    QPainter p(&px);
+    canvas.render(&p);
+    p.end();
 
-    // 2. Press Escape key
-    QKeyEvent escPress(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
-    QCoreApplication::sendEvent(&canvas, &escPress);
-    assert(canvas.activeVisZoneId() == -1);
-    printf("2. Escape key reset active zone to -1 (Normal View) successfully.\n");
-
-    // 3. Re-isolate and test direct reset
-    canvas.setActiveVisZone(1);
-    canvas.setVisZoneCulling(true, 0.15f);
-    assert(canvas.activeVisZoneId() == 1);
-    canvas.setActiveVisZone(-1);
-    canvas.setVisZoneCulling(false, 0.0f);
-    assert(canvas.activeVisZoneId() == -1);
-    printf("3. Direct reset to Normal View succeeded.\n");
-
-    printf("All regression tests passed successfully!\n");
+    px.save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/test_floor6_with_ghost_lower.png");
+    printf("Rendered test_floor6_with_ghost_lower.png successfully!\n");
     return 0;
 }

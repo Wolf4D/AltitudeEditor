@@ -255,6 +255,7 @@ struct FPSCMap {
     QVector<QVector<QVector<int>>> gridRotation; // 0, 1, 2, 3
     QVector<QVector<QVector<int>>> gridTileType; // maptile 0..15
     QVector<QVector<QVector<int>>> gridGround;   // mapground 0..3 (0=Room, 1=Int2, 2=Roof/Ceiling slab, 3=Ext2)
+    QVector<QVector<QVector<int>>> gridSymbol;   // mapsymbol 0..63 (1=no floor / hole)
 
     // 3D Overlay Grid: [Layer][Y][X] -> Overlay ID / CSG Cutout
     QVector<QVector<QVector<int>>> gridOverlays;

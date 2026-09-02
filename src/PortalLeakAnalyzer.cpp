@@ -99,6 +99,10 @@ void PortalLeakAnalyzer::loadSegmentInfos() {
             if (fpsPath.toLower().contains("ceiling") || fpsPath.toLower().contains("roof")) {
                 info.isCeiling = true;
             }
+            QString pathLower = fpsPath.toLower();
+            if (pathLower.contains("mid") || pathLower.contains("middle") || pathLower.contains("top") || pathLower.contains("upper")) {
+                info.isFloor = false;
+            }
         }
         m_segmentInfoCache[i] = info;
     }

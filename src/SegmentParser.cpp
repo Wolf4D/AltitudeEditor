@@ -153,11 +153,13 @@ std::shared_ptr<FPSCSegment> SegmentParser::parse(const QString& relPath, int se
     }
 
     // Determine if scenery or large rock
+    // Multi-story room wall extensions (Mid, Middle, Top, Upper) do not have floors
     QString pathLower = relPath.toLower();
-    bool isUpperWall = pathLower.contains("top") || pathLower.contains("upper") || pathLower.contains("_up");
+    bool isWallExt = pathLower.contains("top") || pathLower.contains("upper") || pathLower.contains("_up") ||
+                     pathLower.contains("mid") || pathLower.contains("middle") || pathLower.contains("_mid");
     bool isRoof = pathLower.contains("ceiling") || pathLower.contains("roof");
 
-    if (isUpperWall) {
+    if (isWallExt) {
         seg->hasFloorOnThisLayer = false;
         seg->hasRoofOnThisLayer = false;
     } else if (isRoof) {
