@@ -252,10 +252,11 @@ struct FPSCMap {
     QMap<int, std::shared_ptr<FPSCEntityProfile>> entityProfiles;
     
     QVector<QVector<QVector<int>>> gridBlocks;
-    QVector<QVector<QVector<int>>> gridRotation; // 0, 1, 2, 3
-    QVector<QVector<QVector<int>>> gridTileType; // maptile 0..15
-    QVector<QVector<QVector<int>>> gridGround;   // mapground 0..3 (0=Room, 1=Int2, 2=Roof/Ceiling slab, 3=Ext2)
-    QVector<QVector<QVector<int>>> gridSymbol;   // mapsymbol 0..63 (1=no floor / hole)
+    QVector<QVector<QVector<int>>> gridRotation;    // maprotate 0..3 (wall auto-tiling rotation)
+    QVector<QVector<QVector<int>>> gridOrientation; // maporient 0..3 (physical segment rotation: yrotate maporient*90)
+    QVector<QVector<QVector<int>>> gridTileType;    // maptile 0..15
+    QVector<QVector<QVector<int>>> gridGround;      // mapground 0..3 (0=Room, 1=Int2, 2=Roof/Ceiling slab, 3=Ext2)
+    QVector<QVector<QVector<int>>> gridSymbol;      // mapsymbol 0..63 (1=no floor / hole)
 
     // 3D Overlay Grid: [Layer][Y][X] -> Overlay ID / CSG Cutout
     QVector<QVector<QVector<int>>> gridOverlays;
@@ -282,6 +283,12 @@ struct FPSCMap {
         entityProfiles.clear();
         gridBlocks.clear();
         gridRotation.clear();
+        gridOrientation.clear();
+        gridTileType.clear();
+        gridGround.clear();
+        gridSymbol.clear();
+        gridOverlays.clear();
+        gridOverlayRotation.clear();
         placedEntities.clear();
         waypoints.clear();
     }

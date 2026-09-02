@@ -383,6 +383,9 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
             // Roof slabs capping a room below do not have interior room walls
             bool drawWalls = !isCeilingSeg;
 
+            int orient = (layer < m_map->gridOrientation.size() && y < m_map->gridOrientation[layer].size() && x < m_map->gridOrientation[layer][y].size())
+                         ? m_map->gridOrientation[layer][y][x] : 0;
+
             // A. Draw Floor / Slab Top Surface Texture
             if (drawFloor) {
                 // In top-down 2D view, the visible top surface of any slab is floorTexture.
@@ -392,7 +395,16 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                     if (m_showFloorTextures) {
                         QPixmap surfacePx = AssetManager::instance().loadTexture(surfaceTex);
                         if (!surfacePx.isNull()) {
-                            p.drawPixmap(cellRect.toRect(), surfacePx);
+                            if (orient == 0) {
+                                p.drawPixmap(cellRect.toRect(), surfacePx);
+                            } else {
+                                p.save();
+                                p.translate(cellRect.center());
+                                p.rotate(orient * 90.0);
+                                p.drawPixmap(-cellRect.width() / 2.0, -cellRect.height() / 2.0,
+                                             cellRect.width(), cellRect.height(), surfacePx);
+                                p.restore();
+                            }
                         } else {
                             p.fillRect(cellRect, QColor(50, 55, 70));
                         }

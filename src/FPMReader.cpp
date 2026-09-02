@@ -184,6 +184,7 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
     // Allocate 3D grid
     map->gridBlocks.resize(layers);
     map->gridRotation.resize(layers);
+    map->gridOrientation.resize(layers);
     map->gridTileType.resize(layers);
     map->gridGround.resize(layers);
     map->gridSymbol.resize(layers);
@@ -192,6 +193,7 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
     for (int l = 0; l < layers; ++l) {
         map->gridBlocks[l].resize(rows);
         map->gridRotation[l].resize(rows);
+        map->gridOrientation[l].resize(rows);
         map->gridTileType[l].resize(rows);
         map->gridGround[l].resize(rows);
         map->gridSymbol[l].resize(rows);
@@ -200,6 +202,7 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
         for (int y = 0; y < rows; ++y) {
             map->gridBlocks[l][y].fill(0, cols);
             map->gridRotation[l][y].fill(0, cols);
+            map->gridOrientation[l][y].fill(0, cols);
             map->gridTileType[l][y].fill(0, cols);
             map->gridGround[l][y].fill(0, cols);
             map->gridSymbol[l][y].fill(0, cols);
@@ -294,12 +297,14 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
                 if (mapid != 0) {
                     int segId = (mapid >> 20) & 0xFFF;
                     int rotVal = (mapid >> 12) & 0x3;
+                    int orientVal = (mapid >> 10) & 0x3;
                     int groundVal = (mapid >> 14) & 0x3;
                     int symbolVal = (mapid >> 4) & 0x3F;
                     int tileVal = mapid & 0xF;
                     if (layer < layers && y < rows && x < cols && segId > 0) {
                         map->gridBlocks[layer][y][x] = segId;
                         map->gridRotation[layer][y][x] = rotVal & 3;
+                        map->gridOrientation[layer][y][x] = orientVal & 3;
                         map->gridGround[layer][y][x] = groundVal;
                         map->gridSymbol[layer][y][x] = symbolVal;
                         map->gridTileType[layer][y][x] = tileVal;
