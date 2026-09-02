@@ -23,6 +23,8 @@ set(SOURCES
     src/MemoryAnalyzerDialog.cpp
     src/EntitySearchDock.cpp
     src/EntityInspector.cpp
+    src/PortalLeakAnalyzer.cpp
+    src/PortalLeakDialog.cpp
 )
 
 set(MANIFEST_OBJ "${CMAKE_CURRENT_SOURCE_DIR}/src/app_manifest.o")
@@ -40,6 +42,8 @@ set(HEADERS
     src/MemoryAnalyzerDialog.h
     src/EntitySearchDock.h
     src/EntityInspector.h
+    src/PortalLeakAnalyzer.h
+    src/PortalLeakDialog.h
     src/miniz_deflate.h
 )
 

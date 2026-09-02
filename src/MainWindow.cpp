@@ -3,6 +3,7 @@
 #include "FPMWriter.h"
 #include "AssetManager.h"
 #include "MemoryAnalyzerDialog.h"
+#include "PortalLeakDialog.h"
 #include <QMenuBar>
 #include <QToolBar>
 #include <QStatusBar>
@@ -131,6 +132,7 @@ void MainWindow::createMenusAndToolbars() {
 
     QMenu* toolsMenu = menuBar()->addMenu(QStringLiteral("&Tools"));
     QAction* actMem = toolsMenu->addAction(QStringLiteral("&Entity Memory Analyzer (MB)..."), this, &MainWindow::onOpenMemoryAnalyzer, QKeySequence(Qt::CTRL + Qt::Key_M));
+    toolsMenu->addAction(QStringLiteral("&Portal Leak Detector..."), this, &MainWindow::onOpenPortalLeakDetector);
 
     QMenu* helpMenu = menuBar()->addMenu(QStringLiteral("&Help"));
     helpMenu->addAction(QStringLiteral("&About FPS Creator Map Viewer..."), this, [this]() {
@@ -505,4 +507,15 @@ void MainWindow::updateStatusBar() {
         if (prof) totalBytes += prof->estimatedRAMBytes;
     }
     m_statusMemory->setText(QString("Entity RAM: %1 MB").arg(totalBytes / (1024.0 * 1024.0), 0, 'f', 1));
+}
+
+void MainWindow::onOpenPortalLeakDetector() {
+    if (!m_currentMap) {
+        QMessageBox::warning(this, "Error", "Please open a map first.");
+        return;
+    }
+    PortalLeakDialog* dlg = new PortalLeakDialog(m_currentMap, this);
+    connect(dlg, &PortalLeakDialog::cellSelected, m_canvas, &MapCanvas::highlightCell);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    dlg->show();
 }

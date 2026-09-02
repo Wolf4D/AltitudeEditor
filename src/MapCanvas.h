@@ -34,6 +34,7 @@ public slots:
 
     void selectEntity(int index);
     void focusOnEntity(int index);
+    void highlightCell(int layer, int x, int y);
 
     void zoomIn();
     void zoomOut();
@@ -88,8 +89,14 @@ private:
     int m_currentFloor = 0;
     int m_selectedEntityIndex = -1;
     int m_hoveredEntityIndex = -1;
+    bool m_isDraggingEntity = false;
     QPoint m_hoveredTile = {-1, -1};
 
+    int m_highlightedLayer = -1;
+    int m_highlightedX = -1;
+    int m_highlightedY = -1;
+
+    // Viewport logic
     GizmoHandle m_hoveredGizmo = GizmoHandle::None;
     GizmoHandle m_activeGizmo = GizmoHandle::None;
     QPointF m_dragStartMousePos;

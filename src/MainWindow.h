@@ -32,6 +32,7 @@ private slots:
     void onReloadMap();
     void onConfigureEnginePath();
     void onOpenMemoryAnalyzer();
+    void onOpenPortalLeakDetector();
 
     void onFloorComboChanged(int index);
     void onFloorSpinChanged(int value);

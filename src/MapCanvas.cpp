@@ -53,9 +53,31 @@ void MapCanvas::setFloor(int floor) {
     int bounded = qBound(0, floor, m_map->header.layerMax);
     if (m_currentFloor != bounded) {
         m_currentFloor = bounded;
+        m_highlightedLayer = -1; // Reset highlight on manual floor change
         emit floorChanged(m_currentFloor);
         update();
     }
+}
+
+void MapCanvas::highlightCell(int layer, int x, int y) {
+    if (!m_map) return;
+    setFloor(layer);
+    m_highlightedLayer = layer;
+    m_highlightedX = x;
+    m_highlightedY = y;
+
+    // Center camera on this cell
+    float cellWorldX = (x * TILE_SIZE) + (TILE_SIZE / 2.0f);
+    float cellWorldY = (y * TILE_SIZE) + (TILE_SIZE / 2.0f);
+
+    if (m_zoom < 0.5f) {
+        m_zoom = 0.8f;
+        emit zoomChanged(m_zoom);
+    }
+
+    m_panOffset = QPointF(width() / 2.0f - cellWorldX * m_zoom, height() / 2.0f - cellWorldY * m_zoom);
+
+    update();
 }
 
 void MapCanvas::floorUp() {
@@ -205,6 +227,16 @@ void MapCanvas::renderMap(QPainter& p) {
 
     // 7. Interactive Translation Gizmo on selected entity
     drawGizmo(p);
+
+    if (m_highlightedLayer == m_currentFloor && m_highlightedX >= 0 && m_highlightedY >= 0) {
+        QRectF hlRect = getCellRectScreen(m_highlightedX, m_highlightedY);
+        p.setPen(QPen(Qt::red, 3));
+        
+        QColor fill = Qt::red;
+        fill.setAlphaF(0.2f + 0.2f * std::sin(m_animPhase * 2.0f));
+        p.setBrush(fill);
+        p.drawRect(hlRect);
+    }
 
     // 8. HUD Overlays
     drawHUD(p);
