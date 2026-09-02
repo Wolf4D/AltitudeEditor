@@ -99,6 +99,7 @@ private:
     void drawWaypoints(QPainter& p);
     void drawZonesAndLights(QPainter& p);
     void drawEntities(QPainter& p);
+    void drawCSGCutouts(QPainter& p);
     void drawPortals(QPainter& p);
     void drawGizmo(QPainter& p);
     void drawHUD(QPainter& p);

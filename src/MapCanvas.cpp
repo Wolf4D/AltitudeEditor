@@ -211,6 +211,9 @@ void MapCanvas::renderMap(QPainter& p) {
     // 3. Current active floor segments & Doom-style wall textures
     drawSegments(p, m_currentFloor, 1.0f);
 
+    // 3b. CSG Wall Cutouts & Overlays (always visible)
+    drawCSGCutouts(p);
+
     // 4. AI Waypoints
     if (m_showWaypoints) {
         drawWaypoints(p);
@@ -393,10 +396,7 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                         // Same segment type on this layer:
                         // Suppress wall UNLESS separated by explicit partition rotations (e.g. facing wall tiles)
                         int neighborRot = m_map->gridRotation[layer][ny][nx] & 3;
-                        bool isPartition = (rotSide == 2 && rot == 2 && neighborRot == 0) ||
-                                           (rotSide == 0 && rot == 0 && neighborRot == 2) ||
-                                           (rotSide == 1 && rot == 1 && neighborRot == 3) ||
-                                           (rotSide == 3 && rot == 3 && neighborRot == 1);
+                        bool isPartition = (rot != neighborRot) && (rotSide == rot || rotSide == (neighborRot + 2) % 4);
                         if (!isPartition) {
                             continue;
                         }
@@ -1209,60 +1209,7 @@ void MapCanvas::drawPortals(QPainter& p) {
         }
     }
 
-    // 1b. Render CSG Wall Cutouts & Overlays (Windows, Slits, Holes, Door Openings from map.fpmo)
-    if (m_currentFloor >= 0 && m_currentFloor < m_map->gridOverlays.size()) {
-        int rows = m_map->gridOverlays[m_currentFloor].size();
-        int cols = rows > 0 ? m_map->gridOverlays[m_currentFloor][0].size() : 0;
-        for (int y = 0; y < rows; ++y) {
-            for (int x = 0; x < cols; ++x) {
-                int oId = m_map->gridOverlays[m_currentFloor][y][x];
-                if (oId <= 0) continue;
-
-                int rot = m_map->gridOverlayRotation[m_currentFloor][y][x] & 3;
-                QRectF cellRect = getCellRectScreen(x, y);
-
-                QPointF p1, p2;
-                // rot: 0 = North edge, 1 = East edge, 2 = South edge, 3 = West edge
-                if (rot == 0) {
-                    p1 = QPointF(cellRect.left() + cellRect.width() * 0.15f, cellRect.top());
-                    p2 = QPointF(cellRect.right() - cellRect.width() * 0.15f, cellRect.top());
-                } else if (rot == 1) {
-                    p1 = QPointF(cellRect.right(), cellRect.top() + cellRect.height() * 0.15f);
-                    p2 = QPointF(cellRect.right(), cellRect.bottom() - cellRect.height() * 0.15f);
-                } else if (rot == 2) {
-                    p1 = QPointF(cellRect.left() + cellRect.width() * 0.15f, cellRect.bottom());
-                    p2 = QPointF(cellRect.right() - cellRect.width() * 0.15f, cellRect.bottom());
-                } else {
-                    p1 = QPointF(cellRect.left(), cellRect.top() + cellRect.height() * 0.15f);
-                    p2 = QPointF(cellRect.left(), cellRect.bottom() - cellRect.height() * 0.15f);
-                }
-
-                // Draw BOLD Glowing Emerald-Green Cutout line
-                QColor cutoutGreen(46, 204, 113, 255);
-                p.setPen(QPen(cutoutGreen, 4.5f, Qt::SolidLine, Qt::RoundCap));
-                p.drawLine(p1, p2);
-
-                // Bold perpendicular end tick marks
-                QPointF dir = (p2 - p1);
-                float len = std::hypot(dir.x(), dir.y());
-                if (len > 0.1f) {
-                    QPointF perp(-dir.y() / len * 8.0f, dir.x() / len * 8.0f);
-                    p.setPen(QPen(cutoutGreen, 3.0f, Qt::SolidLine, Qt::RoundCap));
-                    p.drawLine(p1 - perp, p1 + perp);
-                    p.drawLine(p2 - perp, p2 + perp);
-                }
-
-                // Cutout Label
-                QPointF centerScreen = (p1 + p2) * 0.5f;
-                p.setPen(QColor(160, 255, 180));
-                p.setFont(QFont("Segoe UI", 8, QFont::Bold));
-                QString label = (oId == 1) ? QStringLiteral("CSG Cutout (Window / Slit)") : QStringLiteral("CSG Cutout (Doorway)");
-                p.drawText(centerScreen + QPointF(6, -6), label);
-            }
-        }
-    }
-
-    // 1c. Render DBU Internal Portals (if loaded from level universe.dbu)
+    // 2. Render DBU Internal Portals (if loaded from level universe.dbu)
     for (const auto& dbuP : m_portals) {
         if (dbuP.isExteriorHull) continue;
         if (!dbuP.box.intersectsLayer(m_currentFloor)) continue;
@@ -1276,7 +1223,7 @@ void MapCanvas::drawPortals(QPainter& p) {
         p.drawLine(p1, p2);
     }
 
-    // 2. Render Real Leaks from PortalLeakAnalyzer on current floor
+    // 3. Render Real Leaks from PortalLeakAnalyzer on current floor
     PortalLeakAnalyzer analyzer(m_map);
     auto warnings = analyzer.analyze();
     for (const auto& w : warnings) {
@@ -1295,5 +1242,62 @@ void MapCanvas::drawPortals(QPainter& p) {
         }
     }
     
+    p.restore();
+}
+
+void MapCanvas::drawCSGCutouts(QPainter& p) {
+    if (!m_map) return;
+    if (m_currentFloor < 0 || m_currentFloor >= m_map->gridOverlays.size()) return;
+
+    p.save();
+    int rows = m_map->gridOverlays[m_currentFloor].size();
+    int cols = rows > 0 ? m_map->gridOverlays[m_currentFloor][0].size() : 0;
+    for (int y = 0; y < rows; ++y) {
+        for (int x = 0; x < cols; ++x) {
+            int oId = m_map->gridOverlays[m_currentFloor][y][x];
+            if (oId <= 0) continue;
+
+            int rot = m_map->gridOverlayRotation[m_currentFloor][y][x] & 3;
+            QRectF cellRect = getCellRectScreen(x, y);
+
+            QPointF p1, p2;
+            // rot: 0 = North edge, 1 = East edge, 2 = South edge, 3 = West edge
+            if (rot == 0) {
+                p1 = QPointF(cellRect.left() + cellRect.width() * 0.15f, cellRect.top());
+                p2 = QPointF(cellRect.right() - cellRect.width() * 0.15f, cellRect.top());
+            } else if (rot == 1) {
+                p1 = QPointF(cellRect.right(), cellRect.top() + cellRect.height() * 0.15f);
+                p2 = QPointF(cellRect.right(), cellRect.bottom() - cellRect.height() * 0.15f);
+            } else if (rot == 2) {
+                p1 = QPointF(cellRect.left() + cellRect.width() * 0.15f, cellRect.bottom());
+                p2 = QPointF(cellRect.right() - cellRect.width() * 0.15f, cellRect.bottom());
+            } else {
+                p1 = QPointF(cellRect.left(), cellRect.top() + cellRect.height() * 0.15f);
+                p2 = QPointF(cellRect.left(), cellRect.bottom() - cellRect.height() * 0.15f);
+            }
+
+            // Draw BOLD Glowing Emerald-Green Cutout line
+            QColor cutoutGreen(46, 204, 113, 255);
+            p.setPen(QPen(cutoutGreen, 4.5f, Qt::SolidLine, Qt::RoundCap));
+            p.drawLine(p1, p2);
+
+            // Bold perpendicular end tick marks
+            QPointF dir = (p2 - p1);
+            float len = std::hypot(dir.x(), dir.y());
+            if (len > 0.1f) {
+                QPointF perp(-dir.y() / len * 8.0f, dir.x() / len * 8.0f);
+                p.setPen(QPen(cutoutGreen, 3.0f, Qt::SolidLine, Qt::RoundCap));
+                p.drawLine(p1 - perp, p1 + perp);
+                p.drawLine(p2 - perp, p2 + perp);
+            }
+
+            // Cutout Label
+            QPointF centerScreen = (p1 + p2) * 0.5f;
+            p.setPen(QColor(160, 255, 180));
+            p.setFont(QFont("Segoe UI", 8, QFont::Bold));
+            QString label = (oId == 1) ? QStringLiteral("CSG Cutout (Window / Slit)") : QStringLiteral("CSG Cutout (Doorway)");
+            p.drawText(centerScreen + QPointF(6, -6), label);
+        }
+    }
     p.restore();
 }
