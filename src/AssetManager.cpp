@@ -43,6 +43,16 @@ QString AssetManager::resolvePath(const QString& relPath) const {
         return clean;
     }
 
+    int dotIdx = clean.lastIndexOf('.');
+    QString baseWithoutExt = (dotIdx > 0) ? clean.left(dotIdx) : clean;
+
+    QStringList candidateExts;
+    if (dotIdx > 0) candidateExts << clean.mid(dotIdx);
+    candidateExts << QStringLiteral(".dds") << QStringLiteral(".bmp") << QStringLiteral(".png")
+                  << QStringLiteral(".tga") << QStringLiteral(".jpg")
+                  << QStringLiteral(".DDS") << QStringLiteral(".BMP") << QStringLiteral(".PNG")
+                  << QStringLiteral(".TGA") << QStringLiteral(".JPG");
+
     QStringList searchPrefixes = {
         m_engineRoot + "/Files/",
         m_engineRoot + "/Files/segments/",
@@ -55,21 +65,28 @@ QString AssetManager::resolvePath(const QString& relPath) const {
     };
 
     for (const QString& prefix : searchPrefixes) {
-        QString candidate = QDir::cleanPath(prefix + clean);
-        if (QFileInfo::exists(candidate)) {
-            const_cast<AssetManager*>(this)->m_resolvedPathCache[clean] = candidate;
-            return candidate;
+        for (const QString& ext : candidateExts) {
+            QString candidate = QDir::cleanPath(prefix + baseWithoutExt + ext);
+            if (QFileInfo::exists(candidate)) {
+                const_cast<AssetManager*>(this)->m_resolvedPathCache[clean] = candidate;
+                return candidate;
+            }
         }
     }
 
     // Try finding by basename if deep path failed
     QString baseName = QFileInfo(clean).fileName();
+    int baseDotIdx = baseName.lastIndexOf('.');
+    QString baseNameWithoutExt = (baseDotIdx > 0) ? baseName.left(baseDotIdx) : baseName;
+
     if (!baseName.isEmpty()) {
         for (const QString& prefix : searchPrefixes) {
-            QString candidate = QDir::cleanPath(prefix + baseName);
-            if (QFileInfo::exists(candidate)) {
-                const_cast<AssetManager*>(this)->m_resolvedPathCache[clean] = candidate;
-                return candidate;
+            for (const QString& ext : candidateExts) {
+                QString candidate = QDir::cleanPath(prefix + baseNameWithoutExt + ext);
+                if (QFileInfo::exists(candidate)) {
+                    const_cast<AssetManager*>(this)->m_resolvedPathCache[clean] = candidate;
+                    return candidate;
+                }
             }
         }
     }

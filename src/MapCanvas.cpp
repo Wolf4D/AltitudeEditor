@@ -310,16 +310,19 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
             QRectF cellRect = getCellRectScreen(x, y);
             int rot = m_map->gridRotation[layer][y][x] & 3;
 
-            // A. Draw Floor Texture
-            if (m_showFloorTextures && !seg->floorTexture.isEmpty()) {
-                QPixmap floorPx = AssetManager::instance().loadTexture(seg->floorTexture);
-                if (!floorPx.isNull()) {
-                    p.drawPixmap(cellRect.toRect(), floorPx);
+            // A. Draw Floor / Ceiling Texture
+            QString surfaceTex = !seg->floorTexture.isEmpty() ? seg->floorTexture : seg->roofTexture;
+            if (!surfaceTex.isEmpty()) {
+                if (m_showFloorTextures) {
+                    QPixmap surfacePx = AssetManager::instance().loadTexture(surfaceTex);
+                    if (!surfacePx.isNull()) {
+                        p.drawPixmap(cellRect.toRect(), surfacePx);
+                    } else {
+                        p.fillRect(cellRect, QColor(50, 55, 70));
+                    }
                 } else {
                     p.fillRect(cellRect, QColor(50, 55, 70));
                 }
-            } else {
-                p.fillRect(cellRect, QColor(50, 55, 70));
             }
 
             // B. Draw Large Scenery / Rock footprint
@@ -329,13 +332,34 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                 continue;
             }
 
-            // C. Doom-Style Textured Wall Ribbons
+            // C. Auto-Tiling Textured Wall Ribbons (Perimeter walls only)
             // Original wall directions: 0=North (Z-top), 1=East (X-right), 2=South (Z-bottom), 3=West (X-left)
             // Rotated direction = (original + rot) % 4
             for (int origSide = 0; origSide < 4; ++origSide) {
                 if (!seg->hasWall[origSide]) continue;
 
                 int rotSide = (origSide + rot) % 4;
+
+                // Auto-tiling neighbor check:
+                // Suppress internal dividing walls between connected room cells!
+                int nx = x;
+                int ny = y;
+                switch (rotSide) {
+                    case 0: ny -= 1; break; // North (y - 1)
+                    case 1: nx += 1; break; // East (x + 1)
+                    case 2: ny += 1; break; // South (y + 1)
+                    case 3: nx -= 1; break; // West (x - 1)
+                }
+
+                if (ny >= 0 && ny < rows && nx >= 0 && nx < cols) {
+                    bool neighborCurrent = (m_map->gridBlocks[layer][ny][nx] > 0);
+                    bool neighborBelow = (layer > 0 && m_map->gridBlocks[layer - 1][ny][nx] > 0);
+                    if (neighborCurrent || neighborBelow) {
+                        // Adjacent cell is part of the interior room -> suppress wall!
+                        continue;
+                    }
+                }
+
                 QRectF wallRect;
                 QLineF outerLine, innerLine;
 
