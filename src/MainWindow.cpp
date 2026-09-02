@@ -12,6 +12,7 @@
 #include <QMessageBox>
 #include <QDirIterator>
 #include <QFileInfo>
+#include <QSettings>
 #include <QApplication>
 #include <QCloseEvent>
 
@@ -71,7 +72,7 @@ void MainWindow::createMenusAndToolbars() {
     m_actSaveAs = fileMenu->addAction(QStringLiteral("Save Map &As..."), this, &MainWindow::onSaveMapAs, QKeySequence::SaveAs);
     QAction* actReload = fileMenu->addAction(QStringLiteral("&Reload Map"), this, &MainWindow::onReloadMap, QKeySequence::Refresh);
 
-    m_recentMapsMenu = fileMenu->addMenu(QStringLiteral("&Stock / Recent Maps"));
+    m_recentMapsMenu = fileMenu->addMenu(QStringLiteral("&Recent Maps"));
     populateRecentMapsMenu();
 
     fileMenu->addSeparator();
@@ -330,22 +331,43 @@ void MainWindow::deleteEntity(int index) {
 
 void MainWindow::populateRecentMapsMenu() {
     m_recentMapsMenu->clear();
-    QString mapBankDir = AssetManager::instance().engineRoot() + "/Files/mapbank";
-    if (!QDir(mapBankDir).exists()) return;
+    QSettings settings(QStringLiteral("TGC"), QStringLiteral("FPSCMapViewer"));
+    QStringList recent = settings.value(QStringLiteral("recentMaps")).toStringList();
 
-    QDirIterator it(mapBankDir, {"*.fpm"}, QDir::Files, QDirIterator::Subdirectories);
-    int count = 0;
-    while (it.hasNext() && count < 25) {
-        QString fPath = it.next();
+    // Filter valid existing files
+    QStringList valid;
+    for (const QString& f : recent) {
+        if (QFile::exists(f) && !valid.contains(f)) {
+            valid.append(f);
+        }
+    }
+    settings.setValue(QStringLiteral("recentMaps"), valid);
+
+    if (valid.isEmpty()) {
+        QAction* emptyAct = m_recentMapsMenu->addAction(QStringLiteral("No Recent Maps"));
+        emptyAct->setEnabled(false);
+        return;
+    }
+
+    for (int i = 0; i < valid.size() && i < 15; ++i) {
+        const QString& fPath = valid[i];
         QString name = QFileInfo(fPath).fileName();
-        QAction* act = m_recentMapsMenu->addAction(name, this, [this, fPath]() {
+        QString text = QString("&%1 %2").arg(i + 1).arg(name);
+        QAction* act = m_recentMapsMenu->addAction(text, this, [this, fPath]() {
             if (maybeSave()) {
                 loadMapFile(fPath);
             }
         });
         act->setToolTip(fPath);
-        count++;
+        act->setStatusTip(fPath);
     }
+
+    m_recentMapsMenu->addSeparator();
+    m_recentMapsMenu->addAction(QStringLiteral("Clear Recent Maps"), this, [this]() {
+        QSettings settings(QStringLiteral("TGC"), QStringLiteral("FPSCMapViewer"));
+        settings.remove(QStringLiteral("recentMaps"));
+        populateRecentMapsMenu();
+    });
 }
 
 void MainWindow::loadMapFile(const QString& filePath) {
@@ -360,6 +382,17 @@ void MainWindow::loadMapFile(const QString& filePath) {
     m_searchDock->setCurrentFloor(m_canvas->currentFloor());
     m_searchDock->setMap(m_currentMap);
     m_inspectorDock->clear();
+
+    // Save to Recent Maps list in QSettings
+    QSettings settings(QStringLiteral("TGC"), QStringLiteral("FPSCMapViewer"));
+    QStringList recent = settings.value(QStringLiteral("recentMaps")).toStringList();
+    recent.removeAll(filePath);
+    recent.prepend(filePath);
+    while (recent.size() > 15) {
+        recent.removeLast();
+    }
+    settings.setValue(QStringLiteral("recentMaps"), recent);
+    populateRecentMapsMenu();
 
     updateWindowTitle();
     updateFloorControls();
