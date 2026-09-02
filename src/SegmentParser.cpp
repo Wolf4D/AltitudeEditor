@@ -85,15 +85,15 @@ std::shared_ptr<FPSCSegment> SegmentParser::parse(const QString& relPath, int se
         QString meshLower = part.meshName.toLower();
 
         // Categorize part
-        if (meshLower.contains("floor") || part.offY <= -25.0f) {
-            part.isFloor = true;
-            if (seg->floorTexture.isEmpty() && (meshLower.contains("floor") || !part.texture.isEmpty())) {
-                seg->floorTexture = part.texture;
-            }
-        } else if (meshLower.contains("ceiling") || meshLower.contains("roof") || part.offY >= 25.0f) {
+        if (meshLower.contains("ceiling") || meshLower.contains("roof") || (part.offY >= 25.0f && !meshLower.contains("floor"))) {
             part.isCeiling = true;
-            if (seg->roofTexture.isEmpty() && (meshLower.contains("ceiling") || meshLower.contains("roof") || !part.texture.isEmpty())) {
+            if (seg->roofTexture.isEmpty() && !part.texture.isEmpty()) {
                 seg->roofTexture = part.texture;
+            }
+        } else if (meshLower.contains("floor") || (part.offY <= -25.0f && !meshLower.contains("wall"))) {
+            part.isFloor = true;
+            if (seg->floorTexture.isEmpty() && !part.texture.isEmpty()) {
+                seg->floorTexture = part.texture;
             }
         } else if (meshLower.contains("wall") || std::abs(part.offX) >= 25.0f || std::abs(part.offZ) >= 25.0f || meshLower.contains("door")) {
             part.isWall = true;

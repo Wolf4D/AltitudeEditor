@@ -310,14 +310,8 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
             QRectF cellRect = getCellRectScreen(x, y);
             int rot = m_map->gridRotation[layer][y][x] & 3;
 
-            // A. Draw Floor / Ceiling Texture (only if segment has a floor or roof on this layer)
-            QString surfaceTex;
-            if (seg->hasFloorOnThisLayer && !seg->floorTexture.isEmpty()) {
-                surfaceTex = seg->floorTexture;
-            } else if (seg->hasRoofOnThisLayer && !seg->roofTexture.isEmpty()) {
-                surfaceTex = seg->roofTexture;
-            }
-
+            // A. Draw Floor / Ceiling Texture
+            QString surfaceTex = !seg->floorTexture.isEmpty() ? seg->floorTexture : seg->roofTexture;
             if (!surfaceTex.isEmpty()) {
                 if (m_showFloorTextures) {
                     QPixmap surfacePx = AssetManager::instance().loadTexture(surfaceTex);
@@ -347,7 +341,7 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                 int rotSide = (origSide + rot) % 4;
 
                 // Auto-tiling neighbor check:
-                // Suppress internal dividing walls between connected room cells!
+                // Dividing wall is ONLY suppressed between adjacent cells of the SAME segment type!
                 int nx = x;
                 int ny = y;
                 switch (rotSide) {
@@ -358,10 +352,9 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                 }
 
                 if (ny >= 0 && ny < rows && nx >= 0 && nx < cols) {
-                    bool neighborCurrent = (m_map->gridBlocks[layer][ny][nx] > 0);
-                    bool neighborBelow = (layer > 0 && m_map->gridBlocks[layer - 1][ny][nx] > 0);
-                    if (neighborCurrent || neighborBelow) {
-                        // Adjacent cell is part of the interior room -> suppress wall!
+                    int neighborSeg = m_map->gridBlocks[layer][ny][nx];
+                    if (neighborSeg == segId) {
+                        // Same segment type -> shared open room connection, suppress wall!
                         continue;
                     }
                 }
