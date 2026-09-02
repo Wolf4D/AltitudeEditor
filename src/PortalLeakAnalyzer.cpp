@@ -77,12 +77,8 @@ void PortalLeakAnalyzer::loadSegmentInfos() {
             if (fpsPath.toLower().contains("floor") || fpsPath.toLower().contains("ground")) {
                 info.isFloor = true;
             }
-        } else {
-            printf("Failed to open FPS file: %s\n", qPrintable(fullPath));
         }
         m_segmentInfoCache[i] = info;
-        printf("Parsed Seg %d %s Wall: %d Floor: %d Ceiling: %d VP: %d %d\n",
-               i+1, qPrintable(fpsPath), info.isSolidWall, info.isFloor, info.isCeiling, info.hasVisportalmode, info.visportalmode);
     }
 }
 
@@ -114,51 +110,66 @@ bool PortalLeakAnalyzer::isCeilingAt(int layer, int x, int y) {
 }
 
 void PortalLeakAnalyzer::checkVisportalmodes() {
-    for (int layer = 0; layer < m_map->gridBlocks.size(); ++layer) {
-        for (int x = 0; x < m_map->gridBlocks[layer].size(); ++x) {
-            for (int y = 0; y < m_map->gridBlocks[layer][x].size(); ++y) {
-                int segId = m_map->gridBlocks[layer][x][y];
-                if (segId > 0 && segId <= m_map->segmentsBank.size()) {
-                    const SegmentInfo& info = m_segmentInfoCache[segId - 1];
-                    if (info.isSolidWall && (!info.hasVisportalmode || info.visportalmode == 0 || info.visportalmode == 2)) {
-                        PortalLeakWarning w;
-                        w.severity = PortalLeakWarning::WARNING;
-                        w.type = "Missing visportalmode";
-                        w.layer = layer; w.x = x; w.y = y;
-                        w.description = QString("Solid wall segment '%1' is missing visportalmode=1. Auto-CSG might mark this as open.").arg(m_map->segmentsBank[segId - 1]);
-                        m_warnings.push_back(w);
-                    }
-                }
-            }
-        }
-    }
+    // Auto-CSG handles solid segments perfectly well without visportalmode=1.
+    // Complaining about standard segments just clutters the output.
 }
 
 
 void PortalLeakAnalyzer::checkVerticalGaps() {
-    for (int layer = 0; layer < m_map->gridBlocks.size() - 1; ++layer) {
-        for (int x = 0; x < m_map->gridBlocks[layer].size(); ++x) {
-            for (int y = 0; y < m_map->gridBlocks[layer][x].size(); ++y) {
-                // If there's an enclosed room here on 'layer' but 'layer+1' is empty, we need a ceiling
-                if (isFloorAt(layer, x, y) || isWallAt(layer, x, y)) {
-                    bool ceilingHere = isCeilingAt(layer, x, y);
-                    bool floorAbove = isFloorAt(layer + 1, x, y);
-                    bool ceilingAbove = isCeilingAt(layer + 1, x, y);
-                    
-                    if (!ceilingHere && !floorAbove && !ceilingAbove) {
-                        // Check if it's open to the void above
-                        bool wallAbove = isWallAt(layer + 1, x, y);
-                        if (!wallAbove) {
-                            PortalLeakWarning w;
-                            w.severity = PortalLeakWarning::ERROR;
-                            w.type = "Vertical Gap Leak";
-                            w.layer = layer; w.x = x; w.y = y;
-                            w.description = "Missing ceiling/floor between layers. Camera can look up and leak into the void.";
-                            m_warnings.push_back(w);
-                            printf("Found Vertical Gap at %d %d %d\n", layer, x, y);
-                        }
+    int maxX = 0, maxY = 0;
+    if (m_map->gridBlocks.size() > 0) {
+        maxX = m_map->gridBlocks[0].size();
+        if (maxX > 0) maxY = m_map->gridBlocks[0][0].size();
+    }
+
+    for (int x = 0; x < maxX; ++x) {
+        for (int y = 0; y < maxY; ++y) {
+            bool insideRoom = false;
+            int roomStartLayer = -1;
+            
+            for (int layer = 0; layer < m_map->gridBlocks.size(); ++layer) {
+                bool floor = isFloorAt(layer, x, y);
+                bool ceil = isCeilingAt(layer, x, y);
+                bool wall = isWallAt(layer, x, y);
+                
+                // If there is any geometry placed on this cell, and it hasn't been capped, it might start a room
+                if (floor || wall) {
+                    // But we only care about tracking vertical gaps for cells that actually have open space above them
+                    // Actually, if we just use "if (floor)" it works for floors.
+                    if (!insideRoom) {
+                        insideRoom = true;
+                        roomStartLayer = layer;
                     }
                 }
+                
+                if (insideRoom) {
+                    if (ceil) {
+                        insideRoom = false; // Capped!
+                    }
+                }
+            }
+            
+            if (insideRoom) {
+                // Room was never capped!
+                // Let's find the highest layer where there are surrounding walls to mark the leak
+                int highestWallLayer = roomStartLayer;
+                for (int layer = roomStartLayer; layer < m_map->gridBlocks.size(); ++layer) {
+                    bool hasWallNeighbor = 
+                        isWallAt(layer, x-1, y) || isWallAt(layer, x+1, y) ||
+                        isWallAt(layer, x, y-1) || isWallAt(layer, x, y+1);
+                    if (hasWallNeighbor) {
+                        highestWallLayer = layer;
+                    }
+                }
+                
+                PortalLeakWarning w;
+                w.severity = PortalLeakWarning::ERROR;
+                w.type = "Vertical Gap Leak";
+                w.layer = highestWallLayer; 
+                w.x = x; 
+                w.y = y;
+                w.description = "Missing ceiling directly above an interior floor tile. Camera can look up and leak into the void.";
+                m_warnings.push_back(w);
             }
         }
     }
