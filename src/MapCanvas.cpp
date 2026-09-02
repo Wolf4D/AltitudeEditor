@@ -1250,6 +1250,7 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
     if (m_currentFloor < 0 || m_currentFloor >= m_map->gridOverlays.size()) return;
 
     p.save();
+    float wallRibbon = 12.0f * m_zoom;
     int rows = m_map->gridOverlays[m_currentFloor].size();
     int cols = rows > 0 ? m_map->gridOverlays[m_currentFloor][0].size() : 0;
     for (int y = 0; y < rows; ++y) {
@@ -1260,43 +1261,51 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
             int rot = m_map->gridOverlayRotation[m_currentFloor][y][x] & 3;
             QRectF cellRect = getCellRectScreen(x, y);
 
-            QPointF p1, p2;
+            QRectF cutoutRect;
             // rot: 0 = North edge, 1 = East edge, 2 = South edge, 3 = West edge
             if (rot == 0) {
-                p1 = QPointF(cellRect.left() + cellRect.width() * 0.15f, cellRect.top());
-                p2 = QPointF(cellRect.right() - cellRect.width() * 0.15f, cellRect.top());
+                cutoutRect = QRectF(cellRect.left() + cellRect.width() * 0.18f, cellRect.top(), cellRect.width() * 0.64f, wallRibbon);
             } else if (rot == 1) {
-                p1 = QPointF(cellRect.right(), cellRect.top() + cellRect.height() * 0.15f);
-                p2 = QPointF(cellRect.right(), cellRect.bottom() - cellRect.height() * 0.15f);
+                cutoutRect = QRectF(cellRect.right() - wallRibbon, cellRect.top() + cellRect.height() * 0.18f, wallRibbon, cellRect.height() * 0.64f);
             } else if (rot == 2) {
-                p1 = QPointF(cellRect.left() + cellRect.width() * 0.15f, cellRect.bottom());
-                p2 = QPointF(cellRect.right() - cellRect.width() * 0.15f, cellRect.bottom());
+                cutoutRect = QRectF(cellRect.left() + cellRect.width() * 0.18f, cellRect.bottom() - wallRibbon, cellRect.width() * 0.64f, wallRibbon);
             } else {
-                p1 = QPointF(cellRect.left(), cellRect.top() + cellRect.height() * 0.15f);
-                p2 = QPointF(cellRect.left(), cellRect.bottom() - cellRect.height() * 0.15f);
+                cutoutRect = QRectF(cellRect.left(), cellRect.top() + cellRect.height() * 0.18f, wallRibbon, cellRect.height() * 0.64f);
             }
 
-            // Draw BOLD Glowing Emerald-Green Cutout line
-            QColor cutoutGreen(46, 204, 113, 255);
-            p.setPen(QPen(cutoutGreen, 4.5f, Qt::SolidLine, Qt::RoundCap));
-            p.drawLine(p1, p2);
+            // 1. Draw Void / Cutout Hole Fill
+            p.fillRect(cutoutRect, QColor(22, 25, 34, 220));
 
-            // Bold perpendicular end tick marks
-            QPointF dir = (p2 - p1);
-            float len = std::hypot(dir.x(), dir.y());
-            if (len > 0.1f) {
-                QPointF perp(-dir.y() / len * 8.0f, dir.x() / len * 8.0f);
-                p.setPen(QPen(cutoutGreen, 3.0f, Qt::SolidLine, Qt::RoundCap));
-                p.drawLine(p1 - perp, p1 + perp);
-                p.drawLine(p2 - perp, p2 + perp);
+            // 2. Draw Vibrant Green Glowing Overlay Fill
+            QColor fillGreen(46, 204, 113, 85);
+            p.fillRect(cutoutRect, fillGreen);
+
+            // 3. Draw BOLD Glowing Emerald-Green Border spanning full wall thickness
+            QColor cutoutGreen(46, 204, 113, 255);
+            p.setPen(QPen(cutoutGreen, 2.5f, Qt::SolidLine, Qt::SquareCap));
+            p.drawRect(cutoutRect);
+
+            // 4. Center division line across the wall thickness
+            p.setPen(QPen(cutoutGreen, 1.5f, Qt::DashLine));
+            if (rot == 0 || rot == 2) {
+                float midX = cutoutRect.center().x();
+                p.drawLine(QPointF(midX, cutoutRect.top()), QPointF(midX, cutoutRect.bottom()));
+            } else {
+                float midY = cutoutRect.center().y();
+                p.drawLine(QPointF(cutoutRect.left(), midY), QPointF(cutoutRect.right(), midY));
             }
 
             // Cutout Label
-            QPointF centerScreen = (p1 + p2) * 0.5f;
             p.setPen(QColor(160, 255, 180));
             p.setFont(QFont("Segoe UI", 8, QFont::Bold));
             QString label = (oId == 1) ? QStringLiteral("CSG Cutout (Window / Slit)") : QStringLiteral("CSG Cutout (Doorway)");
-            p.drawText(centerScreen + QPointF(6, -6), label);
+            if (rot == 0) {
+                p.drawText(cutoutRect.bottomLeft() + QPointF(0, 14), label);
+            } else if (rot == 2) {
+                p.drawText(cutoutRect.topLeft() + QPointF(0, -6), label);
+            } else {
+                p.drawText(cutoutRect.topRight() + QPointF(6, 12), label);
+            }
         }
     }
     p.restore();
