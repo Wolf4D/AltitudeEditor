@@ -290,6 +290,34 @@ void MapCanvas::drawGrid(QPainter& p) {
     p.restore();
 }
 
+static bool isMaptileWallPresent(int maptile, int rot, int side) {
+    if (maptile <= 0 || maptile == 6) return false;
+    // Base walls at rot = 0: [0: North, 1: East, 2: South, 3: West]
+    static const bool baseWalls[16][4] = {
+        {0, 0, 0, 0}, // 0: none
+        {1, 1, 1, 1}, // 1: 4 walls
+        {1, 0, 1, 1}, // 2: 3 walls (no East)
+        {1, 0, 0, 1}, // 3: 2 walls corner (North + West)
+        {1, 0, 1, 0}, // 4: 2 walls opposite (North + South)
+        {1, 0, 0, 0}, // 5: 1 wall (North)
+        {0, 0, 0, 0}, // 6: 0 walls (floor only)
+        {0, 0, 0, 0}, // 7: corner
+        {0, 0, 0, 0}, // 8: corner
+        {0, 0, 0, 0}, // 9: corner
+        {0, 0, 0, 0}, // 10: corner
+        {0, 0, 0, 0}, // 11: corner
+        {1, 0, 0, 0}, // 12: straight
+        {1, 0, 0, 0}, // 13: straight
+        {1, 0, 0, 0}, // 14: straight
+        {1, 0, 0, 1}  // 15: corner
+    };
+    int unrotatedSide = (side - (rot & 3) + 4) % 4;
+    if (maptile >= 0 && maptile < 16) {
+        return baseWalls[maptile][unrotatedSide];
+    }
+    return false;
+}
+
 void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
     if (!m_map || layer < 0 || layer >= m_map->gridBlocks.size()) return;
 
@@ -373,47 +401,50 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
 
             // C. Auto-Tiling Textured Wall Ribbons (Perimeter walls only)
             if (!drawWalls) continue;
-            for (int origSide = 0; origSide < 4; ++origSide) {
-                if (!seg->hasWall[origSide]) continue;
+            int maptile = (layer < m_map->gridTileType.size() && y < m_map->gridTileType[layer].size() && x < m_map->gridTileType[layer][y].size())
+                          ? m_map->gridTileType[layer][y][x] : 0;
 
-                int rotSide = (origSide + rot) % 4;
+            for (int rotSide = 0; rotSide < 4; ++rotSide) {
+                int origSide = (rotSide - rot + 4) % 4;
 
-                // Auto-tiling neighbor check:
-                // Dividing wall is suppressed between adjacent cells of the same room,
-                // or facing the interior open volume of the room below!
-                int nx = x;
-                int ny = y;
-                switch (rotSide) {
-                    case 0: ny -= 1; break; // North (y - 1)
-                    case 1: nx += 1; break; // East (x + 1)
-                    case 2: ny += 1; break; // South (y + 1)
-                    case 3: nx -= 1; break; // West (x - 1)
-                }
+                if (maptile > 0) {
+                    if (!isMaptileWallPresent(maptile, rot, rotSide)) {
+                        continue;
+                    }
+                } else {
+                    if (!seg->hasWall[origSide]) continue;
 
-                if (ny >= 0 && ny < rows && nx >= 0 && nx < cols) {
-                    int neighborSeg = m_map->gridBlocks[layer][ny][nx];
-                    if (neighborSeg == segId) {
-                        // Same segment type on this layer:
-                        // Suppress wall UNLESS separated by explicit partition rotations (e.g. facing wall tiles)
-                        int neighborRot = m_map->gridRotation[layer][ny][nx] & 3;
-                        bool isPartition = (rot != neighborRot) && (rotSide == rot || rotSide == (neighborRot + 2) % 4);
-                        if (!isPartition) {
-                            continue;
-                        }
-                    } else if (neighborSeg == 0) {
-                        // Empty tile on current layer:
-                        // Suppress inner wall ONLY if neighbor cell was part of the same room below!
-                        bool insideRoomBelow = false;
-                        for (int l = layer - 1; l >= 0; --l) {
-                            int bSelfSeg = m_map->gridBlocks[l][y][x];
-                            int bNeighSeg = m_map->gridBlocks[l][ny][nx];
-                            if (bSelfSeg > 0 && bNeighSeg == bSelfSeg) {
-                                insideRoomBelow = true;
-                                break;
+                    // Fallback auto-tiling neighbor check for custom placed segments without maptile
+                    int nx = x;
+                    int ny = y;
+                    switch (rotSide) {
+                        case 0: ny -= 1; break; // North (y - 1)
+                        case 1: nx += 1; break; // East (x + 1)
+                        case 2: ny += 1; break; // South (y + 1)
+                        case 3: nx -= 1; break; // West (x - 1)
+                    }
+
+                    if (ny >= 0 && ny < rows && nx >= 0 && nx < cols) {
+                        int neighborSeg = m_map->gridBlocks[layer][ny][nx];
+                        if (neighborSeg == segId) {
+                            int neighborRot = m_map->gridRotation[layer][ny][nx] & 3;
+                            bool isPartition = (rot != neighborRot) && (rotSide == rot || rotSide == (neighborRot + 2) % 4);
+                            if (!isPartition) {
+                                continue;
                             }
-                        }
-                        if (insideRoomBelow) {
-                            continue;
+                        } else if (neighborSeg == 0) {
+                            bool insideRoomBelow = false;
+                            for (int l = layer - 1; l >= 0; --l) {
+                                int bSelfSeg = m_map->gridBlocks[l][y][x];
+                                int bNeighSeg = m_map->gridBlocks[l][ny][nx];
+                                if (bSelfSeg > 0 && bNeighSeg == bSelfSeg) {
+                                    insideRoomBelow = true;
+                                    break;
+                                }
+                            }
+                            if (insideRoomBelow) {
+                                continue;
+                            }
                         }
                     }
                 }
@@ -1259,6 +1290,13 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
         for (int x = 0; x < cols; ++x) {
             int oId = m_map->gridOverlays[m_currentFloor][y][x];
             if (oId <= 0) continue;
+
+            auto it = m_map->segments.find(oId);
+            if (it != m_map->segments.end()) {
+                if (!it.value()->hasPunch) {
+                    continue;
+                }
+            }
 
             int effectiveRot = m_map->gridOverlayRotation[m_currentFloor][y][x] & 3;
             QRectF cellRect = getCellRectScreen(x, y);

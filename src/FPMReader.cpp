@@ -184,16 +184,19 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
     // Allocate 3D grid
     map->gridBlocks.resize(layers);
     map->gridRotation.resize(layers);
+    map->gridTileType.resize(layers);
     map->gridOverlays.resize(layers);
     map->gridOverlayRotation.resize(layers);
     for (int l = 0; l < layers; ++l) {
         map->gridBlocks[l].resize(rows);
         map->gridRotation[l].resize(rows);
+        map->gridTileType[l].resize(rows);
         map->gridOverlays[l].resize(rows);
         map->gridOverlayRotation[l].resize(rows);
         for (int y = 0; y < rows; ++y) {
             map->gridBlocks[l][y].fill(0, cols);
             map->gridRotation[l][y].fill(0, cols);
+            map->gridTileType[l][y].fill(0, cols);
             map->gridOverlays[l][y].fill(0, cols);
             map->gridOverlayRotation[l][y].fill(0, cols);
         }
@@ -281,9 +284,11 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
                 if (mapid != 0) {
                     int segId = (mapid >> 20) & 0xFFF;
                     int rotVal = (mapid >> 12) & 0x3;
+                    int tileVal = mapid & 0xF;
                     if (layer < layers && y < rows && x < cols && segId > 0) {
                         map->gridBlocks[layer][y][x] = segId;
                         map->gridRotation[layer][y][x] = rotVal & 3;
+                        map->gridTileType[layer][y][x] = tileVal;
                     }
                 }
 

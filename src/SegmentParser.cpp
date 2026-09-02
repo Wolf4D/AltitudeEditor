@@ -84,6 +84,11 @@ std::shared_ptr<FPSCSegment> SegmentParser::parse(const QString& relPath, int se
 
         QString meshLower = part.meshName.toLower();
 
+        // Detect CSG punch mesh
+        if (part.partMode == 1 || meshLower.contains("punch")) {
+            seg->hasPunch = true;
+        }
+
         // Categorize part
         if (meshLower.contains("ceiling") || meshLower.contains("roof") || (part.offY >= 25.0f && !meshLower.contains("floor"))) {
             part.isCeiling = true;

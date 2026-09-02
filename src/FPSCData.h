@@ -78,6 +78,7 @@ struct FPSCSegment {
     QString roofTexture;
     QString wallTextures[4]; // 0=North, 1=East, 2=South, 3=West
     bool hasWall[4] = {false, false, false, false};
+    bool hasPunch = false;
     
     int visWallB = -1, visWallR = -1, visWallF = -1, visWallL = -1;
     int visFloor = -1, visRoof = -1;
@@ -254,6 +255,7 @@ struct FPSCMap {
     // Layer 0..layerMax, Y 0..maxY, X 0..maxX
     QVector<QVector<QVector<int>>> gridBlocks;
     QVector<QVector<QVector<int>>> gridRotation; // 0, 1, 2, 3
+    QVector<QVector<QVector<int>>> gridTileType; // maptile 0..15
 
     // 3D Overlay Grid: [Layer][Y][X] -> Overlay ID / CSG Cutout
     QVector<QVector<QVector<int>>> gridOverlays;
