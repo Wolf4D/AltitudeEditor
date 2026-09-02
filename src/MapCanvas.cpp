@@ -310,18 +310,54 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
             QRectF cellRect = getCellRectScreen(x, y);
             int rot = m_map->gridRotation[layer][y][x] & 3;
 
+            // Multi-story floor vs wall layer detection:
+            bool hasBelow = (layer > 0 && m_map->gridBlocks[layer - 1][y][x] > 0);
+            bool hasAbove = (layer + 1 < m_map->gridBlocks.size() && m_map->gridBlocks[layer + 1][y][x] > 0);
+            if (!hasAbove && layer + 1 < m_map->gridBlocks.size()) {
+                for (int dy = -1; dy <= 1 && !hasAbove; ++dy) {
+                    for (int dx = -1; dx <= 1 && !hasAbove; ++dx) {
+                        int ny = y + dy;
+                        int nx = x + dx;
+                        if (ny >= 0 && ny < rows && nx >= 0 && nx < cols) {
+                            if (m_map->gridBlocks[layer + 1][ny][nx] > 0) {
+                                hasAbove = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            bool drawFloor = true;
+            bool drawWalls = true;
+
+            if (hasBelow && hasAbove) {
+                // Intermediate upper story of a room: WALLS ONLY, NO FLOOR!
+                drawFloor = false;
+                drawWalls = true;
+            } else if (hasBelow && !hasAbove) {
+                // Top roof / ceiling slab capping the room below: FLOOR/ROOF SLAB ONLY, NO WALLS!
+                drawFloor = true;
+                drawWalls = false;
+            } else {
+                // Base ground floor: FLOOR + WALLS
+                drawFloor = true;
+                drawWalls = true;
+            }
+
             // A. Draw Floor / Ceiling Texture
-            QString surfaceTex = !seg->floorTexture.isEmpty() ? seg->floorTexture : seg->roofTexture;
-            if (!surfaceTex.isEmpty()) {
-                if (m_showFloorTextures) {
-                    QPixmap surfacePx = AssetManager::instance().loadTexture(surfaceTex);
-                    if (!surfacePx.isNull()) {
-                        p.drawPixmap(cellRect.toRect(), surfacePx);
+            if (drawFloor) {
+                QString surfaceTex = !seg->floorTexture.isEmpty() ? seg->floorTexture : seg->roofTexture;
+                if (!surfaceTex.isEmpty()) {
+                    if (m_showFloorTextures) {
+                        QPixmap surfacePx = AssetManager::instance().loadTexture(surfaceTex);
+                        if (!surfacePx.isNull()) {
+                            p.drawPixmap(cellRect.toRect(), surfacePx);
+                        } else {
+                            p.fillRect(cellRect, QColor(50, 55, 70));
+                        }
                     } else {
                         p.fillRect(cellRect, QColor(50, 55, 70));
                     }
-                } else {
-                    p.fillRect(cellRect, QColor(50, 55, 70));
                 }
             }
 
@@ -333,15 +369,15 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
             }
 
             // C. Auto-Tiling Textured Wall Ribbons (Perimeter walls only)
-            // Original wall directions: 0=North (Z-top), 1=East (X-right), 2=South (Z-bottom), 3=West (X-left)
-            // Rotated direction = (original + rot) % 4
+            if (!drawWalls) continue;
             for (int origSide = 0; origSide < 4; ++origSide) {
                 if (!seg->hasWall[origSide]) continue;
 
                 int rotSide = (origSide + rot) % 4;
 
                 // Auto-tiling neighbor check:
-                // Dividing wall is ONLY suppressed between adjacent cells of the SAME segment type!
+                // Dividing wall is ONLY suppressed between adjacent cells of the SAME segment type,
+                // or facing the interior open volume of the room below!
                 int nx = x;
                 int ny = y;
                 switch (rotSide) {
@@ -355,6 +391,10 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                     int neighborSeg = m_map->gridBlocks[layer][ny][nx];
                     if (neighborSeg == segId) {
                         // Same segment type -> shared open room connection, suppress wall!
+                        continue;
+                    }
+                    if (layer > 0 && m_map->gridBlocks[layer - 1][ny][nx] > 0 && m_map->gridBlocks[layer - 1][y][x] > 0) {
+                        // Both cells are inside the room volume below -> interior face, suppress wall!
                         continue;
                     }
                 }
