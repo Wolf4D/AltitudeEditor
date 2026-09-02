@@ -402,10 +402,12 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                         }
                     } else if (neighborSeg == 0) {
                         // Empty tile on current layer:
-                        // Suppress inner wall if neighbor cell is part of the interior room volume below!
+                        // Suppress inner wall ONLY if neighbor cell was part of the same room below!
                         bool insideRoomBelow = false;
                         for (int l = layer - 1; l >= 0; --l) {
-                            if (m_map->gridBlocks[l][ny][nx] > 0) {
+                            int bSelfSeg = m_map->gridBlocks[l][y][x];
+                            int bNeighSeg = m_map->gridBlocks[l][ny][nx];
+                            if (bSelfSeg > 0 && bNeighSeg == bSelfSeg) {
                                 insideRoomBelow = true;
                                 break;
                             }
@@ -1259,10 +1261,14 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
             if (oId <= 0) continue;
 
             int rot = m_map->gridOverlayRotation[m_currentFloor][y][x] & 3;
+            int segRot = (m_map->gridBlocks[m_currentFloor][y][x] > 0)
+                         ? (m_map->gridRotation[m_currentFloor][y][x] & 3)
+                         : 0;
+            int effectiveRot = (rot + segRot) % 4;
             QRectF cellRect = getCellRectScreen(x, y);
 
             int nx = x, ny = y;
-            switch (rot) {
+            switch (effectiveRot) {
                 case 0: ny -= 1; break;
                 case 1: nx += 1; break;
                 case 2: ny += 1; break;
@@ -1277,15 +1283,15 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
             }
 
             QRectF cutoutRect;
-            // rot: 0 = North edge, 1 = East edge, 2 = South edge, 3 = West edge
-            if (rot == 0) {
+            // effectiveRot: 0 = North edge, 1 = East edge, 2 = South edge, 3 = West edge
+            if (effectiveRot == 0) {
                 float topY = hasDoubleWall ? (cellRect.top() - wallRibbon) : cellRect.top();
                 float h = hasDoubleWall ? (2.0f * wallRibbon) : wallRibbon;
                 cutoutRect = QRectF(cellRect.left() + cellRect.width() * 0.18f, topY, cellRect.width() * 0.64f, h);
-            } else if (rot == 1) {
+            } else if (effectiveRot == 1) {
                 float w = hasDoubleWall ? (2.0f * wallRibbon) : wallRibbon;
                 cutoutRect = QRectF(cellRect.right() - wallRibbon, cellRect.top() + cellRect.height() * 0.18f, w, cellRect.height() * 0.64f);
-            } else if (rot == 2) {
+            } else if (effectiveRot == 2) {
                 float h = hasDoubleWall ? (2.0f * wallRibbon) : wallRibbon;
                 cutoutRect = QRectF(cellRect.left() + cellRect.width() * 0.18f, cellRect.bottom() - wallRibbon, cellRect.width() * 0.64f, h);
             } else {
@@ -1308,7 +1314,7 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
 
             // 4. Center division line across the wall thickness
             p.setPen(QPen(cutoutGreen, 1.5f, Qt::DashLine));
-            if (rot == 0 || rot == 2) {
+            if (effectiveRot == 0 || effectiveRot == 2) {
                 float midX = cutoutRect.center().x();
                 p.drawLine(QPointF(midX, cutoutRect.top()), QPointF(midX, cutoutRect.bottom()));
             } else {
@@ -1320,9 +1326,9 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
             p.setPen(QColor(160, 255, 180));
             p.setFont(QFont("Segoe UI", 8, QFont::Bold));
             QString label = (oId == 1) ? QStringLiteral("CSG Cutout (Window / Slit)") : QStringLiteral("CSG Cutout (Doorway)");
-            if (rot == 0) {
+            if (effectiveRot == 0) {
                 p.drawText(cutoutRect.bottomLeft() + QPointF(0, 14), label);
-            } else if (rot == 2) {
+            } else if (effectiveRot == 2) {
                 p.drawText(cutoutRect.topLeft() + QPointF(0, -6), label);
             } else {
                 p.drawText(cutoutRect.topRight() + QPointF(6, 12), label);
