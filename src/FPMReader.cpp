@@ -304,7 +304,7 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
                         int oOrient = (oMapId >> 10) & 0x3;
                         int oTile = oMapId & 0xF;
                         int oCutoutType = (oSegId > 0) ? oSegId : (oTile > 0 ? oTile : 1);
-                        int effectiveEdge = (oRot + oOrient) & 3;
+                        int effectiveEdge = oOrient & 3;
 
                         if (layer < layers && y < rows && x < cols) {
                             map->gridOverlays[layer][y][x] = oCutoutType;
