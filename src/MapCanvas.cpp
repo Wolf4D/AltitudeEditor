@@ -1152,6 +1152,69 @@ void MapCanvas::drawPortals(QPainter& p) {
         }
     }
 
+    // 1b. Render Doorway Portals from Door/Hole Segments on current floor
+    if (m_currentFloor >= 0 && m_currentFloor < m_map->gridBlocks.size()) {
+        int rows = m_map->gridBlocks[m_currentFloor].size();
+        int cols = rows > 0 ? m_map->gridBlocks[m_currentFloor][0].size() : 0;
+        for (int y = 0; y < rows; ++y) {
+            for (int x = 0; x < cols; ++x) {
+                int segId = m_map->gridBlocks[m_currentFloor][y][x];
+                if (segId <= 0) continue;
+                auto it = m_map->segments.find(segId);
+                if (it == m_map->segments.end()) continue;
+                const auto& seg = it.value();
+
+                QString sName = seg->name.toLower();
+                if (sName.contains("door") || sName.contains("hole") || sName.contains("slit") || sName.contains("window")) {
+                    int rot = m_map->gridRotation[m_currentFloor][y][x] & 3;
+                    QRectF cellRect = getCellRectScreen(x, y);
+                    QPointF p1, p2;
+                    if (rot == 0 || rot == 2) {
+                        float midY = (rot == 0) ? cellRect.top() : cellRect.bottom();
+                        p1 = QPointF(cellRect.left() + cellRect.width() * 0.15f, midY);
+                        p2 = QPointF(cellRect.right() - cellRect.width() * 0.15f, midY);
+                    } else {
+                        float midX = (rot == 1) ? cellRect.right() : cellRect.left();
+                        p1 = QPointF(midX, cellRect.top() + cellRect.height() * 0.15f);
+                        p2 = QPointF(midX, cellRect.bottom() - cellRect.height() * 0.15f);
+                    }
+
+                    QColor portalGreen(46, 204, 113, 240);
+                    p.setPen(QPen(portalGreen, 3.5f, Qt::SolidLine, Qt::RoundCap));
+                    p.drawLine(p1, p2);
+
+                    QPointF dir = (p2 - p1);
+                    float len = std::hypot(dir.x(), dir.y());
+                    if (len > 0.1f) {
+                        QPointF perp(-dir.y() / len * 6.0f, dir.x() / len * 6.0f);
+                        p.setPen(QPen(portalGreen, 2.0f, Qt::SolidLine, Qt::RoundCap));
+                        p.drawLine(p1 - perp, p1 + perp);
+                        p.drawLine(p2 - perp, p2 + perp);
+                    }
+
+                    QPointF centerScreen = (p1 + p2) * 0.5f;
+                    p.setPen(QColor(160, 255, 180));
+                    p.setFont(QFont("Segoe UI", 8, QFont::Bold));
+                    p.drawText(centerScreen + QPointF(6, -6), QStringLiteral("Portal (Opening)"));
+                }
+            }
+        }
+    }
+
+    // 1c. Render DBU Internal Portals (if loaded from level universe.dbu)
+    for (const auto& dbuP : m_portals) {
+        if (dbuP.isExteriorHull) continue;
+        if (!dbuP.box.intersectsLayer(m_currentFloor)) continue;
+
+        QPointF p1 = worldToScreen(QPointF(dbuP.box.minX, -dbuP.box.minZ));
+        QPointF p2 = worldToScreen(QPointF(dbuP.box.maxX, -dbuP.box.maxZ));
+        if (QLineF(p1, p2).length() < 2.0f) continue;
+
+        QColor portalGreen(46, 204, 113, 200);
+        p.setPen(QPen(portalGreen, 3.0f, Qt::SolidLine, Qt::RoundCap));
+        p.drawLine(p1, p2);
+    }
+
     // 2. Render Real Leaks from PortalLeakAnalyzer on current floor
     PortalLeakAnalyzer analyzer(m_map);
     auto warnings = analyzer.analyze();
