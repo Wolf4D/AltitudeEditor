@@ -149,6 +149,20 @@ std::shared_ptr<FPSCSegment> SegmentParser::parse(const QString& relPath, int se
 
     // Determine if scenery or large rock
     QString pathLower = relPath.toLower();
+    bool isUpperWall = pathLower.contains("top") || pathLower.contains("upper") || pathLower.contains("_up");
+    bool isRoof = pathLower.contains("ceiling") || pathLower.contains("roof");
+
+    if (isUpperWall) {
+        seg->hasFloorOnThisLayer = false;
+        seg->hasRoofOnThisLayer = false;
+    } else if (isRoof) {
+        seg->hasFloorOnThisLayer = false;
+        seg->hasRoofOnThisLayer = true;
+    } else {
+        seg->hasFloorOnThisLayer = !seg->floorTexture.isEmpty();
+        seg->hasRoofOnThisLayer = false;
+    }
+
     if (pathLower.contains("scenery") || pathLower.contains("rock") || pathLower.contains("cave") || pathLower.contains("outdoor")) {
         seg->isScenery = true;
         if (seg->floorTexture.isEmpty() && !primaryWallTex.isEmpty()) {

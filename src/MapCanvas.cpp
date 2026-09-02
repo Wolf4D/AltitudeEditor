@@ -310,8 +310,14 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
             QRectF cellRect = getCellRectScreen(x, y);
             int rot = m_map->gridRotation[layer][y][x] & 3;
 
-            // A. Draw Floor / Ceiling Texture
-            QString surfaceTex = !seg->floorTexture.isEmpty() ? seg->floorTexture : seg->roofTexture;
+            // A. Draw Floor / Ceiling Texture (only if segment has a floor or roof on this layer)
+            QString surfaceTex;
+            if (seg->hasFloorOnThisLayer && !seg->floorTexture.isEmpty()) {
+                surfaceTex = seg->floorTexture;
+            } else if (seg->hasRoofOnThisLayer && !seg->roofTexture.isEmpty()) {
+                surfaceTex = seg->roofTexture;
+            }
+
             if (!surfaceTex.isEmpty()) {
                 if (m_showFloorTextures) {
                     QPixmap surfacePx = AssetManager::instance().loadTexture(surfaceTex);

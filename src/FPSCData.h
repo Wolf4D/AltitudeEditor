@@ -84,6 +84,8 @@ struct FPSCSegment {
     int kindOf = 0;
     int groundMode = 0;
     bool isScenery = false;
+    bool hasFloorOnThisLayer = true;
+    bool hasRoofOnThisLayer = false;
 };
 
 struct FPSCEntityProfile {
