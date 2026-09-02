@@ -341,34 +341,19 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
             QRectF cellRect = getCellRectScreen(x, y);
             int rot = m_map->gridRotation[layer][y][x] & 3;
 
-            // Multi-story floor vs wall layer detection:
-            bool hasBelow = (layer > 0 && m_map->gridBlocks[layer - 1][y][x] > 0);
-            bool hasAbove = (layer + 1 < m_map->gridBlocks.size() && m_map->gridBlocks[layer + 1][y][x] > 0);
+            int ground = (layer < m_map->gridGround.size() && y < m_map->gridGround[layer].size() && x < m_map->gridGround[layer][y].size())
+                         ? m_map->gridGround[layer][y][x] : 0;
 
-            bool isCeilingSeg = seg->name.contains("ceiling", Qt::CaseInsensitive) ||
+            // In FPS Creator, ground == 2 is an auto-generated ceiling/roof slab placed on layer+1
+            bool isCeilingSeg = (ground == 2) ||
+                                seg->name.contains("ceiling", Qt::CaseInsensitive) ||
                                 seg->name.contains("roof", Qt::CaseInsensitive) ||
                                 (!seg->roofTexture.isEmpty() && seg->floorTexture.isEmpty());
 
+            // Every valid segment tile has a floor/slab surface in 2D top-down view
             bool drawFloor = true;
-            bool drawWalls = true;
-
-            if (isCeilingSeg) {
-                // Dedicated ceiling/roof segment: always draw ceiling slab, no walls
-                drawFloor = true;
-                drawWalls = false;
-            } else if (hasBelow && hasAbove) {
-                // Intermediate upper story of a room: WALLS ONLY, NO FLOOR!
-                drawFloor = false;
-                drawWalls = true;
-            } else if (hasBelow && !hasAbove) {
-                // Top roof / ceiling slab capping the room below: FLOOR/ROOF SLAB ONLY, NO WALLS!
-                drawFloor = true;
-                drawWalls = false;
-            } else {
-                // Base ground floor: FLOOR + WALLS
-                drawFloor = true;
-                drawWalls = true;
-            }
+            // Roof slabs capping a room below do not have interior room walls
+            bool drawWalls = !isCeilingSeg;
 
             // A. Draw Floor / Ceiling Texture
             if (drawFloor) {

@@ -251,11 +251,10 @@ struct FPSCMap {
     QMap<int, std::shared_ptr<FPSCSegment>> segments;
     QMap<int, std::shared_ptr<FPSCEntityProfile>> entityProfiles;
     
-    // 3D Grid: [Layer][Y][X] -> Segment ID
-    // Layer 0..layerMax, Y 0..maxY, X 0..maxX
     QVector<QVector<QVector<int>>> gridBlocks;
     QVector<QVector<QVector<int>>> gridRotation; // 0, 1, 2, 3
     QVector<QVector<QVector<int>>> gridTileType; // maptile 0..15
+    QVector<QVector<QVector<int>>> gridGround;   // mapground 0..3 (0=Room, 1=Int2, 2=Roof/Ceiling slab, 3=Ext2)
 
     // 3D Overlay Grid: [Layer][Y][X] -> Overlay ID / CSG Cutout
     QVector<QVector<QVector<int>>> gridOverlays;

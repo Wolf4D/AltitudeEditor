@@ -185,18 +185,21 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
     map->gridBlocks.resize(layers);
     map->gridRotation.resize(layers);
     map->gridTileType.resize(layers);
+    map->gridGround.resize(layers);
     map->gridOverlays.resize(layers);
     map->gridOverlayRotation.resize(layers);
     for (int l = 0; l < layers; ++l) {
         map->gridBlocks[l].resize(rows);
         map->gridRotation[l].resize(rows);
         map->gridTileType[l].resize(rows);
+        map->gridGround[l].resize(rows);
         map->gridOverlays[l].resize(rows);
         map->gridOverlayRotation[l].resize(rows);
         for (int y = 0; y < rows; ++y) {
             map->gridBlocks[l][y].fill(0, cols);
             map->gridRotation[l][y].fill(0, cols);
             map->gridTileType[l][y].fill(0, cols);
+            map->gridGround[l][y].fill(0, cols);
             map->gridOverlays[l][y].fill(0, cols);
             map->gridOverlayRotation[l][y].fill(0, cols);
         }
@@ -273,6 +276,10 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
             int availCells = (bData.size() - 8) / 8;
             int cellsToRead = qMin(totalCells, availCells);
 
+            int olayStride = map->header.olayListMax + 1;
+            const int32_t* lStream = (lData.size() >= 8) ? reinterpret_cast<const int32_t*>(lData.constData() + 8) : nullptr;
+            int totalOlayElements = (lData.size() >= 8) ? (lData.size() - 8) / 8 : 0;
+
             for (int i = 0; i < cellsToRead; ++i) {
                 int layer = i % layers;
                 int rem = i / layers;
@@ -284,10 +291,12 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
                 if (mapid != 0) {
                     int segId = (mapid >> 20) & 0xFFF;
                     int rotVal = (mapid >> 12) & 0x3;
+                    int groundVal = (mapid >> 14) & 0x3;
                     int tileVal = mapid & 0xF;
                     if (layer < layers && y < rows && x < cols && segId > 0) {
                         map->gridBlocks[layer][y][x] = segId;
                         map->gridRotation[layer][y][x] = rotVal & 3;
+                        map->gridGround[layer][y][x] = groundVal;
                         map->gridTileType[layer][y][x] = tileVal;
                     }
                 }
@@ -296,18 +305,29 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
                 if (oStream && i * 2 + 1 < (oData.size() - 8) / 4) {
                     int32_t oVal = oStream[i * 2 + 1];
                     if (oVal != 0) {
-                        uint32_t oMapId = 0;
-                        if (oVal > 0 && oVal < olayPrimaryMapId.size()) {
-                            oMapId = olayPrimaryMapId[oVal];
+                        uint32_t chosenMapId = 0;
+                        if (oVal > 0 && lStream && olayStride > 0) {
+                            for (int ti = 0; ti <= 50; ++ti) {
+                                int elemIdx = oVal + ti * olayStride;
+                                if (elemIdx >= totalOlayElements) break;
+                                uint32_t val = static_cast<uint32_t>(lStream[elemIdx * 2 + 1]);
+                                if (val == 0) break;
+                                if (chosenMapId == 0) chosenMapId = val;
+                                int sId = (val >> 20) & 0xFFF;
+                                auto it = map->segments.find(sId);
+                                if (it != map->segments.end() && it.value()->hasPunch) {
+                                    chosenMapId = val; // Prioritize CSG punch cutout overlay!
+                                    break;
+                                }
+                            }
                         }
-                        if (oMapId == 0) {
-                            oMapId = static_cast<uint32_t>(oVal);
+                        if (chosenMapId == 0) {
+                            chosenMapId = static_cast<uint32_t>(oVal);
                         }
 
-                        int oSegId = (oMapId >> 20) & 0xFFF;
-                        int oRot = (oMapId >> 12) & 0x3;
-                        int oOrient = (oMapId >> 10) & 0x3;
-                        int oTile = oMapId & 0xF;
+                        int oSegId = (chosenMapId >> 20) & 0xFFF;
+                        int oOrient = (chosenMapId >> 10) & 0x3;
+                        int oTile = chosenMapId & 0xF;
                         int oCutoutType = (oSegId > 0) ? oSegId : (oTile > 0 ? oTile : 1);
                         int effectiveEdge = oOrient & 3;
 
