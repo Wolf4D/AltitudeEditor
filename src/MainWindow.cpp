@@ -126,6 +126,19 @@ void MainWindow::createMenusAndToolbars() {
     m_actGhostLayer->setChecked(true);
     connect(m_actGhostLayer, &QAction::toggled, m_canvas, &MapCanvas::setShowGhostLayer);
 
+    m_actShowPortals = viewMenu->addAction(QStringLiteral("Show &Portals / VisZones (DBU)"));
+    m_actShowPortals->setCheckable(true);
+    m_actShowPortals->setChecked(false);
+    m_actShowPortals->setToolTip(QStringLiteral("Render BSP Portals and VisZone bounding boxes from compiled universe.dbu"));
+    connect(m_actShowPortals, &QAction::toggled, this, [this](bool checked) {
+        if (checked && m_canvas) {
+            PortalLeakAnalyzer analyzer(m_currentMap);
+            analyzer.analyze();
+            m_canvas->setPortals(analyzer.allPortals(), analyzer.allZones());
+        }
+        m_canvas->setShowPortals(checked);
+    });
+
     viewMenu->addSeparator();
     viewMenu->addAction(m_searchDock->toggleViewAction());
     viewMenu->addAction(m_inspectorDock->toggleViewAction());
@@ -193,11 +206,16 @@ void MainWindow::createMenusAndToolbars() {
     mainBar->addAction(m_actWallTex);
     mainBar->addAction(m_actFloorTex);
     mainBar->addAction(m_actEntities);
+    mainBar->addAction(m_actShowPortals);
     mainBar->addSeparator();
 
     // Memory Analyzer Launch Button
-    QAction* actLaunchMem = mainBar->addAction(QStringLiteral("⚖ Entity Memory Analyzer (MB)"), this, &MainWindow::onOpenMemoryAnalyzer);
+    QAction* actLaunchMem = mainBar->addAction(QStringLiteral("💾 Entity Memory Analyzer (MB)"), this, &MainWindow::onOpenMemoryAnalyzer);
     actLaunchMem->setToolTip(QStringLiteral("Measure entity RAM weight in Megabytes and inspect memory budget"));
+
+    // Portal Leak Detector Button
+    QAction* actLaunchPortals = mainBar->addAction(QStringLiteral("🔍 Portal Leak Detector"), this, &MainWindow::onOpenPortalLeakDetector);
+    actLaunchPortals->setToolTip(QStringLiteral("Scan compiled universe.dbu and map geometry for portal occlusion leaks"));
 }
 
 void MainWindow::updateWindowTitle() {
@@ -518,4 +536,9 @@ void MainWindow::onOpenPortalLeakDetector() {
     connect(dlg, &PortalLeakDialog::cellSelected, m_canvas, &MapCanvas::highlightCell);
     dlg->setAttribute(Qt::WA_DeleteOnClose);
     dlg->show();
+
+    // Also auto-refresh canvas portals
+    PortalLeakAnalyzer analyzer(m_currentMap);
+    analyzer.analyze();
+    m_canvas->setPortals(analyzer.allPortals(), analyzer.allZones());
 }

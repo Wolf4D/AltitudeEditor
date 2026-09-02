@@ -1,5 +1,6 @@
 #include "MapCanvas.h"
 #include "AssetManager.h"
+#include "PortalLeakAnalyzer.h"
 #include <QPainter>
 #include <QPaintEvent>
 #include <QMouseEvent>
@@ -223,6 +224,11 @@ void MapCanvas::renderMap(QPainter& p) {
     // 6. Entities
     if (m_showEntities) {
         drawEntities(p);
+    }
+
+    // 7. Portals & VisZones (from compiled universe.dbu)
+    if (m_showPortals) {
+        drawPortals(p);
     }
 
     // 7. Interactive Translation Gizmo on selected entity
@@ -1042,4 +1048,105 @@ void MapCanvas::keyPressEvent(QKeyEvent* event) {
 
 void MapCanvas::resizeEvent(QResizeEvent* event) {
     QWidget::resizeEvent(event);
+}
+
+void MapCanvas::setShowPortals(bool show) {
+    m_showPortals = show;
+    update();
+}
+
+void MapCanvas::setPortals(const std::vector<DBUPortal>& portals, const std::vector<DBUVisZone>& zones) {
+    m_portals = portals;
+    m_zones = zones;
+    update();
+}
+
+void MapCanvas::drawPortals(QPainter& p) {
+    if (!m_map) return;
+
+    p.save();
+    
+    // 1. Render Doorway Portals on current floor
+    for (const auto& ent : m_map->placedEntities) {
+        if (ent.floorLayer != m_currentFloor) continue;
+
+        QString name = ent.instanceName.toLower();
+        bool isDoor = false;
+        
+        if (name.contains("door") || name.contains("gate") || name.contains("portal")) {
+            isDoor = true;
+        }
+        
+        if (ent.bankIndex > 0 && ent.bankIndex <= m_map->entityProfiles.size()) {
+            const auto& prof = m_map->entityProfiles.value(ent.bankIndex);
+            if (prof) {
+                QString path = prof->relPath.toLower();
+                path.replace("outdoor", ""); // Don't match 'outdoor' rocks
+                if (path.contains("door") || path.contains("gate") || path.contains("portal")) {
+                    isDoor = true;
+                }
+            }
+        }
+
+        if (isDoor) {
+            float cx = ent.x;
+            float cy = -ent.z;
+
+            int rotDeg = static_cast<int>(std::round(ent.ry)) % 360;
+            if (rotDeg < 0) rotDeg += 360;
+
+            QPointF p1, p2;
+            if ((rotDeg >= 45 && rotDeg < 135) || (rotDeg >= 225 && rotDeg < 315)) {
+                // North-South doorway along Y
+                p1 = worldToScreen(QPointF(cx, cy - 50.0f));
+                p2 = worldToScreen(QPointF(cx, cy + 50.0f));
+            } else {
+                // East-West doorway along X
+                p1 = worldToScreen(QPointF(cx - 50.0f, cy));
+                p2 = worldToScreen(QPointF(cx + 50.0f, cy));
+            }
+
+            // Draw clean emerald-green doorway portal line
+            QColor portalGreen(46, 204, 113, 240);
+            p.setPen(QPen(portalGreen, 3.5f, Qt::SolidLine, Qt::RoundCap));
+            p.drawLine(p1, p2);
+
+            // Draw small perpendicular end tick lines
+            QPointF dir = (p2 - p1);
+            float len = std::hypot(dir.x(), dir.y());
+            if (len > 0.1f) {
+                QPointF perp(-dir.y() / len * 6.0f, dir.x() / len * 6.0f);
+                p.setPen(QPen(portalGreen, 2.0f, Qt::SolidLine, Qt::RoundCap));
+                p.drawLine(p1 - perp, p1 + perp);
+                p.drawLine(p2 - perp, p2 + perp);
+            }
+
+            // Portal Label
+            QPointF centerScreen = (p1 + p2) * 0.5f;
+            p.setPen(QColor(160, 255, 180));
+            p.setFont(QFont("Segoe UI", 8, QFont::Bold));
+            p.drawText(centerScreen + QPointF(6, -6), QStringLiteral("Portal (Door)"));
+        }
+    }
+
+    // 2. Render Real Leaks from PortalLeakAnalyzer on current floor
+    PortalLeakAnalyzer analyzer(m_map);
+    auto warnings = analyzer.analyze();
+    for (const auto& w : warnings) {
+        if (w.layer == m_currentFloor && w.severity == PortalLeakWarning::ERROR) {
+            QRectF cellRect = getCellRectScreen(w.x, w.y);
+            
+            // Draw red glowing leak box
+            p.setPen(QPen(QColor(255, 45, 75, 240), 2.5f, Qt::DashLine));
+            p.setBrush(QColor(255, 0, 50, 60));
+            p.drawRect(cellRect);
+
+            // Center Tag
+            p.setPen(QColor(255, 120, 140));
+            p.setFont(QFont("Segoe UI", 7, QFont::Bold));
+            p.drawText(cellRect, Qt::AlignCenter, QStringLiteral("LEAK (Void)"));
+        }
+    }
+    
+    p.restore();
 }

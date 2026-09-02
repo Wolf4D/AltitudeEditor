@@ -2,10 +2,26 @@
 #define MAPCANVAS_H
 
 #include "FPSCData.h"
+#include "UniverseDBUParser.h"
 #include <QWidget>
 #include <QPointF>
 #include <QTimer>
 #include <memory>
+
+struct EditorPortal {
+    enum Type {
+        Doorway,
+        Passage,
+        LeakMissingCeiling,
+        LeakMissingWall
+    };
+    Type type = Doorway;
+    int layer = 0;
+    QPointF p1;
+    QPointF p2;
+    QRectF tileRect;
+    QString label;
+};
 
 class MapCanvas : public QWidget {
     Q_OBJECT
@@ -49,6 +65,9 @@ public slots:
     void setShowZones(bool show);
     void setShowWaypoints(bool show);
     void setShowGhostLayer(bool show);
+    void setShowPortals(bool show);
+    bool showPortals() const { return m_showPortals; }
+    void setPortals(const std::vector<DBUPortal>& portals, const std::vector<DBUVisZone>& zones);
 
 signals:
     void floorChanged(int floor);
@@ -80,6 +99,7 @@ private:
     void drawWaypoints(QPainter& p);
     void drawZonesAndLights(QPainter& p);
     void drawEntities(QPainter& p);
+    void drawPortals(QPainter& p);
     void drawGizmo(QPainter& p);
     void drawHUD(QPainter& p);
 
@@ -117,6 +137,9 @@ private:
     bool m_showZones = true;
     bool m_showWaypoints = true;
     bool m_showGhostLayer = true;
+    bool m_showPortals = false;
+    std::vector<DBUPortal> m_portals;
+    std::vector<DBUVisZone> m_zones;
 
     QTimer m_animTimer;
     float m_animPhase = 0.0f;

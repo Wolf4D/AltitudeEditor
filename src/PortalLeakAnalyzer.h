@@ -4,6 +4,7 @@
 #include <QString>
 #include <memory>
 #include "FPSCData.h"
+#include "UniverseDBUParser.h"
 #include <QHash>
 
 struct PortalLeakWarning {
@@ -26,8 +27,12 @@ public:
 
     std::vector<PortalLeakWarning> analyze();
 
+    bool hasCompiledUniverse() const { return m_hasCompiledUniverse; }
+    const std::vector<DBUPortal>& allPortals() const { return m_dbuParser.allPortals(); }
+    const std::vector<DBUVisZone>& allZones() const { return m_dbuParser.zones(); }
+
 private:
-    void checkVisportalmodes();
+    void checkCompiledUniverse();
     void checkVerticalGaps();
     void checkCoplanarOverlaps();
     void checkCornerGaps();
@@ -35,6 +40,9 @@ private:
     std::shared_ptr<FPSCMap> m_map;
     std::vector<PortalLeakWarning> m_warnings;
     
+    UniverseDBUParser m_dbuParser;
+    bool m_hasCompiledUniverse = false;
+
     struct SegmentInfo {
         bool hasVisportalmode;
         int visportalmode;

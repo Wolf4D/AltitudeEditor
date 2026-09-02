@@ -25,6 +25,7 @@ set(SOURCES
     src/EntityInspector.cpp
     src/PortalLeakAnalyzer.cpp
     src/PortalLeakDialog.cpp
+    src/UniverseDBUParser.cpp
 )
 
 set(MANIFEST_OBJ "${CMAKE_CURRENT_SOURCE_DIR}/src/app_manifest.o")
@@ -44,6 +45,7 @@ set(HEADERS
     src/EntityInspector.h
     src/PortalLeakAnalyzer.h
     src/PortalLeakDialog.h
+    src/UniverseDBUParser.h
     src/miniz_deflate.h
 )
 
@@ -62,6 +64,8 @@ add_executable(test_standalone
     src/EntityParser.cpp
     src/AssetManager.cpp
     src/MemoryAnalyzer.cpp
+    src/PortalLeakAnalyzer.cpp
+    src/UniverseDBUParser.cpp
 )
 target_link_libraries(test_standalone PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets)
 

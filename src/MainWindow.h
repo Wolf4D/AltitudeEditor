@@ -79,6 +79,7 @@ private:
     QAction* m_actLights = nullptr;
     QAction* m_actZones = nullptr;
     QAction* m_actWaypoints = nullptr;
+    QAction* m_actShowPortals = nullptr;
 
     // Status Bar Labels
     QLabel* m_statusMapName = nullptr;
