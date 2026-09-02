@@ -376,7 +376,7 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                 int rotSide = (origSide + rot) % 4;
 
                 // Auto-tiling neighbor check:
-                // Dividing wall is ONLY suppressed between adjacent cells of the SAME segment type,
+                // Dividing wall is suppressed between adjacent cells of the same room,
                 // or facing the interior open volume of the room below!
                 int nx = x;
                 int ny = y;
@@ -390,12 +390,29 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                 if (ny >= 0 && ny < rows && nx >= 0 && nx < cols) {
                     int neighborSeg = m_map->gridBlocks[layer][ny][nx];
                     if (neighborSeg == segId) {
-                        // Same segment type -> shared open room connection, suppress wall!
-                        continue;
-                    }
-                    if (layer > 0 && m_map->gridBlocks[layer - 1][ny][nx] > 0 && m_map->gridBlocks[layer - 1][y][x] > 0) {
-                        // Both cells are inside the room volume below -> interior face, suppress wall!
-                        continue;
+                        // Same segment type on this layer:
+                        // Suppress wall UNLESS separated by explicit partition rotations (e.g. facing wall tiles)
+                        int neighborRot = m_map->gridRotation[layer][ny][nx] & 3;
+                        bool isPartition = (rotSide == 2 && rot == 2 && neighborRot == 0) ||
+                                           (rotSide == 0 && rot == 0 && neighborRot == 2) ||
+                                           (rotSide == 1 && rot == 1 && neighborRot == 3) ||
+                                           (rotSide == 3 && rot == 3 && neighborRot == 1);
+                        if (!isPartition) {
+                            continue;
+                        }
+                    } else if (neighborSeg == 0) {
+                        // Empty tile on current layer:
+                        // Suppress inner wall if neighbor cell is part of the interior room volume below!
+                        bool insideRoomBelow = false;
+                        for (int l = layer - 1; l >= 0; --l) {
+                            if (m_map->gridBlocks[l][ny][nx] > 0) {
+                                insideRoomBelow = true;
+                                break;
+                            }
+                        }
+                        if (insideRoomBelow) {
+                            continue;
+                        }
                     }
                 }
 
@@ -1169,9 +1186,9 @@ void MapCanvas::drawPortals(QPainter& p) {
                 p2 = worldToScreen(QPointF(cx + 50.0f, cy));
             }
 
-            // Draw clean emerald-green doorway portal line
-            QColor portalGreen(46, 204, 113, 240);
-            p.setPen(QPen(portalGreen, 3.5f, Qt::SolidLine, Qt::RoundCap));
+            // Draw vibrant electric blue/cyan doorway portal line
+            QColor portalBlue(0, 185, 255, 240);
+            p.setPen(QPen(portalBlue, 3.5f, Qt::SolidLine, Qt::RoundCap));
             p.drawLine(p1, p2);
 
             // Draw small perpendicular end tick lines
@@ -1179,14 +1196,14 @@ void MapCanvas::drawPortals(QPainter& p) {
             float len = std::hypot(dir.x(), dir.y());
             if (len > 0.1f) {
                 QPointF perp(-dir.y() / len * 6.0f, dir.x() / len * 6.0f);
-                p.setPen(QPen(portalGreen, 2.0f, Qt::SolidLine, Qt::RoundCap));
+                p.setPen(QPen(portalBlue, 2.0f, Qt::SolidLine, Qt::RoundCap));
                 p.drawLine(p1 - perp, p1 + perp);
                 p.drawLine(p2 - perp, p2 + perp);
             }
 
             // Portal Label
             QPointF centerScreen = (p1 + p2) * 0.5f;
-            p.setPen(QColor(160, 255, 180));
+            p.setPen(QColor(150, 220, 255));
             p.setFont(QFont("Segoe UI", 8, QFont::Bold));
             p.drawText(centerScreen + QPointF(6, -6), QStringLiteral("Portal (Door)"));
         }
@@ -1220,22 +1237,22 @@ void MapCanvas::drawPortals(QPainter& p) {
                     p2 = QPointF(cellRect.left(), cellRect.bottom() - cellRect.height() * 0.15f);
                 }
 
-                // Draw Bold Glowing Emerald-Green Portal Cutout line
-                QColor portalGreen(46, 204, 113, 255);
-                p.setPen(QPen(portalGreen, 4.0f, Qt::SolidLine, Qt::RoundCap));
+                // Draw BOLD Glowing Emerald-Green Cutout line
+                QColor cutoutGreen(46, 204, 113, 255);
+                p.setPen(QPen(cutoutGreen, 4.5f, Qt::SolidLine, Qt::RoundCap));
                 p.drawLine(p1, p2);
 
-                // Perpendicular end tick marks
+                // Bold perpendicular end tick marks
                 QPointF dir = (p2 - p1);
                 float len = std::hypot(dir.x(), dir.y());
                 if (len > 0.1f) {
-                    QPointF perp(-dir.y() / len * 7.0f, dir.x() / len * 7.0f);
-                    p.setPen(QPen(portalGreen, 2.5f, Qt::SolidLine, Qt::RoundCap));
+                    QPointF perp(-dir.y() / len * 8.0f, dir.x() / len * 8.0f);
+                    p.setPen(QPen(cutoutGreen, 3.0f, Qt::SolidLine, Qt::RoundCap));
                     p.drawLine(p1 - perp, p1 + perp);
                     p.drawLine(p2 - perp, p2 + perp);
                 }
 
-                // Portal Label
+                // Cutout Label
                 QPointF centerScreen = (p1 + p2) * 0.5f;
                 p.setPen(QColor(160, 255, 180));
                 p.setFont(QFont("Segoe UI", 8, QFont::Bold));
@@ -1254,8 +1271,8 @@ void MapCanvas::drawPortals(QPainter& p) {
         QPointF p2 = worldToScreen(QPointF(dbuP.box.maxX, -dbuP.box.maxZ));
         if (QLineF(p1, p2).length() < 2.0f) continue;
 
-        QColor portalGreen(46, 204, 113, 200);
-        p.setPen(QPen(portalGreen, 3.0f, Qt::SolidLine, Qt::RoundCap));
+        QColor portalBlue(0, 185, 255, 200);
+        p.setPen(QPen(portalBlue, 3.0f, Qt::SolidLine, Qt::RoundCap));
         p.drawLine(p1, p2);
     }
 
