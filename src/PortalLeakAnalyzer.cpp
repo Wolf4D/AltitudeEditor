@@ -30,8 +30,11 @@ void PortalLeakAnalyzer::loadSegmentInfos() {
         QString fpsPath = m_map->segmentsBank[i];
         if (fpsPath.isEmpty()) continue;
         
-        QString fullPath = AssetManager::instance().engineRoot() + "/Files/" + fpsPath;
-        fullPath.replace("\\", "/");
+        QString fullPath = AssetManager::instance().resolvePath(fpsPath);
+        if (fullPath.isEmpty()) {
+            fullPath = AssetManager::instance().engineRoot() + "/Files/segments/" + fpsPath;
+            fullPath.replace("\\", "/");
+        }
         
         QFile file(fullPath);
         SegmentInfo info = {false, 0, false, false, false};
@@ -74,8 +77,12 @@ void PortalLeakAnalyzer::loadSegmentInfos() {
             if (fpsPath.toLower().contains("floor") || fpsPath.toLower().contains("ground")) {
                 info.isFloor = true;
             }
+        } else {
+            printf("Failed to open FPS file: %s\n", qPrintable(fullPath));
         }
         m_segmentInfoCache[i] = info;
+        printf("Parsed Seg %d %s Wall: %d Floor: %d Ceiling: %d VP: %d %d\n",
+               i+1, qPrintable(fpsPath), info.isSolidWall, info.isFloor, info.isCeiling, info.hasVisportalmode, info.visportalmode);
     }
 }
 
@@ -148,6 +155,7 @@ void PortalLeakAnalyzer::checkVerticalGaps() {
                             w.layer = layer; w.x = x; w.y = y;
                             w.description = "Missing ceiling/floor between layers. Camera can look up and leak into the void.";
                             m_warnings.push_back(w);
+                            printf("Found Vertical Gap at %d %d %d\n", layer, x, y);
                         }
                     }
                 }
