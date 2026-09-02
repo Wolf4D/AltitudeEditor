@@ -5,6 +5,8 @@
 #include "MapCanvas.h"
 #include "EntitySearchDock.h"
 #include "EntityInspector.h"
+#include "VisZoneDock.h"
+#include "VisZoneManager.h"
 #include <QMainWindow>
 #include <QComboBox>
 #include <QSpinBox>
@@ -59,6 +61,8 @@ private:
     MapCanvas* m_canvas = nullptr;
     EntitySearchDock* m_searchDock = nullptr;
     EntityInspector* m_inspectorDock = nullptr;
+    VisZoneDock* m_visZoneDock = nullptr;
+    std::shared_ptr<VisZoneManager> m_visZoneManager;
 
     // Floor UI Controls
     QComboBox* m_floorCombo = nullptr;

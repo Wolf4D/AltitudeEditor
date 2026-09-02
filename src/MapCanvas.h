@@ -3,6 +3,7 @@
 
 #include "FPSCData.h"
 #include "UniverseDBUParser.h"
+#include "VisZoneManager.h"
 #include <QWidget>
 #include <QPointF>
 #include <QTimer>
@@ -69,6 +70,14 @@ public slots:
     bool showPortals() const { return m_showPortals; }
     void setPortals(const std::vector<DBUPortal>& portals, const std::vector<DBUVisZone>& zones);
 
+    void setActiveVisZone(int zoneId);
+    int activeVisZone() const { return m_activeVisZoneId; }
+    void setVisZoneCulling(bool enable, float dimOpacity = 0.0f);
+    bool visZoneCulling() const { return m_cullInactiveVisZones; }
+    float visZoneDimOpacity() const { return m_visZoneDimOpacity; }
+    void setVisZoneManager(std::shared_ptr<VisZoneManager> mgr);
+    std::shared_ptr<VisZoneManager> visZoneManager() const { return m_visZoneManager; }
+
 signals:
     void floorChanged(int floor);
     void entitySelected(int index);
@@ -76,6 +85,7 @@ signals:
     void entityDeleteRequested(int index);
     void hoverInfoChanged(const QString& info);
     void zoomChanged(float zoom);
+    void visZoneSelected(int zoneId);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -141,6 +151,11 @@ private:
     bool m_showPortals = false;
     std::vector<DBUPortal> m_portals;
     std::vector<DBUVisZone> m_zones;
+
+    std::shared_ptr<VisZoneManager> m_visZoneManager;
+    int m_activeVisZoneId = -1; // -1 = Show All (normal)
+    bool m_cullInactiveVisZones = false;
+    float m_visZoneDimOpacity = 0.0f; // 0.0f = completely hide, 0.15f = dimmed ghost
 
     QTimer m_animTimer;
     float m_animPhase = 0.0f;

@@ -41,6 +41,10 @@ void MapCanvas::setMap(std::shared_ptr<FPSCMap> map) {
     m_map = map;
     m_selectedEntityIndex = -1;
     m_hoveredEntityIndex = -1;
+    m_activeVisZoneId = -1;
+    if (m_visZoneManager && m_map) {
+        m_visZoneManager->buildFromMap(m_map);
+    }
     if (m_map) {
         m_currentFloor = qBound(0, m_map->activeEditorLayer, m_map->header.layerMax);
         emit floorChanged(m_currentFloor);
@@ -229,8 +233,8 @@ void MapCanvas::renderMap(QPainter& p) {
         drawEntities(p);
     }
 
-    // 7. Portals & VisZones (from compiled universe.dbu)
-    if (m_showPortals) {
+    // 7. Portals & VisZones (from compiled universe.dbu or topological zones)
+    if (m_showPortals || m_activeVisZoneId >= 0) {
         drawPortals(p);
     }
 
@@ -333,6 +337,19 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
         for (int x = 0; x < cols; ++x) {
             int segId = m_map->gridBlocks[layer][y][x];
             if (segId <= 0) continue;
+
+            // Visibility Zone Isolation / Culling
+            float cellOpacity = opacity;
+            if (m_activeVisZoneId >= 0 && m_cullInactiveVisZones && m_visZoneManager) {
+                bool inZone = m_visZoneManager->isTileInZone(m_activeVisZoneId, layer, x, y);
+                if (!inZone) {
+                    if (m_visZoneDimOpacity <= 0.001f) {
+                        continue; // Strictly hidden!
+                    }
+                    cellOpacity = opacity * m_visZoneDimOpacity;
+                }
+            }
+            p.setOpacity(cellOpacity);
 
             auto it = m_map->segments.find(segId);
             if (it == m_map->segments.end()) continue;
@@ -522,6 +539,14 @@ void MapCanvas::drawZonesAndLights(QPainter& p) {
         const PlacedEntity& ent = m_map->placedEntities[i];
         if (ent.floorLayer != m_currentFloor) continue;
 
+        // Visibility Zone Isolation / Culling
+        if (m_activeVisZoneId >= 0 && m_cullInactiveVisZones && m_visZoneManager) {
+            bool inZone = m_visZoneManager->isEntityInZone(m_activeVisZoneId, i);
+            if (!inZone && m_visZoneDimOpacity <= 0.001f) {
+                continue;
+            }
+        }
+
         QPointF entScreen = worldToScreen(QPointF(ent.x, -ent.z));
 
         // Draw Light Source Radiant Halo
@@ -567,6 +592,19 @@ void MapCanvas::drawEntities(QPainter& p) {
     for (int i = 0; i < m_map->placedEntities.size(); ++i) {
         const PlacedEntity& ent = m_map->placedEntities[i];
         if (ent.floorLayer != m_currentFloor) continue;
+
+        // Visibility Zone Isolation / Culling
+        float entOpacity = 1.0f;
+        if (m_activeVisZoneId >= 0 && m_cullInactiveVisZones && m_visZoneManager) {
+            bool inZone = m_visZoneManager->isEntityInZone(m_activeVisZoneId, i);
+            if (!inZone) {
+                if (m_visZoneDimOpacity <= 0.001f) {
+                    continue; // Strictly hidden!
+                }
+                entOpacity = m_visZoneDimOpacity;
+            }
+        }
+        p.setOpacity(entOpacity);
 
         QPointF entScreen = worldToScreen(QPointF(ent.x, -ent.z));
         bool isSelected = (i == m_selectedEntityIndex);
@@ -852,6 +890,33 @@ void MapCanvas::mousePressEvent(QMouseEvent* event) {
             }
         }
 
+        // 1b. Check if clicking on a portal line to navigate across zones
+        if (m_visZoneManager && (m_showPortals || m_activeVisZoneId >= 0)) {
+            for (const auto& portal : m_visZoneManager->portals()) {
+                if (portal.floor != m_currentFloor) continue;
+                QPointF p1 = worldToScreen(portal.lineWorld.p1());
+                QPointF p2 = worldToScreen(portal.lineWorld.p2());
+                float segLen = std::hypot(p2.x() - p1.x(), p2.y() - p1.y());
+                if (segLen > 0.1f) {
+                    QPointF mPos = event->pos();
+                    float u = ((mPos.x() - p1.x()) * (p2.x() - p1.x()) + (mPos.y() - p1.y()) * (p2.y() - p1.y())) / (segLen * segLen);
+                    if (u >= -0.05f && u <= 1.05f) {
+                        QPointF proj = p1 + qBound(0.0f, u, 1.0f) * (p2 - p1);
+                        float dist = std::hypot(mPos.x() - proj.x(), mPos.y() - proj.y());
+                        if (dist < 10.0f) {
+                            int targetZone = (portal.zoneA == m_activeVisZoneId) ? portal.zoneB : portal.zoneA;
+                            if (targetZone >= 0) {
+                                setActiveVisZone(targetZone);
+                                emit visZoneSelected(targetZone);
+                                event->accept();
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // 2. Otherwise perform entity selection
         QPointF worldPos = screenToWorld(event->pos());
         int clickedEntity = -1;
@@ -1091,6 +1156,16 @@ void MapCanvas::wheelEvent(QWheelEvent* event) {
 
 void MapCanvas::keyPressEvent(QKeyEvent* event) {
     switch (event->key()) {
+        case Qt::Key_Escape:
+            if (m_activeVisZoneId >= 0 || m_cullInactiveVisZones) {
+                setActiveVisZone(-1);
+                setVisZoneCulling(false, 0.0f);
+                emit visZoneSelected(-1);
+            }
+            if (m_selectedEntityIndex >= 0) {
+                selectEntity(-1);
+            }
+            break;
         case Qt::Key_Delete:
         case Qt::Key_Backspace:
             if (m_selectedEntityIndex >= 0) {
@@ -1159,27 +1234,122 @@ void MapCanvas::setPortals(const std::vector<DBUPortal>& portals, const std::vec
     update();
 }
 
+void MapCanvas::setActiveVisZone(int zoneId) {
+    if (m_activeVisZoneId != zoneId) {
+        m_activeVisZoneId = zoneId;
+        if (m_visZoneManager && zoneId >= 0) {
+            const VisZone* z = m_visZoneManager->getZone(zoneId);
+            if (z && z->floor != m_currentFloor) {
+                setFloor(z->floor);
+            }
+        }
+        update();
+    }
+}
+
+void MapCanvas::setVisZoneCulling(bool enable, float dimOpacity) {
+    m_cullInactiveVisZones = enable;
+    m_visZoneDimOpacity = qBound(0.0f, dimOpacity, 1.0f);
+    update();
+}
+
+void MapCanvas::setVisZoneManager(std::shared_ptr<VisZoneManager> mgr) {
+    m_visZoneManager = mgr;
+    if (m_visZoneManager && m_map) {
+        m_visZoneManager->buildFromMap(m_map);
+    }
+    update();
+}
+
 void MapCanvas::drawPortals(QPainter& p) {
     if (!m_map) return;
 
     p.save();
-    
-    // 1. Render Doorway Portals on current floor
-    for (const auto& ent : m_map->placedEntities) {
-        if (ent.floorLayer != m_currentFloor) continue;
 
-        QString name = ent.instanceName.toLower();
-        bool isDoor = false;
-        
-        if (name.contains("door") || name.contains("gate") || name.contains("portal")) {
-            isDoor = true;
+    // 0. Render Active VisZone Contour & Tile Tint
+    if (m_visZoneManager && m_activeVisZoneId >= 0) {
+        const VisZone* curZone = m_visZoneManager->getZone(m_activeVisZoneId);
+        if (curZone && curZone->floor == m_currentFloor) {
+            p.save();
+            QColor zColor = curZone->color;
+            zColor.setAlpha(35);
+            p.setBrush(zColor);
+            p.setPen(QPen(curZone->color, 2.5f, Qt::DashLine));
+            for (const auto& tile : curZone->tiles) {
+                QRectF cr = getCellRectScreen(tile.x(), tile.y());
+                p.drawRect(cr);
+            }
+            p.restore();
         }
-        
-        if (ent.bankIndex > 0 && ent.bankIndex <= m_map->entityProfiles.size()) {
-            const auto& prof = m_map->entityProfiles.value(ent.bankIndex);
-            if (prof) {
-                QString path = prof->relPath.toLower();
-                path.replace("outdoor", ""); // Don't match 'outdoor' rocks
+    }
+
+    // 0b. Render Topo Portals from VisZoneManager
+    if (m_visZoneManager) {
+        for (const auto& portal : m_visZoneManager->portals()) {
+            if (portal.floor != m_currentFloor) continue;
+
+            QPointF p1 = worldToScreen(portal.lineWorld.p1());
+            QPointF p2 = worldToScreen(portal.lineWorld.p2());
+
+            bool isConnectedToActive = (m_activeVisZoneId >= 0) &&
+                                       (portal.zoneA == m_activeVisZoneId || portal.zoneB == m_activeVisZoneId);
+
+            if (m_activeVisZoneId >= 0 && m_cullInactiveVisZones) {
+                if (!isConnectedToActive) {
+                    if (m_visZoneDimOpacity <= 0.001f) continue;
+                    p.setOpacity(m_visZoneDimOpacity);
+                } else {
+                    p.setOpacity(1.0f);
+                }
+            } else {
+                p.setOpacity(1.0f);
+            }
+
+            QColor pColor = isConnectedToActive ? QColor(0, 255, 180, 240) : QColor(0, 185, 255, 180);
+            float pWidth = isConnectedToActive ? 4.5f : 2.5f;
+
+            p.setPen(QPen(pColor, pWidth, Qt::SolidLine, Qt::RoundCap));
+            p.drawLine(p1, p2);
+
+            // Perpendicular ticks
+            QPointF dir = (p2 - p1);
+            float len = std::hypot(dir.x(), dir.y());
+            if (len > 0.1f) {
+                QPointF perp(-dir.y() / len * 6.0f, dir.x() / len * 6.0f);
+                p.drawLine(p1 - perp, p1 + perp);
+                p.drawLine(p2 - perp, p2 + perp);
+            }
+
+            // Portal Label
+            QPointF centerScreen = (p1 + p2) * 0.5f;
+            p.setFont(QFont("Segoe UI", 8, QFont::Bold));
+            p.setPen(isConnectedToActive ? QColor(50, 255, 200) : QColor(150, 220, 255));
+            if (m_activeVisZoneId >= 0) {
+                int otherZone = (portal.zoneA == m_activeVisZoneId) ? portal.zoneB : portal.zoneA;
+                p.drawText(centerScreen + QPointF(6, -6), QString("Portal -> Zone %1").arg(otherZone + 1));
+            } else {
+                p.drawText(centerScreen + QPointF(6, -6), QString("Portal (Z%1 <-> Z%2)").arg(portal.zoneA + 1).arg(portal.zoneB + 1));
+            }
+        }
+    }
+    
+    // 1. Render Doorway Portals on current floor (if VisZoneManager not active)
+    if (!m_visZoneManager) {
+        for (const auto& ent : m_map->placedEntities) {
+            if (ent.floorLayer != m_currentFloor) continue;
+
+            QString name = ent.instanceName.toLower();
+            bool isDoor = false;
+            
+            if (name.contains("door") || name.contains("gate") || name.contains("portal")) {
+                isDoor = true;
+            }
+            
+            if (ent.bankIndex > 0 && ent.bankIndex <= m_map->entityProfiles.size()) {
+                const auto& prof = m_map->entityProfiles.value(ent.bankIndex);
+                if (prof) {
+                    QString path = prof->relPath.toLower();
+                    path.replace("outdoor", ""); // Don't match 'outdoor' rocks
                 if (path.contains("door") || path.contains("gate") || path.contains("portal")) {
                     isDoor = true;
                 }
@@ -1226,19 +1396,6 @@ void MapCanvas::drawPortals(QPainter& p) {
             p.drawText(centerScreen + QPointF(6, -6), QStringLiteral("Portal (Door)"));
         }
     }
-
-    // 2. Render DBU Internal Portals (if loaded from level universe.dbu)
-    for (const auto& dbuP : m_portals) {
-        if (dbuP.isExteriorHull) continue;
-        if (!dbuP.box.intersectsLayer(m_currentFloor)) continue;
-
-        QPointF p1 = worldToScreen(QPointF(dbuP.box.minX, -dbuP.box.minZ));
-        QPointF p2 = worldToScreen(QPointF(dbuP.box.maxX, -dbuP.box.maxZ));
-        if (QLineF(p1, p2).length() < 2.0f) continue;
-
-        QColor portalBlue(0, 185, 255, 200);
-        p.setPen(QPen(portalBlue, 3.0f, Qt::SolidLine, Qt::RoundCap));
-        p.drawLine(p1, p2);
     }
 
     // 3. Render Real Leaks from PortalLeakAnalyzer on current floor
@@ -1275,6 +1432,13 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
         for (int x = 0; x < cols; ++x) {
             int oId = m_map->gridOverlays[m_currentFloor][y][x];
             if (oId <= 0) continue;
+
+            if (m_activeVisZoneId >= 0 && m_cullInactiveVisZones && m_visZoneManager) {
+                bool inZone = m_visZoneManager->isTileInZone(m_activeVisZoneId, m_currentFloor, x, y);
+                if (!inZone && m_visZoneDimOpacity <= 0.001f) {
+                    continue;
+                }
+            }
 
             auto it = m_map->segments.find(oId);
             if (it != m_map->segments.end()) {

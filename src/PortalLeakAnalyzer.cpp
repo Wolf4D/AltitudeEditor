@@ -24,6 +24,7 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::analyze() {
     checkVerticalGaps();
     checkCoplanarOverlaps();
     checkCornerGaps();
+    checkGroundModeMismatches();
 
     return m_warnings;
 }
@@ -133,6 +134,12 @@ bool PortalLeakAnalyzer::isCeilingAt(int layer, int x, int y) {
     
     int segId = m_map->gridBlocks[layer][y][x];
     if (segId <= 0 || segId > m_map->segmentsBank.size()) return false;
+
+    // In FPS Creator, ground == 2 is an auto-generated ceiling/roof slab
+    if (layer < m_map->gridGround.size() && y < m_map->gridGround[layer].size() && x < m_map->gridGround[layer][y].size()) {
+        if (m_map->gridGround[layer][y][x] == 2) return true;
+    }
+
     return m_segmentInfoCache.value(segId - 1).isCeiling;
 }
 
@@ -275,3 +282,102 @@ void PortalLeakAnalyzer::checkCornerGaps() {
     }
 }
 
+void PortalLeakAnalyzer::checkGroundModeMismatches() {
+    if (!m_map) return;
+    int layers = m_map->gridBlocks.size();
+
+    auto isWallPresent = [](int maptile, int rot, int side) -> bool {
+        if (maptile <= 0 || maptile == 6) return false;
+        static const bool baseWalls[16][4] = {
+            {0, 0, 0, 0}, // 0: none
+            {1, 1, 1, 1}, // 1: 4 walls
+            {1, 0, 1, 1}, // 2: 3 walls (no East)
+            {1, 0, 0, 1}, // 3: 2 walls corner (North + West)
+            {1, 0, 1, 0}, // 4: 2 walls opposite (North + South)
+            {1, 0, 0, 0}, // 5: 1 wall (North)
+            {0, 0, 0, 0}, // 6: 0 walls (floor only)
+            {0, 0, 0, 0}, // 7: corner
+            {0, 0, 0, 0}, // 8: corner
+            {0, 0, 0, 0}, // 9: corner
+            {0, 0, 0, 0}, // 10: corner
+            {0, 0, 0, 0}, // 11: corner
+            {1, 0, 0, 0}, // 12: straight
+            {1, 0, 0, 0}, // 13: straight
+            {1, 0, 0, 0}, // 14: straight
+            {1, 0, 0, 1}  // 15: corner
+        };
+        int unrotatedSide = (side - (rot & 3) + 4) % 4;
+        if (maptile >= 0 && maptile < 16) {
+            return baseWalls[maptile][unrotatedSide];
+        }
+        return false;
+    };
+
+    for (int layer = 0; layer < layers; ++layer) {
+        if (layer >= m_map->gridGround.size()) break;
+        int rows = m_map->gridBlocks[layer].size();
+        for (int y = 0; y < rows; ++y) {
+            int cols = m_map->gridBlocks[layer][y].size();
+            for (int x = 0; x < cols; ++x) {
+                int segA = m_map->gridBlocks[layer][y][x];
+                if (segA <= 0) continue;
+                int gA = m_map->gridGround[layer][y][x];
+                int tileA = (layer < m_map->gridTileType.size() && y < m_map->gridTileType[layer].size())
+                            ? m_map->gridTileType[layer][y][x] : 0;
+                int rotA = m_map->gridRotation[layer][y][x];
+
+                // Check East neighbor (side 1)
+                if (x + 1 < cols) {
+                    int segB = m_map->gridBlocks[layer][y][x + 1];
+                    if (segB > 0) {
+                        int gB = m_map->gridGround[layer][y][x + 1];
+                        if ((gA <= 1 && gB >= 2) || (gA >= 2 && gB <= 1)) {
+                            int tileB = m_map->gridTileType[layer][y][x + 1];
+                            int rotB = m_map->gridRotation[layer][y][x + 1];
+                            bool wallA = isWallPresent(tileA, rotA, 1); // East wall of cell A
+                            bool wallB = isWallPresent(tileB, rotB, 3); // West wall of cell B
+                            if (!wallA && !wallB) {
+                                // Open passage between Interior and Exterior/Roof!
+                                PortalLeakWarning w;
+                                w.severity = PortalLeakWarning::WARNING;
+                                w.type = "Mismatched Ground Mode (Portal Blocker Risk)";
+                                w.layer = layer; w.x = x; w.y = y;
+                                w.description = QString("Open passage between (%1, %2) [%3] and East (%4, %5) [%6] mixes Interior (ground %7) and Exterior/Roof (ground %8). FPS Creator engine will leave outer walls visible, potentially sealing the portal.")
+                                                .arg(x).arg(y).arg(gA <= 1 ? "Interior" : "Roof/Exterior")
+                                                .arg(x + 1).arg(y).arg(gB <= 1 ? "Interior" : "Roof/Exterior")
+                                                .arg(gA).arg(gB);
+                                m_warnings.push_back(w);
+                            }
+                        }
+                    }
+                }
+
+                // Check South neighbor (side 2)
+                if (y + 1 < rows) {
+                    int segB = m_map->gridBlocks[layer][y + 1][x];
+                    if (segB > 0) {
+                        int gB = m_map->gridGround[layer][y + 1][x];
+                        if ((gA <= 1 && gB >= 2) || (gA >= 2 && gB <= 1)) {
+                            int tileB = m_map->gridTileType[layer][y + 1][x];
+                            int rotB = m_map->gridRotation[layer][y + 1][x];
+                            bool wallA = isWallPresent(tileA, rotA, 2); // South wall of cell A
+                            bool wallB = isWallPresent(tileB, rotB, 0); // North wall of cell B
+                            if (!wallA && !wallB) {
+                                // Open passage between Interior and Exterior/Roof!
+                                PortalLeakWarning w;
+                                w.severity = PortalLeakWarning::WARNING;
+                                w.type = "Mismatched Ground Mode (Portal Blocker Risk)";
+                                w.layer = layer; w.x = x; w.y = y;
+                                w.description = QString("Open passage between (%1, %2) [%3] and South (%4, %5) [%6] mixes Interior (ground %7) and Exterior/Roof (ground %8). FPS Creator engine will leave outer walls visible, potentially sealing the portal.")
+                                                .arg(x).arg(y).arg(gA <= 1 ? "Interior" : "Roof/Exterior")
+                                                .arg(x).arg(y + 1).arg(gB <= 1 ? "Interior" : "Roof/Exterior")
+                                                .arg(gA).arg(gB);
+                                m_warnings.push_back(w);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

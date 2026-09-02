@@ -26,6 +26,8 @@ set(SOURCES
     src/PortalLeakAnalyzer.cpp
     src/PortalLeakDialog.cpp
     src/UniverseDBUParser.cpp
+    src/VisZoneManager.cpp
+    src/VisZoneDock.cpp
 )
 
 set(MANIFEST_OBJ "${CMAKE_CURRENT_SOURCE_DIR}/src/app_manifest.o")
@@ -46,6 +48,8 @@ set(HEADERS
     src/PortalLeakAnalyzer.h
     src/PortalLeakDialog.h
     src/UniverseDBUParser.h
+    src/VisZoneManager.h
+    src/VisZoneDock.h
     src/miniz_deflate.h
 )
 
@@ -66,6 +70,7 @@ add_executable(test_standalone
     src/MemoryAnalyzer.cpp
     src/PortalLeakAnalyzer.cpp
     src/UniverseDBUParser.cpp
+    src/VisZoneManager.cpp
 )
 target_link_libraries(test_standalone PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets)
 

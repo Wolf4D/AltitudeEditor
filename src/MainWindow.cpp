@@ -25,6 +25,9 @@ MainWindow::MainWindow(QWidget* parent)
     m_canvas = new MapCanvas(this);
     setCentralWidget(m_canvas);
 
+    m_visZoneManager = std::make_shared<VisZoneManager>();
+    m_canvas->setVisZoneManager(m_visZoneManager);
+
     // Left Dock: Entity Search
     m_searchDock = new EntitySearchDock(this);
     m_searchDock->setMinimumWidth(260);
@@ -34,6 +37,12 @@ MainWindow::MainWindow(QWidget* parent)
     m_inspectorDock = new EntityInspector(this);
     m_inspectorDock->setMinimumWidth(330);
     addDockWidget(Qt::RightDockWidgetArea, m_inspectorDock);
+
+    // Right Dock 2: Visibility Zones (PVS / Portals)
+    m_visZoneDock = new VisZoneDock(this);
+    m_visZoneDock->setVisZoneManager(m_visZoneManager);
+    m_visZoneDock->setMinimumWidth(320);
+    addDockWidget(Qt::RightDockWidgetArea, m_visZoneDock);
 
     createMenusAndToolbars();
 
@@ -49,6 +58,11 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_inspectorDock, &EntityInspector::entityModified, this, &MainWindow::onEntityModified);
     connect(m_canvas, &MapCanvas::entityModified, this, &MainWindow::onEntityModified);
     connect(m_canvas, &MapCanvas::entityDeleteRequested, this, &MainWindow::deleteEntity);
+
+    connect(m_visZoneDock, &VisZoneDock::zoneSelected, m_canvas, &MapCanvas::setActiveVisZone);
+    connect(m_visZoneDock, &VisZoneDock::isolationChanged, m_canvas, &MapCanvas::setVisZoneCulling);
+    connect(m_visZoneDock, &VisZoneDock::entitySelected, this, &MainWindow::onEntitySelected);
+    connect(m_canvas, &MapCanvas::visZoneSelected, m_visZoneDock, &VisZoneDock::onExternalZoneSelected);
 
     // Status bar setup
     m_statusMapName = new QLabel(QStringLiteral("No map loaded"), this);
@@ -143,10 +157,27 @@ void MainWindow::createMenusAndToolbars() {
     viewMenu->addSeparator();
     viewMenu->addAction(m_searchDock->toggleViewAction());
     viewMenu->addAction(m_inspectorDock->toggleViewAction());
+    viewMenu->addAction(m_visZoneDock->toggleViewAction());
+
+    QMenu* portalsMenu = menuBar()->addMenu(QStringLiteral("&Portals"));
+    portalsMenu->addAction(QStringLiteral("👁 &Visibility Zones & Portals Panel (PVS)..."), this, [this]() {
+        m_visZoneDock->show();
+        m_visZoneDock->raise();
+        m_visZoneDock->activateWindow();
+    }, QKeySequence(Qt::CTRL + Qt::Key_P));
+    portalsMenu->addAction(QStringLiteral("🔄 &Show All Zones (Normal View)"), m_visZoneDock, &VisZoneDock::resetToNormalView, QKeySequence(Qt::Key_Escape));
+    portalsMenu->addSeparator();
+    portalsMenu->addAction(m_actShowPortals);
+    portalsMenu->addAction(QStringLiteral("&Portal Leak Detector..."), this, &MainWindow::onOpenPortalLeakDetector);
 
     QMenu* toolsMenu = menuBar()->addMenu(QStringLiteral("&Tools"));
     QAction* actMem = toolsMenu->addAction(QStringLiteral("&Entity Memory Analyzer (MB)..."), this, &MainWindow::onOpenMemoryAnalyzer, QKeySequence(Qt::CTRL + Qt::Key_M));
     toolsMenu->addAction(QStringLiteral("&Portal Leak Detector..."), this, &MainWindow::onOpenPortalLeakDetector);
+    toolsMenu->addAction(QStringLiteral("&Visibility Zones & Portals Panel (PVS)..."), this, [this]() {
+        m_visZoneDock->show();
+        m_visZoneDock->raise();
+        m_visZoneDock->activateWindow();
+    });
 
     QMenu* helpMenu = menuBar()->addMenu(QStringLiteral("&Help"));
     helpMenu->addAction(QStringLiteral("&About FPS Creator Map Viewer..."), this, [this]() {
@@ -208,6 +239,25 @@ void MainWindow::createMenusAndToolbars() {
     mainBar->addAction(m_actFloorTex);
     mainBar->addAction(m_actEntities);
     mainBar->addAction(m_actShowPortals);
+
+    QAction* actVisZone = mainBar->addAction(QStringLiteral("👁 VisZones (PVS)"));
+    actVisZone->setCheckable(true);
+    actVisZone->setChecked(false);
+    actVisZone->setToolTip(QStringLiteral("Toggle Visibility Zones (PVS) & Portals inspection panel"));
+    connect(actVisZone, &QAction::toggled, this, [this](bool checked) {
+        if (checked) {
+            m_visZoneDock->show();
+            m_visZoneDock->raise();
+            m_visZoneDock->activateWindow();
+        } else {
+            m_visZoneDock->resetToNormalView();
+            m_visZoneDock->hide();
+        }
+    });
+    connect(m_visZoneDock, &QDockWidget::visibilityChanged, actVisZone, &QAction::setChecked);
+
+    QAction* actResetZones = mainBar->addAction(QStringLiteral("🔄 Normal View"), m_visZoneDock, &VisZoneDock::resetToNormalView);
+    actResetZones->setToolTip(QStringLiteral("Show all zones (Exit isolation mode / Escape)"));
     mainBar->addSeparator();
 
     // Memory Analyzer Launch Button
@@ -382,6 +432,9 @@ void MainWindow::loadMapFile(const QString& filePath) {
     m_searchDock->setCurrentFloor(m_canvas->currentFloor());
     m_searchDock->setMap(m_currentMap);
     m_inspectorDock->clear();
+    if (m_visZoneDock) {
+        m_visZoneDock->setMap(m_currentMap);
+    }
 
     // Save to Recent Maps list in QSettings
     QSettings settings(QStringLiteral("TGC"), QStringLiteral("FPSCMapViewer"));
@@ -509,6 +562,9 @@ void MainWindow::onCanvasFloorChanged(int floor) {
     m_isUpdatingFloorUI = false;
 
     m_searchDock->setCurrentFloor(floor);
+    if (m_visZoneDock) {
+        m_visZoneDock->onFloorChanged(floor);
+    }
     updateStatusBar();
 }
 
