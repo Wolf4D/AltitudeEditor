@@ -1261,16 +1261,37 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
             int rot = m_map->gridOverlayRotation[m_currentFloor][y][x] & 3;
             QRectF cellRect = getCellRectScreen(x, y);
 
+            int nx = x, ny = y;
+            switch (rot) {
+                case 0: ny -= 1; break;
+                case 1: nx += 1; break;
+                case 2: ny += 1; break;
+                case 3: nx -= 1; break;
+            }
+
+            bool hasDoubleWall = false;
+            if (ny >= 0 && ny < rows && nx >= 0 && nx < cols) {
+                if (m_map->gridBlocks[m_currentFloor][ny][nx] > 0) {
+                    hasDoubleWall = true;
+                }
+            }
+
             QRectF cutoutRect;
             // rot: 0 = North edge, 1 = East edge, 2 = South edge, 3 = West edge
             if (rot == 0) {
-                cutoutRect = QRectF(cellRect.left() + cellRect.width() * 0.18f, cellRect.top(), cellRect.width() * 0.64f, wallRibbon);
+                float topY = hasDoubleWall ? (cellRect.top() - wallRibbon) : cellRect.top();
+                float h = hasDoubleWall ? (2.0f * wallRibbon) : wallRibbon;
+                cutoutRect = QRectF(cellRect.left() + cellRect.width() * 0.18f, topY, cellRect.width() * 0.64f, h);
             } else if (rot == 1) {
-                cutoutRect = QRectF(cellRect.right() - wallRibbon, cellRect.top() + cellRect.height() * 0.18f, wallRibbon, cellRect.height() * 0.64f);
+                float w = hasDoubleWall ? (2.0f * wallRibbon) : wallRibbon;
+                cutoutRect = QRectF(cellRect.right() - wallRibbon, cellRect.top() + cellRect.height() * 0.18f, w, cellRect.height() * 0.64f);
             } else if (rot == 2) {
-                cutoutRect = QRectF(cellRect.left() + cellRect.width() * 0.18f, cellRect.bottom() - wallRibbon, cellRect.width() * 0.64f, wallRibbon);
+                float h = hasDoubleWall ? (2.0f * wallRibbon) : wallRibbon;
+                cutoutRect = QRectF(cellRect.left() + cellRect.width() * 0.18f, cellRect.bottom() - wallRibbon, cellRect.width() * 0.64f, h);
             } else {
-                cutoutRect = QRectF(cellRect.left(), cellRect.top() + cellRect.height() * 0.18f, wallRibbon, cellRect.height() * 0.64f);
+                float leftX = hasDoubleWall ? (cellRect.left() - wallRibbon) : cellRect.left();
+                float w = hasDoubleWall ? (2.0f * wallRibbon) : wallRibbon;
+                cutoutRect = QRectF(leftX, cellRect.top() + cellRect.height() * 0.18f, w, cellRect.height() * 0.64f);
             }
 
             // 1. Draw Void / Cutout Hole Fill
