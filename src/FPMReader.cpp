@@ -184,12 +184,18 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
     // Allocate 3D grid
     map->gridBlocks.resize(layers);
     map->gridRotation.resize(layers);
+    map->gridOverlays.resize(layers);
+    map->gridOverlayRotation.resize(layers);
     for (int l = 0; l < layers; ++l) {
         map->gridBlocks[l].resize(rows);
         map->gridRotation[l].resize(rows);
+        map->gridOverlays[l].resize(rows);
+        map->gridOverlayRotation[l].resize(rows);
         for (int y = 0; y < rows; ++y) {
             map->gridBlocks[l][y].fill(0, cols);
             map->gridRotation[l][y].fill(0, cols);
+            map->gridOverlays[l][y].fill(0, cols);
+            map->gridOverlayRotation[l][y].fill(0, cols);
         }
     }
 
@@ -252,33 +258,34 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
             int cellsToRead = qMin(totalCells, availCells);
 
             for (int i = 0; i < cellsToRead; ++i) {
+                int layer = i % layers;
+                int rem = i / layers;
+                int x = rem % cols;
+                int y = rem / cols;
+
+                // 1. Read Base Segment Block
                 int32_t mapid = bStream[i * 2 + 1];
                 if (mapid != 0) {
-                    // DBP column-major 3D array indexing:
-                    int layer = i % layers;
-                    int rem = i / layers;
-                    int x = rem % cols;
-                    int y = rem / cols;
-
-                    // Bitfield extraction according to FPSC-Game.DBA:
-                    // mapselection (bits 20..31): segment bank 1-based index
-                    // maprotate (bits 12..13): cell rotation (0=0 deg, 1=90 deg, 2=180 deg, 3=270 deg)
                     int segId = (mapid >> 20) & 0xFFF;
                     int rotVal = (mapid >> 12) & 0x3;
-
-                    if (oStream && i * 2 + 1 < (oData.size() - 8) / 4) {
-                        int32_t oMapId = oStream[i * 2 + 1];
-                        if (oMapId != 0) {
-                            rotVal = (oMapId >> 12) & 0x3;
-                            if (rotVal == 0 && (oMapId & 0x3) != 0) {
-                                rotVal = oMapId & 0x3;
-                            }
-                        }
-                    }
-
                     if (layer < layers && y < rows && x < cols && segId > 0) {
                         map->gridBlocks[layer][y][x] = segId;
                         map->gridRotation[layer][y][x] = rotVal & 3;
+                    }
+                }
+
+                // 2. Read Overlay / CSG Wall Cutout (Doorways, Windows, Slits, Holes)
+                if (oStream && i * 2 + 1 < (oData.size() - 8) / 4) {
+                    int32_t oMapId = oStream[i * 2 + 1];
+                    if (oMapId != 0) {
+                        int oSegId = (oMapId >> 20) & 0xFFF;
+                        int oRotVal = (oMapId >> 12) & 0x3;
+                        int oTile = oMapId & 0xF;
+                        int oCutoutType = (oSegId > 0) ? oSegId : (oTile > 0 ? oTile : 1);
+                        if (layer < layers && y < rows && x < cols) {
+                            map->gridOverlays[layer][y][x] = oCutoutType;
+                            map->gridOverlayRotation[layer][y][x] = oRotVal & 3;
+                        }
                     }
                 }
             }

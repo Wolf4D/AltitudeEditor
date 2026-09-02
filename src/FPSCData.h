@@ -254,6 +254,10 @@ struct FPSCMap {
     // Layer 0..layerMax, Y 0..maxY, X 0..maxX
     QVector<QVector<QVector<int>>> gridBlocks;
     QVector<QVector<QVector<int>>> gridRotation; // 0, 1, 2, 3
+
+    // 3D Overlay Grid: [Layer][Y][X] -> Overlay ID / CSG Cutout
+    QVector<QVector<QVector<int>>> gridOverlays;
+    QVector<QVector<QVector<int>>> gridOverlayRotation;
     
     QVector<PlacedEntity> placedEntities;
     QVector<AIWaypoint> waypoints;
