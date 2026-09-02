@@ -392,16 +392,7 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                     if (m_showFloorTextures) {
                         QPixmap surfacePx = AssetManager::instance().loadTexture(surfaceTex);
                         if (!surfacePx.isNull()) {
-                            if (rot == 0) {
-                                p.drawPixmap(cellRect.toRect(), surfacePx);
-                            } else {
-                                p.save();
-                                p.translate(cellRect.center());
-                                p.rotate(rot * 90.0);
-                                p.drawPixmap(-cellRect.width() / 2.0, -cellRect.height() / 2.0,
-                                             cellRect.width(), cellRect.height(), surfacePx);
-                                p.restore();
-                            }
+                            p.drawPixmap(cellRect.toRect(), surfacePx);
                         } else {
                             p.fillRect(cellRect, QColor(50, 55, 70));
                         }
