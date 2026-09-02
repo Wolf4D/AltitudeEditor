@@ -282,9 +282,10 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
             int availCells = (bData.size() - 8) / 8;
             int cellsToRead = qMin(totalCells, availCells);
 
-            int olayStride = map->header.olayListMax + 1;
-            const int32_t* lStream = (lData.size() >= 8) ? reinterpret_cast<const int32_t*>(lData.constData() + 8) : nullptr;
             int totalOlayElements = (lData.size() >= 8) ? (lData.size() - 8) / 8 : 0;
+            // In Dark Basic Pro: dim olaylist(olaylistmax, 50) as DWORD -> 51 entries per olayindex!
+            int olayStride = (totalOlayElements > 0) ? (totalOlayElements / 51) : 1;
+            const int32_t* lStream = (lData.size() >= 8) ? reinterpret_cast<const int32_t*>(lData.constData() + 8) : nullptr;
 
             for (int i = 0; i < cellsToRead; ++i) {
                 int layer = i % layers;
@@ -314,36 +315,30 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
                 // 2. Read Overlay / CSG Wall Cutout (Doorways, Windows, Slits, Holes)
                 if (oStream && i * 2 + 1 < (oData.size() - 8) / 4) {
                     int32_t oVal = oStream[i * 2 + 1];
-                    if (oVal != 0) {
+                    if (oVal > 0 && lStream && olayStride > 0) {
                         uint32_t chosenMapId = 0;
-                        if (oVal > 0 && lStream && olayStride > 0) {
-                            for (int ti = 0; ti <= 50; ++ti) {
-                                int elemIdx = oVal + ti * olayStride;
-                                if (elemIdx >= totalOlayElements) break;
-                                uint32_t val = static_cast<uint32_t>(lStream[elemIdx * 2 + 1]);
-                                if (val == 0) break;
-                                if (chosenMapId == 0) chosenMapId = val;
-                                int sId = (val >> 20) & 0xFFF;
-                                auto it = map->segments.find(sId);
-                                if (it != map->segments.end() && it.value()->hasPunch) {
-                                    chosenMapId = val; // Prioritize CSG punch cutout overlay!
-                                    break;
-                                }
+                        for (int ti = 0; ti <= 50; ++ti) {
+                            int elemIdx = oVal + ti * olayStride;
+                            if (elemIdx >= totalOlayElements) break;
+                            uint32_t val = static_cast<uint32_t>(lStream[elemIdx * 2 + 1]);
+                            if (val == 0) break;
+                            int sId = (val >> 20) & 0xFFF;
+                            auto it = map->segments.find(sId);
+                            if (it != map->segments.end() && it.value()->hasPunch) {
+                                chosenMapId = val; // Only real CSG punch segments (doors, windows, slits) are cutouts!
+                                break;
                             }
                         }
-                        if (chosenMapId == 0) {
-                            chosenMapId = static_cast<uint32_t>(oVal);
-                        }
 
-                        int oSegId = (chosenMapId >> 20) & 0xFFF;
-                        int oOrient = (chosenMapId >> 10) & 0x3;
-                        int oTile = chosenMapId & 0xF;
-                        int oCutoutType = (oSegId > 0) ? oSegId : (oTile > 0 ? oTile : 1);
-                        int effectiveEdge = oOrient & 3;
+                        if (chosenMapId != 0) {
+                            int oSegId = (chosenMapId >> 20) & 0xFFF;
+                            int oOrient = (chosenMapId >> 10) & 0x3;
+                            int effectiveEdge = oOrient & 3;
 
-                        if (layer < layers && y < rows && x < cols) {
-                            map->gridOverlays[layer][y][x] = oCutoutType;
-                            map->gridOverlayRotation[layer][y][x] = effectiveEdge;
+                            if (layer < layers && y < rows && x < cols) {
+                                map->gridOverlays[layer][y][x] = oSegId;
+                                map->gridOverlayRotation[layer][y][x] = effectiveEdge;
+                            }
                         }
                     }
                 }

@@ -1461,10 +1461,8 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
             }
 
             auto it = m_map->segments.find(oId);
-            if (it != m_map->segments.end()) {
-                if (!it.value()->hasPunch) {
-                    continue;
-                }
+            if (it == m_map->segments.end() || !it.value()->hasPunch) {
+                continue;
             }
 
             int effectiveRot = m_map->gridOverlayRotation[m_currentFloor][y][x] & 3;
