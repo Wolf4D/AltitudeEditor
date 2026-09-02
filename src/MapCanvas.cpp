@@ -383,14 +383,11 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
             // Roof slabs capping a room below do not have interior room walls
             bool drawWalls = !isCeilingSeg;
 
-            // A. Draw Floor / Ceiling Texture
+            // A. Draw Floor / Slab Top Surface Texture
             if (drawFloor) {
-                QString surfaceTex;
-                if (isCeilingSeg) {
-                    surfaceTex = !seg->roofTexture.isEmpty() ? seg->roofTexture : seg->floorTexture;
-                } else {
-                    surfaceTex = !seg->floorTexture.isEmpty() ? seg->floorTexture : seg->roofTexture;
-                }
+                // In top-down 2D view, the visible top surface of any slab is floorTexture.
+                // Only fall back to roofTexture if no top surface texture exists on the segment.
+                QString surfaceTex = !seg->floorTexture.isEmpty() ? seg->floorTexture : seg->roofTexture;
                 if (!surfaceTex.isEmpty()) {
                     if (m_showFloorTextures) {
                         QPixmap surfacePx = AssetManager::instance().loadTexture(surfaceTex);
