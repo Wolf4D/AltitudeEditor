@@ -152,25 +152,23 @@ std::shared_ptr<FPSCSegment> SegmentParser::parse(const QString& relPath, int se
         }
     }
 
-    // Determine if scenery or large rock
-    // Multi-story room wall extensions (Mid, Middle, Top, Upper) do not have floors
-    QString pathLower = relPath.toLower();
-    bool isWallExt = pathLower.contains("top") || pathLower.contains("upper") || pathLower.contains("_up") ||
-                     pathLower.contains("mid") || pathLower.contains("middle") || pathLower.contains("_mid");
-    bool isRoof = pathLower.contains("ceiling") || pathLower.contains("roof");
+    // Segment visibility state directly from .fps specification:
+    // visfloor defines whether this segment possesses a floor mesh limb (visfloor >= 0).
+    // visroof defines whether this segment possesses a roof/ceiling mesh limb (visroof >= 0).
+    seg->hasFloorOnThisLayer = (seg->visFloor >= 0);
+    seg->hasRoofOnThisLayer = (seg->visRoof >= 0);
 
-    if (isWallExt) {
-        seg->hasFloorOnThisLayer = false;
-        seg->hasRoofOnThisLayer = false;
-    } else if (isRoof) {
-        seg->hasFloorOnThisLayer = false;
-        seg->hasRoofOnThisLayer = true;
-    } else {
-        seg->hasFloorOnThisLayer = !seg->floorTexture.isEmpty();
-        seg->hasRoofOnThisLayer = false;
+    // Floor slab (groundmode == 2, e.g. ground.fps or techfloor1.fps) with single mesh
+    if (seg->parts.size() == 1 && seg->groundMode == 2) {
+        seg->hasFloorOnThisLayer = true;
+        if (seg->floorTexture.isEmpty() && !seg->parts[0].texture.isEmpty()) {
+            seg->floorTexture = seg->parts[0].texture;
+        }
     }
 
-    if (pathLower.contains("scenery") || pathLower.contains("rock") || pathLower.contains("cave") || pathLower.contains("outdoor")) {
+    // Pure scenery/prop object: single mesh without any wall or floor visibility indices
+    if (seg->parts.size() == 1 && seg->visFloor == -1 && seg->visRoof == -1 &&
+        seg->visWallB == -1 && seg->visWallR == -1 && seg->visWallF == -1 && seg->visWallL == -1) {
         seg->isScenery = true;
         if (seg->floorTexture.isEmpty() && !primaryWallTex.isEmpty()) {
             seg->floorTexture = primaryWallTex;

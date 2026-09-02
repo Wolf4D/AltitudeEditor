@@ -1,28 +1,38 @@
 #include <QApplication>
-#include <QPainter>
 #include <iostream>
 #include "FPMReader.h"
-#include "MapCanvas.h"
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
 
-    auto map = FPMReader::loadMap("C:/Program Files (x86)/The Game Creators/FPS Creator/Files/mapbank/leaks.fpm", "mypassword");
+    auto map = FPMReader::loadMap("C:/Program Files (x86)/The Game Creators/FPS Creator/Files/mapbank/1.fpm", "mypassword");
     if (!map) return 1;
 
-    MapCanvas canvas;
-    canvas.resize(1000, 700);
-    canvas.setMap(map);
-    canvas.setFloor(6);
-    canvas.setShowGhostLayer(true);
-
-    QPixmap px(1000, 700);
-    px.fill(QColor(20, 24, 30));
-    QPainter p(&px);
-    canvas.render(&p);
-    p.end();
-
-    px.save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/test_floor6_with_ghost_lower.png");
-    printf("Rendered test_floor6_with_ghost_lower.png successfully!\n");
+    for (int l = 5; l <= 7; ++l) {
+        int floorCount = 0;
+        int ceilingCount = 0;
+        int noFloorCount = 0;
+        for (int y = 0; y < map->gridBlocks[l].size(); ++y) {
+            for (int x = 0; x < map->gridBlocks[l][y].size(); ++x) {
+                int s = map->gridBlocks[l][y][x];
+                if (s > 0) {
+                    const auto& seg = map->segments[s];
+                    int sym = map->gridSymbol[l][y][x];
+                    int ground = map->gridGround[l][y][x];
+                    bool isCeilingSeg = (ground == 2) || (seg->groundMode == 2 && seg->hasRoofOnThisLayer) ||
+                                        (seg->visFloor == -1 && seg->visRoof >= 0);
+                    if (isCeilingSeg) {
+                        ceilingCount++;
+                    } else if (seg->hasFloorOnThisLayer && seg->visFloor >= 0 && sym != 1) {
+                        floorCount++;
+                    } else {
+                        noFloorCount++;
+                    }
+                }
+            }
+        }
+        printf("1.fpm layer %d: %d floors, %d ceilings, %d wall-only (no floor)\n",
+               l, floorCount, ceilingCount, noFloorCount);
+    }
     return 0;
 }

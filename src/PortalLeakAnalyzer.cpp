@@ -90,18 +90,8 @@ void PortalLeakAnalyzer::loadSegmentInfos() {
             }
             file.close();
             
-            if (hasViswall || fpsPath.toLower().contains("wall") || fpsPath.toLower().contains("solid")) {
+            if (hasViswall) {
                 info.isSolidWall = true;
-            }
-            if (fpsPath.toLower().contains("floor") || fpsPath.toLower().contains("ground")) {
-                info.isFloor = true;
-            }
-            if (fpsPath.toLower().contains("ceiling") || fpsPath.toLower().contains("roof")) {
-                info.isCeiling = true;
-            }
-            QString pathLower = fpsPath.toLower();
-            if (pathLower.contains("mid") || pathLower.contains("middle") || pathLower.contains("top") || pathLower.contains("upper")) {
-                info.isFloor = false;
             }
         }
         m_segmentInfoCache[i] = info;
@@ -124,6 +114,11 @@ bool PortalLeakAnalyzer::isFloorAt(int layer, int x, int y) {
     if (layer < 0 || layer >= m_map->gridBlocks.size()) return false;
     if (y < 0 || y >= m_map->gridBlocks[layer].size()) return false;
     if (x < 0 || x >= m_map->gridBlocks[layer][y].size()) return false;
+
+    // In FPS Creator engine, mapsymbol == 1 hides floor & roof!
+    if (layer < m_map->gridSymbol.size() && y < m_map->gridSymbol[layer].size() && x < m_map->gridSymbol[layer][y].size()) {
+        if (m_map->gridSymbol[layer][y][x] == 1) return false;
+    }
     
     int segId = m_map->gridBlocks[layer][y][x];
     if (segId <= 0 || segId > m_map->segmentsBank.size()) return false;

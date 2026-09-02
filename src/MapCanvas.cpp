@@ -361,19 +361,25 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
             int ground = (layer < m_map->gridGround.size() && y < m_map->gridGround[layer].size() && x < m_map->gridGround[layer][y].size())
                          ? m_map->gridGround[layer][y][x] : 0;
 
-            // In FPS Creator, ground == 2 is an auto-generated ceiling/roof slab placed on layer+1
-            bool isCeilingSeg = (ground == 2) ||
-                                seg->name.contains("ceiling", Qt::CaseInsensitive) ||
-                                seg->name.contains("roof", Qt::CaseInsensitive) ||
-                                (!seg->roofTexture.isEmpty() && seg->floorTexture.isEmpty());
+            // In FPS Creator, ground == 2 is an auto-generated ceiling/roof slab placed on layer+1.
+            // In .fps spec, groundMode == 2 and visRoof >= 0 or (visFloor == -1 && visRoof >= 0) defines a ceiling/roof slab.
+            bool isCeilingSeg = (ground == 2) || (seg->groundMode == 2 && seg->hasRoofOnThisLayer) ||
+                                (seg->visFloor == -1 && seg->visRoof >= 0);
 
             int symbol = (layer < m_map->gridSymbol.size() && y < m_map->gridSymbol[layer].size() && x < m_map->gridSymbol[layer][y].size())
                          ? m_map->gridSymbol[layer][y][x] : 0;
 
-            // Only draw floor if segment actually has a floor surface on this layer
-            // (wall extensions like Mid/Top do not have floors)
-            // and mapsymbol != 1 (symbol=1 in FPS Creator explicitly hides floor & roof)
-            bool drawFloor = (isCeilingSeg || seg->hasFloorOnThisLayer) && (symbol != 1);
+            // In FPS Creator engine (FPSC-Game.DBA lines 7225-7229):
+            // if mapsymbol=1
+            //  if segmentprofile(seg).vis.f<>-1 then hide limb obj,segmentprofile(seg).vis.f
+            //  if segmentprofile(seg).vis.r<>-1 then hide limb obj,segmentprofile(seg).vis.r
+            // endif
+            bool drawFloor = false;
+            if (isCeilingSeg) {
+                drawFloor = (symbol != 1) && (!seg->roofTexture.isEmpty() || !seg->floorTexture.isEmpty());
+            } else if (seg->hasFloorOnThisLayer && seg->visFloor >= 0) {
+                drawFloor = (symbol != 1) && !seg->floorTexture.isEmpty();
+            }
             // Roof slabs capping a room below do not have interior room walls
             bool drawWalls = !isCeilingSeg;
 
