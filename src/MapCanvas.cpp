@@ -1260,11 +1260,7 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
             int oId = m_map->gridOverlays[m_currentFloor][y][x];
             if (oId <= 0) continue;
 
-            int rot = m_map->gridOverlayRotation[m_currentFloor][y][x] & 3;
-            int segRot = (m_map->gridBlocks[m_currentFloor][y][x] > 0)
-                         ? (m_map->gridRotation[m_currentFloor][y][x] & 3)
-                         : 0;
-            int effectiveRot = (rot + segRot) % 4;
+            int effectiveRot = m_map->gridOverlayRotation[m_currentFloor][y][x] & 3;
             QRectF cellRect = getCellRectScreen(x, y);
 
             int nx = x, ny = y;

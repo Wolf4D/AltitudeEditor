@@ -239,13 +239,26 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
         }
     }
 
-    // 4. Parse map.fpmb & map.fpmo (3D Segment Grid)
-    // DarkBasic Pro 3D array dim map(layermax, maxx, maxy) serialization:
-    // Stride 1: layer (0..layermax), Stride 2: x (0..maxx), Stride 3: y (0..maxy)
-    // index = layer + x * layers + y * (layers * cols)
+    // 4. Parse map.fpmb, map.fpmo & map.fpml (3D Segment Grid & Overlays)
+    // DarkBasic Pro:
+    // map.fpmb = dim map(layermax, maxx, maxy) -> base segment grid
+    // map.fpmo = dim mapolay(layermax, maxx, maxy) -> holds olayindex
+    // map.fpml = dim olaylist(olaylistmax, 50) as DWORD -> holds mapid per olayindex
     if (entries.contains("map.fpmb")) {
         const QByteArray& bData = entries["map.fpmb"];
         const QByteArray& oData = entries.contains("map.fpmo") ? entries["map.fpmo"] : QByteArray();
+        const QByteArray& lData = entries.contains("map.fpml") ? entries["map.fpml"] : (entries.contains("map.fpol") ? entries["map.fpol"] : QByteArray());
+
+        // Decode olaylist from map.fpml
+        QVector<uint32_t> olayPrimaryMapId;
+        if (lData.size() >= 8) {
+            int totalOlayElements = (lData.size() - 8) / 8;
+            const int32_t* lStream = reinterpret_cast<const int32_t*>(lData.constData() + 8);
+            olayPrimaryMapId.resize(totalOlayElements);
+            for (int i = 0; i < totalOlayElements; ++i) {
+                olayPrimaryMapId[i] = static_cast<uint32_t>(lStream[i * 2 + 1]);
+            }
+        }
 
         if (bData.size() >= 8) {
             const int32_t* bHdr = reinterpret_cast<const int32_t*>(bData.constData());
@@ -276,15 +289,26 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
 
                 // 2. Read Overlay / CSG Wall Cutout (Doorways, Windows, Slits, Holes)
                 if (oStream && i * 2 + 1 < (oData.size() - 8) / 4) {
-                    int32_t oMapId = oStream[i * 2 + 1];
-                    if (oMapId != 0) {
+                    int32_t oVal = oStream[i * 2 + 1];
+                    if (oVal != 0) {
+                        uint32_t oMapId = 0;
+                        if (oVal > 0 && oVal < olayPrimaryMapId.size()) {
+                            oMapId = olayPrimaryMapId[oVal];
+                        }
+                        if (oMapId == 0) {
+                            oMapId = static_cast<uint32_t>(oVal);
+                        }
+
                         int oSegId = (oMapId >> 20) & 0xFFF;
-                        int oRotVal = (oMapId >> 12) & 0x3;
+                        int oRot = (oMapId >> 12) & 0x3;
+                        int oOrient = (oMapId >> 10) & 0x3;
                         int oTile = oMapId & 0xF;
                         int oCutoutType = (oSegId > 0) ? oSegId : (oTile > 0 ? oTile : 1);
+                        int effectiveEdge = (oRot + oOrient) & 3;
+
                         if (layer < layers && y < rows && x < cols) {
                             map->gridOverlays[layer][y][x] = oCutoutType;
-                            map->gridOverlayRotation[layer][y][x] = oRotVal & 3;
+                            map->gridOverlayRotation[layer][y][x] = effectiveEdge;
                         }
                     }
                 }
