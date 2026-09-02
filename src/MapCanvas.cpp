@@ -344,24 +344,19 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
             // Multi-story floor vs wall layer detection:
             bool hasBelow = (layer > 0 && m_map->gridBlocks[layer - 1][y][x] > 0);
             bool hasAbove = (layer + 1 < m_map->gridBlocks.size() && m_map->gridBlocks[layer + 1][y][x] > 0);
-            if (!hasAbove && layer + 1 < m_map->gridBlocks.size()) {
-                for (int dy = -1; dy <= 1 && !hasAbove; ++dy) {
-                    for (int dx = -1; dx <= 1 && !hasAbove; ++dx) {
-                        int ny = y + dy;
-                        int nx = x + dx;
-                        if (ny >= 0 && ny < rows && nx >= 0 && nx < cols) {
-                            if (m_map->gridBlocks[layer + 1][ny][nx] > 0) {
-                                hasAbove = true;
-                            }
-                        }
-                    }
-                }
-            }
+
+            bool isCeilingSeg = seg->name.contains("ceiling", Qt::CaseInsensitive) ||
+                                seg->name.contains("roof", Qt::CaseInsensitive) ||
+                                (!seg->roofTexture.isEmpty() && seg->floorTexture.isEmpty());
 
             bool drawFloor = true;
             bool drawWalls = true;
 
-            if (hasBelow && hasAbove) {
+            if (isCeilingSeg) {
+                // Dedicated ceiling/roof segment: always draw ceiling slab, no walls
+                drawFloor = true;
+                drawWalls = false;
+            } else if (hasBelow && hasAbove) {
                 // Intermediate upper story of a room: WALLS ONLY, NO FLOOR!
                 drawFloor = false;
                 drawWalls = true;
@@ -377,7 +372,12 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
 
             // A. Draw Floor / Ceiling Texture
             if (drawFloor) {
-                QString surfaceTex = !seg->floorTexture.isEmpty() ? seg->floorTexture : seg->roofTexture;
+                QString surfaceTex;
+                if (isCeilingSeg) {
+                    surfaceTex = !seg->roofTexture.isEmpty() ? seg->roofTexture : seg->floorTexture;
+                } else {
+                    surfaceTex = !seg->floorTexture.isEmpty() ? seg->floorTexture : seg->roofTexture;
+                }
                 if (!surfaceTex.isEmpty()) {
                     if (m_showFloorTextures) {
                         QPixmap surfacePx = AssetManager::instance().loadTexture(surfaceTex);
