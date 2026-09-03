@@ -147,7 +147,9 @@ bool FPMReader::extractZipEntries(
     return !outEntries.isEmpty();
 }
 
-std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QString& password) {
+std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QString& password, ProgressCallback progressCallback) {
+    if (progressCallback) progressCallback(5, QStringLiteral("Opening map archive..."));
+
     auto map = std::make_shared<FPSCMap>();
     map->filePath = fpmPath;
     map->mapName = QFileInfo(fpmPath).completeBaseName();
@@ -157,6 +159,8 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
         qWarning() << "Failed to extract FPM entries from:" << fpmPath;
         return nullptr;
     }
+
+    if (progressCallback) progressCallback(15, QStringLiteral("Reading map header..."));
 
     // 1. Parse header.dat
     if (entries.contains("header.dat")) {
@@ -190,6 +194,7 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
     map->gridSymbol.resize(layers);
     map->gridOverlays.resize(layers);
     map->gridOverlayRotation.resize(layers);
+    map->gridTileOverlays.resize(layers);
     for (int l = 0; l < layers; ++l) {
         map->gridBlocks[l].resize(rows);
         map->gridRotation[l].resize(rows);
@@ -199,6 +204,7 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
         map->gridSymbol[l].resize(rows);
         map->gridOverlays[l].resize(rows);
         map->gridOverlayRotation[l].resize(rows);
+        map->gridTileOverlays[l].resize(rows);
         for (int y = 0; y < rows; ++y) {
             map->gridBlocks[l][y].fill(0, cols);
             map->gridRotation[l][y].fill(0, cols);
@@ -208,6 +214,7 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
             map->gridSymbol[l][y].fill(0, cols);
             map->gridOverlays[l][y].fill(0, cols);
             map->gridOverlayRotation[l][y].fill(0, cols);
+            map->gridTileOverlays[l][y].resize(cols);
         }
     }
 
@@ -227,6 +234,10 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
                 map->segmentsBank.append(sPath);
                 int segId = i + 1; // 1-based index
                 map->segments[segId] = SegmentParser::parse(sPath, segId);
+            }
+            if (progressCallback && lines.size() > 0) {
+                progressCallback(15 + (30 * (i + 1)) / lines.size(),
+                                 QString("Loading segments (%1/%2)...").arg(i + 1).arg(lines.size()));
             }
         }
     }
@@ -248,14 +259,16 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
                 int bankId = i + 1; // 1-based index
                 map->entityProfiles[bankId] = EntityParser::parseProfile(ePath, bankId);
             }
+            if (progressCallback && lines.size() > 0) {
+                progressCallback(45 + (30 * (i + 1)) / lines.size(),
+                                 QString("Loading entities (%1/%2)...").arg(i + 1).arg(lines.size()));
+            }
         }
     }
 
     // 4. Parse map.fpmb, map.fpmo & map.fpml (3D Segment Grid & Overlays)
-    // DarkBasic Pro:
-    // map.fpmb = dim map(layermax, maxx, maxy) -> base segment grid
-    // map.fpmo = dim mapolay(layermax, maxx, maxy) -> holds olayindex
-    // map.fpml = dim olaylist(olaylistmax, 50) as DWORD -> holds mapid per olayindex
+    if (progressCallback) progressCallback(75, QStringLiteral("Constructing map grid and overlays..."));
+
     if (entries.contains("map.fpmb")) {
         const QByteArray& bData = entries["map.fpmb"];
         const QByteArray& oData = entries.contains("map.fpmo") ? entries["map.fpmo"] : QByteArray();
@@ -312,37 +325,44 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
                     }
                 }
 
-                // 2. Read Overlay / CSG Wall Cutout (Doorways, Windows, Slits, Holes)
+                // 2. Read Overlay List (matches DarkBasic olaylist(olayindex, 0..50))
                 if (oStream && i * 2 + 1 < (oData.size() - 8) / 4) {
                     int32_t oVal = oStream[i * 2 + 1];
                     if (oVal > 0 && lStream && olayStride > 0) {
-                        uint32_t chosenMapId = 0;
                         for (int ti = 0; ti <= 50; ++ti) {
                             int elemIdx = oVal + ti * olayStride;
                             if (elemIdx >= totalOlayElements) break;
                             uint32_t val = static_cast<uint32_t>(lStream[elemIdx * 2 + 1]);
                             if (val == 0) break;
                             int sId = (val >> 20) & 0xFFF;
-                            auto it = map->segments.find(sId);
-                            if (it != map->segments.end()) {
-                                if (it.value()->hasPunch || it.value()->isPlatformOrGantry || it.value()->isStairs) {
-                                    chosenMapId = val;
-                                    break;
-                                } else if (chosenMapId == 0) {
-                                    chosenMapId = val;
+                            int rot = (val >> 12) & 0x3;
+                            int orient = (val >> 10) & 0x3;
+                            int tile = val & 0xF;
+                            if (map->segments.contains(sId)) {
+                                PlacedOverlay po;
+                                po.segmentId = sId;
+                                po.rotate = rot;
+                                po.orient = orient;
+                                po.tile = tile;
+                                if (layer < layers && y < rows && x < cols) {
+                                    map->gridTileOverlays[layer][y][x].append(po);
                                 }
                             }
                         }
 
-                        if (chosenMapId != 0) {
-                            int oSegId = (chosenMapId >> 20) & 0xFFF;
-                            int oOrient = (chosenMapId >> 10) & 0x3;
-                            int effectiveEdge = oOrient & 3;
-
-                            if (layer < layers && y < rows && x < cols) {
-                                map->gridOverlays[layer][y][x] = oSegId;
-                                map->gridOverlayRotation[layer][y][x] = effectiveEdge;
+                        if (layer < layers && y < rows && x < cols && !map->gridTileOverlays[layer][y][x].isEmpty()) {
+                            // Primary overlay for compatibility: prefer punch or gantry/stairs if available
+                            int primIdx = 0;
+                            for (int idx = 0; idx < map->gridTileOverlays[layer][y][x].size(); ++idx) {
+                                auto seg = map->segments.value(map->gridTileOverlays[layer][y][x][idx].segmentId);
+                                if (seg && (seg->hasPunch || seg->isPlatformOrGantry || seg->isStairs)) {
+                                    primIdx = idx;
+                                    break;
+                                }
                             }
+                            const auto& prim = map->gridTileOverlays[layer][y][x][primIdx];
+                            map->gridOverlays[layer][y][x] = prim.segmentId;
+                            map->gridOverlayRotation[layer][y][x] = prim.orient;
                         }
                     }
                 }
@@ -402,10 +422,7 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
         }
     }
 
-    qDebug() << "FPM Loaded:" << map->mapName
-             << "Segments:" << map->segmentsBank.size()
-             << "Entities:" << map->placedEntities.size()
-             << "Waypoints:" << map->waypoints.size();
+    if (progressCallback) progressCallback(100, QStringLiteral("Done"));
 
     return map;
 }

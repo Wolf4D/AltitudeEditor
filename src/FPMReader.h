@@ -6,10 +6,17 @@
 #include <QByteArray>
 #include <QMap>
 #include <memory>
+#include <functional>
+
+using ProgressCallback = std::function<void(int percent, const QString& statusMessage)>;
 
 class FPMReader {
 public:
-    static std::shared_ptr<FPSCMap> loadMap(const QString& fpmPath, const QString& password = "mypassword");
+    static std::shared_ptr<FPSCMap> loadMap(
+        const QString& fpmPath,
+        const QString& password = "mypassword",
+        ProgressCallback progressCallback = nullptr
+    );
 
 private:
     static bool extractZipEntries(

@@ -69,6 +69,8 @@ private:
     std::shared_ptr<VisZoneManager> m_visZoneManager;
     QPointer<PortalLeakDialog> m_portalLeakDialog;
     QPointer<MemoryAnalyzerDialog> m_memoryAnalyzerDialog;
+    MemoryReport m_cachedMemoryReport;
+    bool m_memoryReportValid = false;
 
     // Floor UI Controls
     QComboBox* m_floorCombo = nullptr;

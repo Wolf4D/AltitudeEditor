@@ -160,19 +160,21 @@ std::shared_ptr<FPSCSegment> SegmentParser::parse(const QString& relPath, int se
     seg->hasFloorOnThisLayer = (seg->visFloor >= 0);
     seg->hasRoofOnThisLayer = (seg->visRoof >= 0);
 
-    // Detect Platforms, Gantries, Walkways, and Stairs
     bool isGantryPath = seg->relPath.contains("gantry", Qt::CaseInsensitive) ||
                         seg->name.contains("gantry", Qt::CaseInsensitive) ||
                         seg->relPath.contains("platform", Qt::CaseInsensitive) ||
                         seg->name.contains("platform", Qt::CaseInsensitive) ||
                         seg->relPath.contains("catwalk", Qt::CaseInsensitive) ||
-                        seg->name.contains("catwalk", Qt::CaseInsensitive);
+                        seg->name.contains("catwalk", Qt::CaseInsensitive) ||
+                        seg->relPath.contains("walkway", Qt::CaseInsensitive) ||
+                        seg->name.contains("walkway", Qt::CaseInsensitive) ||
+                        (seg->kindOf > 0 && !seg->hasPunch);
     bool isStairsPath = seg->relPath.contains("stair", Qt::CaseInsensitive) ||
                         seg->name.contains("stair", Qt::CaseInsensitive) ||
                         seg->relPath.contains("step", Qt::CaseInsensitive) ||
                         seg->name.contains("step", Qt::CaseInsensitive);
 
-    if (seg->visOverlay >= 1 || isGantryPath || isStairsPath) {
+    if (isGantryPath || isStairsPath) {
         if (isStairsPath) {
             seg->isStairs = true;
         } else {

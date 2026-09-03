@@ -77,19 +77,14 @@ bool VisZoneManager::hasDoorwayOnEdge(int l, int x1, int y1, int x2, int y2, int
         }
     }
 
-    // Door entity check
+    // Door entity check (fast prefiltered lookup)
     float edgeMidX = (x1 + x2 + 1) * 50.0f;
     float edgeMidY = (y1 + y2 + 1) * 50.0f;
-    for (const auto& e : m_map->placedEntities) {
-        if (e.floorLayer == l) {
-            bool isDoor = (e.profile && e.profile->category == EntityCategory::Door) ||
-                          (e.profile && e.profile->name.contains("door", Qt::CaseInsensitive)) ||
-                          (e.instanceName.contains("door", Qt::CaseInsensitive));
-            if (isDoor) {
-                float ey = -e.z;
-                float dist = std::hypot(e.x - edgeMidX, ey - edgeMidY);
-                if (dist < 55.0f) return true;
-            }
+    if (l >= 0 && l < static_cast<int>(m_floorDoors.size())) {
+        for (const auto& d : m_floorDoors[l]) {
+            float dx = d.x - edgeMidX;
+            float dy = d.y - edgeMidY;
+            if (dx * dx + dy * dy < 55.0f * 55.0f) return true;
         }
     }
     return false;
@@ -100,6 +95,7 @@ void VisZoneManager::buildFromMap(std::shared_ptr<FPSCMap> map, const QString& /
     m_zones.clear();
     m_portals.clear();
     m_tileZoneMap.clear();
+    m_floorDoors.clear();
 
     if (!m_map) return;
 
@@ -108,6 +104,18 @@ void VisZoneManager::buildFromMap(std::shared_ptr<FPSCMap> map, const QString& /
     int rows = m_map->gridBlocks[0].size();
     if (rows == 0) return;
     int cols = m_map->gridBlocks[0][0].size();
+
+    m_floorDoors.resize(layers);
+    for (const auto& e : m_map->placedEntities) {
+        if (e.floorLayer >= 0 && e.floorLayer < layers) {
+            bool isDoor = (e.profile && e.profile->category == EntityCategory::Door) ||
+                          (e.profile && e.profile->name.contains("door", Qt::CaseInsensitive)) ||
+                          (e.instanceName.contains("door", Qt::CaseInsensitive));
+            if (isDoor) {
+                m_floorDoors[e.floorLayer].push_back({e.x, -e.z});
+            }
+        }
+    }
 
     m_tileZoneMap.resize(layers);
     for (int l = 0; l < layers; ++l) {

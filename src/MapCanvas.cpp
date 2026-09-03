@@ -8,6 +8,7 @@
 #include <QKeyEvent>
 #include <QMenu>
 #include <cmath>
+#include <QElapsedTimer>
 
 static const float TILE_SIZE = 100.0f;
 
@@ -322,6 +323,36 @@ static bool isMaptileWallPresent(int maptile, int rot, int side) {
     return false;
 }
 
+// Returns true if side (0=N, 1=E, 2=S, 3=W) has a railing/barrier for this corridor/gantry
+// Based directly on FPS Creator engine logic (FPSC-Game.DBA:48558-48592)
+static bool getGantryRailingOnSide(int kindOf, int mode, int orient, int side) {
+    int k = kindOf;
+    if (k == 0 && mode >= 3) k = mode - 2;
+    int o = orient & 3;
+
+    if (k == 1) { // Straight
+        if (o % 2 == 0) return (side == 1 || side == 3);
+        else return (side == 0 || side == 2);
+    }
+    if (k == 2) { // Corner
+        if (o == 0) return (side == 0 || side == 3);
+        if (o == 1) return (side == 0 || side == 1);
+        if (o == 2) return (side == 2 || side == 1);
+        if (o == 3) return (side == 2 || side == 3);
+    }
+    if (k == 3) { // TJunction
+        return (side == o);
+    }
+    if (k == 4) { // Cross
+        return false;
+    }
+    if (k == 5) { // Deadend
+        int openSide = (o + 2) % 4;
+        return (side != openSide);
+    }
+    return false;
+}
+
 void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
     if (!m_map || layer < 0 || layer >= m_map->gridBlocks.size()) return;
 
@@ -398,6 +429,10 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                     if (m_showFloorTextures) {
                         QPixmap surfacePx = AssetManager::instance().loadTexture(surfaceTex);
                         if (!surfacePx.isNull()) {
+                            if (seg->isPlatformOrGantry && surfacePx.width() > 16) {
+                                int gratingW = static_cast<int>(surfacePx.width() * 0.70f);
+                                surfacePx = surfacePx.copy(0, 0, gratingW, surfacePx.height());
+                            }
                             if (orient == 0) {
                                 p.drawPixmap(cellRect.toRect(), surfacePx);
                             } else {
@@ -430,12 +465,12 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                     }
                 }
 
-                p.save();
-                p.translate(cellRect.center());
-                p.rotate(orient * 90.0);
-                QRectF localRect(-cellRect.width() / 2.0f, -cellRect.height() / 2.0f, cellRect.width(), cellRect.height());
-
                 if (seg->isStairs) {
+                    p.save();
+                    p.translate(cellRect.center());
+                    p.rotate(orient * 90.0);
+                    QRectF localRect(-cellRect.width() / 2.0f, -cellRect.height() / 2.0f, cellRect.width(), cellRect.height());
+
                     p.setPen(QPen(QColor(255, 185, 30, 220), 1.8f));
                     float stepH = cellRect.height() / 6.0f;
                     for (int s = 1; s < 6; ++s) {
@@ -447,35 +482,25 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                     p.drawLine(0, localRect.height() * 0.28f, 0, -localRect.height() * 0.28f);
                     p.drawLine(-5, -localRect.height() * 0.28f + 7, 0, -localRect.height() * 0.28f);
                     p.drawLine(5, -localRect.height() * 0.28f + 7, 0, -localRect.height() * 0.28f);
+                    p.restore();
                 } else {
-                    // Railings (yellow/orange warning striped or industrial safety rail)
+                    // Railings strictly according to engine FPSC-Game.DBA:48558-48592
                     QPen railPen(QColor(245, 185, 25), 2.5f, Qt::DashLine);
                     p.setPen(railPen);
 
-                    int k = seg->kindOf;
-                    if (k == 0 && seg->mode >= 3) k = seg->mode - 2;
-
-                    if (k == 1) {
-                        // Straight: rails on West and East
-                        p.drawLine(localRect.left(), localRect.top(), localRect.left(), localRect.bottom());
-                        p.drawLine(localRect.right(), localRect.top(), localRect.right(), localRect.bottom());
-                    } else if (k == 2) {
-                        // Corner: rails on North and West
-                        p.drawLine(localRect.left(), localRect.top(), localRect.right(), localRect.top());
-                        p.drawLine(localRect.left(), localRect.top(), localRect.left(), localRect.bottom());
-                    } else if (k == 3) {
-                        // TJunction: rail on North
-                        p.drawLine(localRect.left(), localRect.top(), localRect.right(), localRect.top());
-                    } else if (k == 5) {
-                        // Deadend: rails on North, West, East
-                        p.drawLine(localRect.left(), localRect.top(), localRect.right(), localRect.top());
-                        p.drawLine(localRect.left(), localRect.top(), localRect.left(), localRect.bottom());
-                        p.drawLine(localRect.right(), localRect.top(), localRect.right(), localRect.bottom());
-                    } else {
-                        p.drawRect(localRect);
+                    if (getGantryRailingOnSide(seg->kindOf, seg->mode, orient, 0)) {
+                        p.drawLine(cellRect.left(), cellRect.top(), cellRect.right(), cellRect.top()); // North
+                    }
+                    if (getGantryRailingOnSide(seg->kindOf, seg->mode, orient, 1)) {
+                        p.drawLine(cellRect.right(), cellRect.top(), cellRect.right(), cellRect.bottom()); // East
+                    }
+                    if (getGantryRailingOnSide(seg->kindOf, seg->mode, orient, 2)) {
+                        p.drawLine(cellRect.left(), cellRect.bottom(), cellRect.right(), cellRect.bottom()); // South
+                    }
+                    if (getGantryRailingOnSide(seg->kindOf, seg->mode, orient, 3)) {
+                        p.drawLine(cellRect.left(), cellRect.top(), cellRect.left(), cellRect.bottom()); // West
                     }
                 }
-                p.restore();
 
                 // Platform label
                 p.setPen(QColor(255, 210, 90));
@@ -540,6 +565,40 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                             }
                         }
                     }
+                }
+
+                // In FPS Creator engine (FPSC-Game.DBA:48540-48547): "doors punch out walls!"
+                bool doorPunched = false;
+                if (layer < m_map->gridTileOverlays.size() && y < m_map->gridTileOverlays[layer].size() && x < m_map->gridTileOverlays[layer][y].size()) {
+                    for (const auto& o : m_map->gridTileOverlays[layer][y][x]) {
+                        auto oseg = m_map->segments.value(o.segmentId);
+                        if (oseg && oseg->hasPunch && (o.orient & 3) == rotSide) {
+                            doorPunched = true;
+                            break;
+                        }
+                    }
+                }
+                if (!doorPunched) {
+                    int pnx = x, pny = y;
+                    switch (rotSide) {
+                        case 0: pny -= 1; break;
+                        case 1: pnx += 1; break;
+                        case 2: pny += 1; break;
+                        case 3: pnx -= 1; break;
+                    }
+                    if (layer < m_map->gridTileOverlays.size() && pny >= 0 && pny < rows && pnx >= 0 && pnx < cols) {
+                        int oppSide = (rotSide + 2) % 4;
+                        for (const auto& no : m_map->gridTileOverlays[layer][pny][pnx]) {
+                            auto noseg = m_map->segments.value(no.segmentId);
+                            if (noseg && noseg->hasPunch && (no.orient & 3) == oppSide) {
+                                doorPunched = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (doorPunched) {
+                    continue;
                 }
 
                 QRectF wallRect;
@@ -1523,16 +1582,33 @@ void MapCanvas::drawPortals(QPainter& p) {
 
 void MapCanvas::drawCSGCutouts(QPainter& p) {
     if (!m_map) return;
-    if (m_currentFloor < 0 || m_currentFloor >= m_map->gridOverlays.size()) return;
+    if (m_currentFloor < 0 || m_currentFloor >= m_map->gridBlocks.size()) return;
 
     p.save();
     float wallRibbon = 12.0f * m_zoom;
-    int rows = m_map->gridOverlays[m_currentFloor].size();
-    int cols = rows > 0 ? m_map->gridOverlays[m_currentFloor][0].size() : 0;
+    int rows = m_map->gridBlocks[m_currentFloor].size();
+    int cols = rows > 0 ? m_map->gridBlocks[m_currentFloor][0].size() : 0;
     for (int y = 0; y < rows; ++y) {
         for (int x = 0; x < cols; ++x) {
-            int oId = m_map->gridOverlays[m_currentFloor][y][x];
-            if (oId <= 0) continue;
+            QVector<PlacedOverlay> tileOlays;
+            if (m_currentFloor < m_map->gridTileOverlays.size() &&
+                y < m_map->gridTileOverlays[m_currentFloor].size() &&
+                x < m_map->gridTileOverlays[m_currentFloor][y].size() &&
+                !m_map->gridTileOverlays[m_currentFloor][y][x].isEmpty()) {
+                tileOlays = m_map->gridTileOverlays[m_currentFloor][y][x];
+            } else if (m_currentFloor < m_map->gridOverlays.size() &&
+                       y < m_map->gridOverlays[m_currentFloor].size() &&
+                       x < m_map->gridOverlays[m_currentFloor][y].size()) {
+                int oId = m_map->gridOverlays[m_currentFloor][y][x];
+                if (oId > 0) {
+                    PlacedOverlay po;
+                    po.segmentId = oId;
+                    po.orient = m_map->gridOverlayRotation[m_currentFloor][y][x];
+                    tileOlays.append(po);
+                }
+            }
+
+            if (tileOlays.isEmpty()) continue;
 
             if (m_activeVisZoneId >= 0 && m_cullInactiveVisZones && m_visZoneManager) {
                 bool inZone = m_visZoneManager->isTileInZone(m_activeVisZoneId, m_currentFloor, x, y);
@@ -1546,156 +1622,161 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
                 }
             }
 
-            auto it = m_map->segments.find(oId);
-            if (it == m_map->segments.end()) {
-                continue;
-            }
-            const auto& seg = it.value();
+            // Draw gantry/platform floor first, then CSG punch cutouts on top
+            std::stable_sort(tileOlays.begin(), tileOlays.end(), [&](const PlacedOverlay& a, const PlacedOverlay& b) {
+                auto segA = m_map->segments.value(a.segmentId);
+                auto segB = m_map->segments.value(b.segmentId);
+                bool punchA = segA && segA->hasPunch;
+                bool punchB = segB && segB->hasPunch;
+                return !punchA && punchB;
+            });
 
-            if (seg->hasPunch) {
-                int effectiveRot = m_map->gridOverlayRotation[m_currentFloor][y][x] & 3;
-                QRectF cellRect = getCellRectScreen(x, y);
+            QRectF cellRect = getCellRectScreen(x, y);
 
-                int nx = x, ny = y;
-                switch (effectiveRot) {
-                    case 0: ny -= 1; break;
-                    case 1: nx += 1; break;
-                    case 2: ny += 1; break;
-                    case 3: nx -= 1; break;
-                }
+            for (const auto& olay : tileOlays) {
+                int oId = olay.segmentId;
+                if (oId <= 0) continue;
+                auto it = m_map->segments.find(oId);
+                if (it == m_map->segments.end()) continue;
+                const auto& seg = it.value();
 
-                bool hasDoubleWall = false;
-                if (ny >= 0 && ny < rows && nx >= 0 && nx < cols) {
-                    if (m_map->gridBlocks[m_currentFloor][ny][nx] > 0) {
-                        hasDoubleWall = true;
+                if (seg->hasPunch) {
+                    int effectiveRot = olay.orient & 3;
+
+                    int nx = x, ny = y;
+                    switch (effectiveRot) {
+                        case 0: ny -= 1; break;
+                        case 1: nx += 1; break;
+                        case 2: ny += 1; break;
+                        case 3: nx -= 1; break;
                     }
-                }
 
-                QRectF cutoutRect;
-                // effectiveRot: 0 = North edge, 1 = East edge, 2 = South edge, 3 = West edge
-                if (effectiveRot == 0) {
-                    float topY = hasDoubleWall ? (cellRect.top() - wallRibbon) : cellRect.top();
-                    float h = hasDoubleWall ? (2.0f * wallRibbon) : wallRibbon;
-                    cutoutRect = QRectF(cellRect.left() + cellRect.width() * 0.18f, topY, cellRect.width() * 0.64f, h);
-                } else if (effectiveRot == 1) {
-                    float w = hasDoubleWall ? (2.0f * wallRibbon) : wallRibbon;
-                    cutoutRect = QRectF(cellRect.right() - wallRibbon, cellRect.top() + cellRect.height() * 0.18f, w, cellRect.height() * 0.64f);
-                } else if (effectiveRot == 2) {
-                    float h = hasDoubleWall ? (2.0f * wallRibbon) : wallRibbon;
-                    cutoutRect = QRectF(cellRect.left() + cellRect.width() * 0.18f, cellRect.bottom() - wallRibbon, cellRect.width() * 0.64f, h);
-                } else {
-                    float leftX = hasDoubleWall ? (cellRect.left() - wallRibbon) : cellRect.left();
-                    float w = hasDoubleWall ? (2.0f * wallRibbon) : wallRibbon;
-                    cutoutRect = QRectF(leftX, cellRect.top() + cellRect.height() * 0.18f, w, cellRect.height() * 0.64f);
-                }
+                    bool hasDoubleWall = false;
+                    if (ny >= 0 && ny < rows && nx >= 0 && nx < cols) {
+                        if (m_map->gridBlocks[m_currentFloor][ny][nx] > 0) {
+                            hasDoubleWall = true;
+                        }
+                    }
 
-                // 1. Draw Void / Cutout Hole Fill
-                p.fillRect(cutoutRect, QColor(22, 25, 34, 220));
+                    QRectF cutoutRect;
+                    // effectiveRot: 0 = North edge, 1 = East edge, 2 = South edge, 3 = West edge
+                    if (effectiveRot == 0) {
+                        float topY = hasDoubleWall ? (cellRect.top() - wallRibbon) : cellRect.top();
+                        float h = hasDoubleWall ? (2.0f * wallRibbon) : wallRibbon;
+                        cutoutRect = QRectF(cellRect.left() + cellRect.width() * 0.18f, topY, cellRect.width() * 0.64f, h);
+                    } else if (effectiveRot == 1) {
+                        float w = hasDoubleWall ? (2.0f * wallRibbon) : wallRibbon;
+                        cutoutRect = QRectF(cellRect.right() - wallRibbon, cellRect.top() + cellRect.height() * 0.18f, w, cellRect.height() * 0.64f);
+                    } else if (effectiveRot == 2) {
+                        float h = hasDoubleWall ? (2.0f * wallRibbon) : wallRibbon;
+                        cutoutRect = QRectF(cellRect.left() + cellRect.width() * 0.18f, cellRect.bottom() - wallRibbon, cellRect.width() * 0.64f, h);
+                    } else {
+                        float leftX = hasDoubleWall ? (cellRect.left() - wallRibbon) : cellRect.left();
+                        float w = hasDoubleWall ? (2.0f * wallRibbon) : wallRibbon;
+                        cutoutRect = QRectF(leftX, cellRect.top() + cellRect.height() * 0.18f, w, cellRect.height() * 0.64f);
+                    }
 
-                // 2. Draw Vibrant Green Glowing Overlay Fill
-                QColor fillGreen(46, 204, 113, 85);
-                p.fillRect(cutoutRect, fillGreen);
+                    // 1. Draw Void / Cutout Hole Fill
+                    p.fillRect(cutoutRect, QColor(22, 25, 34, 220));
 
-                // 3. Draw BOLD Glowing Emerald-Green Border spanning full wall thickness
-                QColor cutoutGreen(46, 204, 113, 255);
-                p.setPen(QPen(cutoutGreen, 2.5f, Qt::SolidLine, Qt::SquareCap));
-                p.drawRect(cutoutRect);
+                    // 2. Draw Vibrant Green Glowing Overlay Fill
+                    QColor fillGreen(46, 204, 113, 85);
+                    p.fillRect(cutoutRect, fillGreen);
 
-                // 4. Center division line across the wall thickness
-                p.setPen(QPen(cutoutGreen, 1.5f, Qt::DashLine));
-                if (effectiveRot == 0 || effectiveRot == 2) {
-                    float midX = cutoutRect.center().x();
-                    p.drawLine(QPointF(midX, cutoutRect.top()), QPointF(midX, cutoutRect.bottom()));
-                } else {
-                    float midY = cutoutRect.center().y();
-                    p.drawLine(QPointF(cutoutRect.left(), midY), QPointF(cutoutRect.right(), midY));
-                }
+                    // 3. Draw BOLD Glowing Emerald-Green Border spanning full wall thickness
+                    QColor cutoutGreen(46, 204, 113, 255);
+                    p.setPen(QPen(cutoutGreen, 2.5f, Qt::SolidLine, Qt::SquareCap));
+                    p.drawRect(cutoutRect);
 
-                // Cutout Label
-                p.setPen(QColor(160, 255, 180));
-                p.setFont(QFont("Segoe UI", 8, QFont::Bold));
-                QString label = (oId == 1) ? QStringLiteral("CSG Cutout (Window / Slit)") : QStringLiteral("CSG Cutout (Doorway)");
-                if (effectiveRot == 0) {
-                    p.drawText(cutoutRect.bottomLeft() + QPointF(0, 14), label);
-                } else if (effectiveRot == 2) {
-                    p.drawText(cutoutRect.topLeft() + QPointF(0, -6), label);
-                } else {
-                    p.drawText(cutoutRect.topRight() + QPointF(6, 12), label);
-                }
-            } else if (seg->isPlatformOrGantry || seg->isStairs || seg->visOverlay > 0) {
-                int effectiveRot = m_map->gridOverlayRotation[m_currentFloor][y][x] & 3;
-                QRectF cellRect = getCellRectScreen(x, y);
+                    // 4. Center division line across the wall thickness
+                    p.setPen(QPen(cutoutGreen, 1.5f, Qt::DashLine));
+                    if (effectiveRot == 0 || effectiveRot == 2) {
+                        float midX = cutoutRect.center().x();
+                        p.drawLine(QPointF(midX, cutoutRect.top()), QPointF(midX, cutoutRect.bottom()));
+                    } else {
+                        float midY = cutoutRect.center().y();
+                        p.drawLine(QPointF(cutoutRect.left(), midY), QPointF(cutoutRect.right(), midY));
+                    }
 
-                // 1. Draw floor / walkway surface texture (or metal grating pattern)
-                bool drewTex = false;
-                if (!seg->floorTexture.isEmpty() && m_showFloorTextures) {
-                    QPixmap surfacePx = AssetManager::instance().loadTexture(seg->floorTexture);
-                    if (!surfacePx.isNull()) {
+                    // Cutout Label
+                    p.setPen(QColor(160, 255, 180));
+                    p.setFont(QFont("Segoe UI", 8, QFont::Bold));
+                    QString label = (oId == 1) ? QStringLiteral("CSG Cutout (Window / Slit)") : QStringLiteral("CSG Cutout (Doorway)");
+                    if (effectiveRot == 0) {
+                        p.drawText(cutoutRect.bottomLeft() + QPointF(0, 14), label);
+                    } else if (effectiveRot == 2) {
+                        p.drawText(cutoutRect.topLeft() + QPointF(0, -6), label);
+                    } else {
+                        p.drawText(cutoutRect.topRight() + QPointF(6, 12), label);
+                    }
+                } else if (seg->isPlatformOrGantry || seg->isStairs || seg->visOverlay > 0) {
+                    int orient = olay.orient & 3;
+
+                    // 1. Draw floor / walkway surface texture (or metal grating pattern)
+                    bool drewTex = false;
+                    if (!seg->floorTexture.isEmpty() && m_showFloorTextures) {
+                        QPixmap surfacePx = AssetManager::instance().loadTexture(seg->floorTexture);
+                        if (!surfacePx.isNull()) {
+                            if (seg->isPlatformOrGantry && surfacePx.width() > 16) {
+                                int gratingW = static_cast<int>(surfacePx.width() * 0.70f);
+                                surfacePx = surfacePx.copy(0, 0, gratingW, surfacePx.height());
+                            }
+                            p.drawPixmap(cellRect.toRect(), surfacePx);
+                            drewTex = true;
+                        }
+                    }
+                    if (!drewTex) {
+                        p.fillRect(cellRect, QColor(40, 48, 58, 220));
+                        // High-tech metal grating crosshatch
+                        p.setPen(QPen(QColor(80, 115, 145, 130), 1.0f));
+                        float step = cellRect.width() / 4.0f;
+                        for (int k = 1; k < 4; ++k) {
+                            p.drawLine(cellRect.left() + k * step, cellRect.top(), cellRect.left() + k * step, cellRect.bottom());
+                            p.drawLine(cellRect.left(), cellRect.top() + k * step, cellRect.right(), cellRect.top() + k * step);
+                        }
+                    }
+
+                    if (seg->isStairs) {
                         p.save();
                         p.translate(cellRect.center());
-                        p.rotate(effectiveRot * 90.0);
-                        p.drawPixmap(-cellRect.width() / 2.0, -cellRect.height() / 2.0,
-                                     cellRect.width(), cellRect.height(), surfacePx);
+                        p.rotate(orient * 90.0);
+                        QRectF localRect(-cellRect.width() / 2.0f, -cellRect.height() / 2.0f, cellRect.width(), cellRect.height());
+
+                        p.setPen(QPen(QColor(255, 185, 30, 220), 1.8f));
+                        float stepH = cellRect.height() / 6.0f;
+                        for (int s = 1; s < 6; ++s) {
+                            float sy = localRect.top() + s * stepH;
+                            p.drawLine(localRect.left() + 4, sy, localRect.right() - 4, sy);
+                        }
+                        p.setPen(QPen(QColor(255, 215, 0), 2.0f));
+                        p.drawLine(0, localRect.height() * 0.28f, 0, -localRect.height() * 0.28f);
+                        p.drawLine(-5, -localRect.height() * 0.28f + 7, 0, -localRect.height() * 0.28f);
+                        p.drawLine(5, -localRect.height() * 0.28f + 7, 0, -localRect.height() * 0.28f);
                         p.restore();
-                        drewTex = true;
-                    }
-                }
-                if (!drewTex) {
-                    p.fillRect(cellRect, QColor(40, 48, 58, 220));
-                    // High-tech metal grating crosshatch
-                    p.setPen(QPen(QColor(80, 115, 145, 130), 1.0f));
-                    float step = cellRect.width() / 4.0f;
-                    for (int k = 1; k < 4; ++k) {
-                        p.drawLine(cellRect.left() + k * step, cellRect.top(), cellRect.left() + k * step, cellRect.bottom());
-                        p.drawLine(cellRect.left(), cellRect.top() + k * step, cellRect.right(), cellRect.top() + k * step);
-                    }
-                }
-
-                p.save();
-                p.translate(cellRect.center());
-                p.rotate(effectiveRot * 90.0);
-                QRectF localRect(-cellRect.width() / 2.0f, -cellRect.height() / 2.0f, cellRect.width(), cellRect.height());
-
-                if (seg->isStairs) {
-                    p.setPen(QPen(QColor(255, 185, 30, 220), 1.8f));
-                    float stepH = cellRect.height() / 6.0f;
-                    for (int s = 1; s < 6; ++s) {
-                        float sy = localRect.top() + s * stepH;
-                        p.drawLine(localRect.left() + 4, sy, localRect.right() - 4, sy);
-                    }
-                    p.setPen(QPen(QColor(255, 215, 0), 2.0f));
-                    p.drawLine(0, localRect.height() * 0.28f, 0, -localRect.height() * 0.28f);
-                    p.drawLine(-5, -localRect.height() * 0.28f + 7, 0, -localRect.height() * 0.28f);
-                    p.drawLine(5, -localRect.height() * 0.28f + 7, 0, -localRect.height() * 0.28f);
-                } else {
-                    QPen railPen(QColor(245, 185, 25), 2.5f, Qt::DashLine);
-                    p.setPen(railPen);
-
-                    int k = seg->kindOf;
-                    if (k == 0 && seg->mode >= 3) k = seg->mode - 2;
-
-                    if (k == 1) {
-                        p.drawLine(localRect.left(), localRect.top(), localRect.left(), localRect.bottom());
-                        p.drawLine(localRect.right(), localRect.top(), localRect.right(), localRect.bottom());
-                    } else if (k == 2) {
-                        p.drawLine(localRect.left(), localRect.top(), localRect.right(), localRect.top());
-                        p.drawLine(localRect.left(), localRect.top(), localRect.left(), localRect.bottom());
-                    } else if (k == 3) {
-                        p.drawLine(localRect.left(), localRect.top(), localRect.right(), localRect.top());
-                    } else if (k == 5) {
-                        p.drawLine(localRect.left(), localRect.top(), localRect.right(), localRect.top());
-                        p.drawLine(localRect.left(), localRect.top(), localRect.left(), localRect.bottom());
-                        p.drawLine(localRect.right(), localRect.top(), localRect.right(), localRect.bottom());
                     } else {
-                        p.drawRect(localRect);
-                    }
-                }
-                p.restore();
+                        // Railings strictly according to engine FPSC-Game.DBA:48558-48592
+                        QPen railPen(QColor(245, 185, 25), 2.5f, Qt::DashLine);
+                        p.setPen(railPen);
 
-                p.setPen(QColor(255, 210, 90));
-                p.setFont(QFont("Segoe UI", 7, QFont::Bold));
-                QString pLabel = seg->isStairs ? QStringLiteral("STAIRS") : QStringLiteral("GANTRY");
-                p.drawText(cellRect, Qt::AlignCenter, pLabel);
+                        if (getGantryRailingOnSide(seg->kindOf, seg->mode, orient, 0)) {
+                            p.drawLine(cellRect.left(), cellRect.top(), cellRect.right(), cellRect.top()); // North
+                        }
+                        if (getGantryRailingOnSide(seg->kindOf, seg->mode, orient, 1)) {
+                            p.drawLine(cellRect.right(), cellRect.top(), cellRect.right(), cellRect.bottom()); // East
+                        }
+                        if (getGantryRailingOnSide(seg->kindOf, seg->mode, orient, 2)) {
+                            p.drawLine(cellRect.left(), cellRect.bottom(), cellRect.right(), cellRect.bottom()); // South
+                        }
+                        if (getGantryRailingOnSide(seg->kindOf, seg->mode, orient, 3)) {
+                            p.drawLine(cellRect.left(), cellRect.top(), cellRect.left(), cellRect.bottom()); // West
+                        }
+                    }
+
+                    p.setPen(QColor(255, 210, 90));
+                    p.setFont(QFont("Segoe UI", 7, QFont::Bold));
+                    QString pLabel = seg->isStairs ? QStringLiteral("STAIRS") : QStringLiteral("GANTRY");
+                    p.drawText(cellRect, Qt::AlignCenter, pLabel);
+                }
             }
         }
     }

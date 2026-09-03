@@ -238,6 +238,13 @@ struct MapHeader {
     int multiplayer = 0;
 };
 
+struct PlacedOverlay {
+    int segmentId = 0;
+    int rotate = 0;   // maprotate (0..3)
+    int orient = 0;   // maporient (0..3)
+    int tile = 0;     // maptile (0..15)
+};
+
 struct FPSCMap {
     QString filePath;
     QString mapName;
@@ -265,6 +272,8 @@ struct FPSCMap {
     // 3D Overlay Grid: [Layer][Y][X] -> Overlay ID / CSG Cutout
     QVector<QVector<QVector<int>>> gridOverlays;
     QVector<QVector<QVector<int>>> gridOverlayRotation;
+    // Complete overlay list per tile (matches DarkBasic olaylist(olayindex, 0..50)):
+    QVector<QVector<QVector<QVector<PlacedOverlay>>>> gridTileOverlays;
     
     QVector<PlacedEntity> placedEntities;
     QVector<AIWaypoint> waypoints;
@@ -293,6 +302,7 @@ struct FPSCMap {
         gridSymbol.clear();
         gridOverlays.clear();
         gridOverlayRotation.clear();
+        gridTileOverlays.clear();
         placedEntities.clear();
         waypoints.clear();
     }

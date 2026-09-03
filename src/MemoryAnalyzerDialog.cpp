@@ -1,4 +1,5 @@
 #include "MemoryAnalyzerDialog.h"
+#include "Version.h"
 #include "AssetManager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -16,7 +17,7 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, QWidget
     , m_map(map)
 {
     QString mapName = m_map ? m_map->mapName : QStringLiteral("No Map");
-    setWindowTitle(QString("FPS Creator Memory Footprint Analyzer — %1").arg(mapName));
+    setWindowTitle(QString("%1 Memory Footprint Analyzer — %2").arg(VersionInfo::shortTitle(), mapName));
     resize(1060, 720);
     setMinimumSize(850, 520);
 
@@ -180,7 +181,7 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, QWidget
 void MemoryAnalyzerDialog::setMap(std::shared_ptr<FPSCMap> map) {
     m_map = map;
     QString mapName = m_map ? m_map->mapName : QStringLiteral("No Map");
-    setWindowTitle(QString("FPS Creator Memory Footprint Analyzer — %1").arg(mapName));
+    setWindowTitle(QString("%1 Memory Footprint Analyzer — %2").arg(VersionInfo::shortTitle(), mapName));
     m_report = MemoryAnalyzer::analyze(m_map);
     populateUI();
 }
@@ -226,14 +227,29 @@ void MemoryAnalyzerDialog::populateUI() {
     }
 
     if (m_limitProgress) {
-        m_limitProgress->setValue(static_cast<int>(totalMb));
-        m_limitProgress->setFormat(QString("%1 MB (%p%)").arg(totalMb, 0, 'f', 1));
+        int limitMb = 1850;
+        int clampedVal = qBound(0, static_cast<int>(totalMb), limitMb);
+        m_limitProgress->setRange(0, limitMb);
+        m_limitProgress->setValue(clampedVal);
+
+        if (totalMb > limitMb) {
+            m_limitProgress->setFormat(QString("%1 MB / %2 MB (%3%) — OVER BUDGET!")
+                .arg(totalMb, 0, 'f', 1)
+                .arg(limitMb)
+                .arg(m_report.engineLimitPercent, 0, 'f', 1));
+        } else {
+            m_limitProgress->setFormat(QString("%1 MB / %2 MB (%3%)")
+                .arg(totalMb, 0, 'f', 1)
+                .arg(limitMb)
+                .arg(m_report.engineLimitPercent, 0, 'f', 1));
+        }
+
         QString progressColor = "#2ecc71";
-        if (m_report.engineLimitPercent > 75.0f) progressColor = "#e74c3c";
-        else if (m_report.engineLimitPercent > 50.0f) progressColor = "#f39c12";
+        if (m_report.engineLimitPercent >= 90.0f) progressColor = "#e74c3c";
+        else if (m_report.engineLimitPercent >= 70.0f) progressColor = "#f39c12";
 
         m_limitProgress->setStyleSheet(QString(
-            "QProgressBar { border: 1px solid #3d4455; border-radius: 4px; text-align: center; background: #1a1e28; color: white; }"
+            "QProgressBar { border: 1px solid #4a5568; border-radius: 4px; text-align: center; background-color: #141720; color: #ffffff; font-size: 11px; font-weight: bold; height: 22px; }"
             "QProgressBar::chunk { background-color: %1; border-radius: 3px; }"
         ).arg(progressColor));
     }

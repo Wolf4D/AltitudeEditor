@@ -1,4 +1,5 @@
 #include "PortalLeakDialog.h"
+#include "Version.h"
 #include "AssetManager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -12,7 +13,7 @@ PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, QWidget* parent
     : QDialog(parent), m_map(map)
 {
     QString mapName = m_map ? m_map->mapName : QStringLiteral("No Map");
-    setWindowTitle(QString("Детектор утечек порталов и разрывов CSG — %1").arg(mapName));
+    setWindowTitle(QString("%1 — Детектор утечек порталов и разрывов CSG — %2").arg(VersionInfo::shortTitle(), mapName));
     resize(900, 500);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
@@ -168,7 +169,7 @@ void PortalLeakDialog::onCellDoubleClicked(int row, int /*column*/) {
 void PortalLeakDialog::setMap(std::shared_ptr<FPSCMap> map) {
     m_map = map;
     QString mapName = m_map ? m_map->mapName : QStringLiteral("No Map");
-    setWindowTitle(QString("Детектор утечек порталов и разрывов CSG — %1").arg(mapName));
+    setWindowTitle(QString("%1 — Детектор утечек порталов и разрывов CSG — %2").arg(VersionInfo::shortTitle(), mapName));
 
     PortalLeakAnalyzer analyzer(m_map);
     auto val = analyzer.validateCompiledUniverse();

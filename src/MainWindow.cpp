@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "Version.h"
 #include "FPMReader.h"
 #include "FPMWriter.h"
 #include "AssetManager.h"
@@ -18,6 +19,9 @@
 #include <QToolButton>
 #include <QPainter>
 #include <QPolygonF>
+#include <QProgressDialog>
+#include <QElapsedTimer>
+#include <QDebug>
 
 static QIcon makeGhostFloorIcon() {
     QPixmap px(20, 20);
@@ -265,17 +269,29 @@ void MainWindow::createMenusAndToolbars() {
     });
 
     QMenu* helpMenu = menuBar()->addMenu(QStringLiteral("&Help"));
-    helpMenu->addAction(QStringLiteral("&About FPS Creator Map Viewer..."), this, [this]() {
-        QMessageBox::about(this, QStringLiteral("About FPS Creator 2D Map Viewer"),
-            QStringLiteral("<h3>FPS Creator 2D Map Viewer</h3>"
-                           "<p>A high-fidelity 2D map viewer for <b>FPS Creator</b> maps (.FPM).</p>"
+    helpMenu->addAction(QString("&About %1...").arg(VersionInfo::AppName), this, [this]() {
+        QMessageBox::about(this, QString("About %1").arg(VersionInfo::shortTitle()),
+            QStringLiteral("<h3>%1 v%2 - %3</h3>"
+                           "<p style='font-size: 13px;'>"
+                           "<b>Version:</b> %2<br>"
+                           "<b>Developer:</b> %4<br>"
+                           "<b>Studio:</b> %5</p>"
+                           "<hr>"
+                           "<p>A professional tool for editing, visualizing, and analyzing <b>FPS Creator</b> maps (.FPM).</p>"
                            "<ul>"
-                           "<li><b>Doom-Style Segment Wall Texturing:</b> Displays textured wall strips and floor tiles with cell rotations.</li>"
+                           "<li><b>Doom-Style Segment Wall & Floor Rendering:</b> Visualizes segment walls, custom floors, ceilings, and gantry walkways.</li>"
+                           "<li><b>Multi-Overlay Engine Architecture:</b> Accurate overlay placement for doorways, CSG punch-outs, and corridors.</li>"
                            "<li><b>Floor-by-Floor Navigation:</b> Full layer switching (0..20) via toolbar, shortcuts (PageUp/PageDown), and mouse wheel.</li>"
-                           "<li><b>Entity Icons & Search:</b> Renders .BMP icons and provides instant entity filtering by name and category.</li>"
+                           "<li><b>Entity Browser & Inspector:</b> Inspect, filter, search, and edit placed map entities.</li>"
+                           "<li><b>PVS Visibility Zones & Portals:</b> Complete room topology, portal leak detection, and culling visualization.</li>"
                            "<li><b>Memory Footprint Analyzer:</b> Measures memory weight in MB for 3D meshes, textures, and audio buffers with 32-bit limit warnings.</li>"
                            "</ul>"
-                           "<p>Built with <b>Qt 5.15.2 (MinGW 32-bit)</b>.</p>"));
+                           "<p>Built with <b>Qt 5.15.2 (MinGW 32-bit)</b>.</p>")
+            .arg(VersionInfo::AppName)
+            .arg(VersionInfo::Version)
+            .arg(VersionInfo::AppSubtitle)
+            .arg(VersionInfo::Developer)
+            .arg(VersionInfo::Studio));
     });
 
     // -------------------------------------------------------------
@@ -354,11 +370,11 @@ void MainWindow::createMenusAndToolbars() {
 }
 
 void MainWindow::updateWindowTitle() {
-    QString title = QStringLiteral("FPS Creator 2D Map Viewer (Doom-Style Segment Textures & Memory Analyzer)");
+    QString title = VersionInfo::fullTitle();
     if (m_currentMap) {
         QString fName = QFileInfo(m_currentMap->filePath).fileName();
         if (fName.isEmpty()) fName = m_currentMap->mapName;
-        title = QString("FPS Creator 2D Map Viewer - [%1%2]").arg(fName).arg(m_currentMap->isModified ? "*" : "");
+        title = VersionInfo::mapTitle(fName, m_currentMap->isModified);
     }
     setWindowTitle(title);
 }
@@ -514,26 +530,76 @@ void MainWindow::populateRecentMapsMenu() {
 }
 
 void MainWindow::loadMapFile(const QString& filePath) {
-    auto map = FPMReader::loadMap(filePath, "mypassword");
+    QElapsedTimer timer;
+    timer.start();
+
+    QProgressDialog progress(
+        QString("Loading %1...").arg(QFileInfo(filePath).fileName()),
+        QString(), 0, 100, this
+    );
+    progress.setWindowModality(Qt::WindowModal);
+    progress.setMinimumDuration(0);
+    progress.setValue(0);
+    progress.setStyleSheet(
+        "QProgressDialog { background-color: #1e1e24; color: #e0e0e0; border: 1px solid #3d3d45; font-family: 'Segoe UI'; min-width: 340px; }"
+        "QLabel { color: #e0e0e0; font-size: 12px; margin-bottom: 8px; }"
+        "QProgressBar { background-color: #151518; border: 1px solid #33333d; border-radius: 4px; height: 18px; text-align: center; color: #ffffff; font-size: 11px; }"
+        "QProgressBar::chunk { background-color: #2a82da; border-radius: 3px; }"
+    );
+    progress.show();
+    QCoreApplication::processEvents();
+
+    auto progressCb = [&](int pct, const QString& msg) {
+        progress.setValue(pct / 2); // 0..50%
+        progress.setLabelText(msg);
+        QCoreApplication::processEvents();
+    };
+
+    auto map = FPMReader::loadMap(filePath, "mypassword", progressCb);
     if (!map) {
+        progress.close();
         QMessageBox::critical(this, QStringLiteral("Error"), QString("Failed to load FPM map file:\n%1").arg(filePath));
         return;
     }
 
     m_currentMap = map;
+
+    progress.setValue(55);
+    progress.setLabelText(QStringLiteral("Analyzing map memory footprint..."));
+    QCoreApplication::processEvents();
+    m_cachedMemoryReport = MemoryAnalyzer::analyze(m_currentMap);
+    m_memoryReportValid = true;
+
+    progress.setValue(70);
+    progress.setLabelText(QStringLiteral("Building visibility zones & portals..."));
+    QCoreApplication::processEvents();
     m_canvas->setMap(m_currentMap);
+
+    progress.setValue(85);
+    progress.setLabelText(QStringLiteral("Populating entity list..."));
+    QCoreApplication::processEvents();
     m_searchDock->setCurrentFloor(m_canvas->currentFloor());
     m_searchDock->setMap(m_currentMap);
     m_inspectorDock->clear();
+
     if (m_visZoneDock) {
         m_visZoneDock->setMap(m_currentMap);
     }
-    if (m_portalLeakDialog) {
+
+    if (m_portalLeakDialog && m_portalLeakDialog->isVisible()) {
         m_portalLeakDialog->setMap(m_currentMap);
     }
-    if (m_memoryAnalyzerDialog) {
+    if (m_memoryAnalyzerDialog && m_memoryAnalyzerDialog->isVisible()) {
         m_memoryAnalyzerDialog->setMap(m_currentMap);
     }
+
+    progress.setValue(95);
+    progress.setLabelText(QStringLiteral("Rendering map canvas..."));
+    QCoreApplication::processEvents();
+    m_canvas->repaint();
+
+    progress.setValue(100);
+    progress.close();
 
     // Save to Recent Maps list in QSettings
     QSettings settings(QStringLiteral("TGC"), QStringLiteral("FPSCMapViewer"));
@@ -549,6 +615,11 @@ void MainWindow::loadMapFile(const QString& filePath) {
     updateWindowTitle();
     updateFloorControls();
     updateStatusBar();
+    statusBar()->showMessage(QString("Loaded \"%1\" (%2 entities, %3 segments) in %4 ms")
+        .arg(map->mapName)
+        .arg(map->placedEntities.size())
+        .arg(map->segmentsBank.size())
+        .arg(timer.elapsed()), 6000);
 }
 
 void MainWindow::onOpenRecentMap(const QString& filePath) {
@@ -669,6 +740,7 @@ void MainWindow::onCanvasFloorChanged(int floor) {
     m_isUpdatingFloorUI = false;
 
     m_searchDock->setCurrentFloor(floor);
+
     if (m_visZoneDock) {
         m_visZoneDock->onFloorChanged(floor);
     }
@@ -715,10 +787,13 @@ void MainWindow::updateStatusBar() {
         .arg(m_currentMap->header.layerMax)
         .arg(m_canvas->currentFloor() * 100));
 
-    auto rep = MemoryAnalyzer::analyze(m_currentMap);
-    m_statusMemory->setText(QString("Level RAM: %1 MB (%2%)")
-        .arg(rep.totalEstimatedRamBytes / (1024.0 * 1024.0), 0, 'f', 1)
-        .arg(rep.engineLimitPercent, 0, 'f', 1));
+    if (m_memoryReportValid) {
+        m_statusMemory->setText(QString("Level RAM: %1 MB (%2%)")
+            .arg(m_cachedMemoryReport.totalEstimatedRamBytes / (1024.0 * 1024.0), 0, 'f', 1)
+            .arg(m_cachedMemoryReport.engineLimitPercent, 0, 'f', 1));
+    } else {
+        m_statusMemory->setText(QStringLiteral("Level RAM: --"));
+    }
 }
 
 void MainWindow::onOpenPortalLeakDetector() {

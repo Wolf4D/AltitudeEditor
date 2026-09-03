@@ -33,6 +33,7 @@ set(SOURCES
 set(MANIFEST_OBJ "${CMAKE_CURRENT_SOURCE_DIR}/src/app_manifest.o")
 
 set(HEADERS
+    src/Version.h
     src/MainWindow.h
     src/MapCanvas.h
     src/FPMReader.h

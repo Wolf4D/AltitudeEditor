@@ -2,6 +2,7 @@
 #include "AssetManager.h"
 #include "FPMReader.h"
 #include "MemoryAnalyzer.h"
+#include "Version.h"
 #include <QApplication>
 #include <QStyleFactory>
 #include <QPalette>
@@ -13,8 +14,9 @@ int main(int argc, char* argv[]) {
     QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 
     QApplication app(argc, argv);
-    app.setApplicationName("FPSCreatorMapViewer");
-    app.setOrganizationName("TheGameCreators");
+    app.setApplicationName(VersionInfo::AppName);
+    app.setApplicationVersion(VersionInfo::Version);
+    app.setOrganizationName(VersionInfo::Studio);
 
     // Apply Deep Dark Fusion Theme
     app.setStyle(QStyleFactory::create("Fusion"));
@@ -139,6 +141,42 @@ int main(int argc, char* argv[]) {
             fflush(stdout);
             std::exit(ok ? 0 : 1);
         }
+    }
+
+    if (args.contains("--snapshot-memory")) {
+        int idx = args.indexOf("--snapshot-memory");
+        if (args.size() >= idx + 3) {
+            QString mapPath = args.value(idx + 1);
+            QString outPath = args.value(idx + 2);
+
+            auto map = FPMReader::loadMap(mapPath, "mypassword");
+            if (map) {
+                MemoryAnalyzerDialog dlg(map);
+                dlg.resize(1060, 720);
+                dlg.show();
+                app.processEvents();
+
+                QPixmap pix(dlg.size());
+                dlg.render(&pix);
+                bool ok = pix.save(outPath);
+                fprintf(stdout, "Saved memory snapshot to: %s (Result: %d)\n", qPrintable(outPath), ok ? 1 : 0);
+                fflush(stdout);
+                std::exit(ok ? 0 : 1);
+            }
+        }
+    }
+    if (args.contains("--dump-floor")) {
+        int idx = args.indexOf("--dump-floor");
+        QString mapPath = args.value(idx + 1);
+        int floor = args.value(idx + 2).toInt();
+        auto map = FPMReader::loadMap(mapPath, "mypassword");
+        if (map && floor < map->gridBlocks.size()) {
+            int rows = map->gridBlocks[floor].size();
+            int cols = rows > 0 ? map->gridBlocks[floor][0].size() : 0;
+            fprintf(stdout, "Map: %s Floor %d: %dx%d\n", qPrintable(map->mapName), floor, cols, rows);
+        }
+        fflush(stdout);
+        std::exit(0);
     }
 
     MainWindow window;

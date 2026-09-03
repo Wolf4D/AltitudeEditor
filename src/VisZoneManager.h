@@ -64,4 +64,10 @@ private:
     void buildPortals();
     bool isMaptileWallPresent(int l, int x, int y, int side) const;
     bool hasDoorwayOnEdge(int l, int x1, int y1, int x2, int y2, int sideFrom1) const;
+
+    struct DoorPos {
+        float x;
+        float y;
+    };
+    std::vector<std::vector<DoorPos>> m_floorDoors;
 };
