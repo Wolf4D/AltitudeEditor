@@ -294,16 +294,10 @@ void MainWindow::createMenusAndToolbars() {
     m_actFloorDown->setToolTip(QStringLiteral("Go one floor down (PageDown / -)"));
 
     m_floorCombo = new QComboBox(this);
-    m_floorCombo->setMaximumWidth(170);
-    m_floorCombo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+    m_floorCombo->setMinimumWidth(230);
+    m_floorCombo->setMaximumWidth(280);
     mainBar->addWidget(m_floorCombo);
     connect(m_floorCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::onFloorComboChanged);
-
-    m_floorSpin = new QSpinBox(this);
-    m_floorSpin->setRange(0, 20);
-    m_floorSpin->setPrefix("Floor: ");
-    mainBar->addWidget(m_floorSpin);
-    connect(m_floorSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &MainWindow::onFloorSpinChanged);
 
     m_actFloorUp = mainBar->addAction(QStringLiteral("▲"), m_canvas, &MapCanvas::floorUp);
     m_actFloorUp->setShortcuts({QKeySequence(Qt::Key_PageUp), QKeySequence(Qt::Key_Plus), QKeySequence(Qt::Key_Equal)});
@@ -615,7 +609,7 @@ void MainWindow::updateFloorControls() {
     m_floorCombo->clear();
 
     int layerMax = m_currentMap->header.layerMax;
-    m_floorSpin->setRange(0, layerMax);
+    if (m_floorSpin) m_floorSpin->setRange(0, layerMax);
 
     // Count entities and segments per layer
     QVector<int> entCounts(layerMax + 1, 0);
@@ -646,7 +640,7 @@ void MainWindow::updateFloorControls() {
 
     int active = qBound(0, m_canvas->currentFloor(), layerMax);
     m_floorCombo->setCurrentIndex(active);
-    m_floorSpin->setValue(active);
+    if (m_floorSpin) m_floorSpin->setValue(active);
     m_isUpdatingFloorUI = false;
 }
 
@@ -670,7 +664,7 @@ void MainWindow::onFloorSliderChanged(int value) {
 void MainWindow::onCanvasFloorChanged(int floor) {
     m_isUpdatingFloorUI = true;
     m_floorCombo->setCurrentIndex(floor);
-    m_floorSpin->setValue(floor);
+    if (m_floorSpin) m_floorSpin->setValue(floor);
     m_isUpdatingFloorUI = false;
 
     m_searchDock->setCurrentFloor(floor);
