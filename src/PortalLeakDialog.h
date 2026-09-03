@@ -14,6 +14,8 @@ class PortalLeakDialog : public QDialog {
 public:
     explicit PortalLeakDialog(std::shared_ptr<FPSCMap> map, QWidget* parent = nullptr);
 
+    void setMap(std::shared_ptr<FPSCMap> map);
+
 signals:
     void cellSelected(int layer, int x, int y);
 

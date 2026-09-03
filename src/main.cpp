@@ -64,12 +64,13 @@ int main(int argc, char* argv[]) {
         }
         auto rep = MemoryAnalyzer::analyze(map);
         fprintf(stdout, "=== MEMORY ANALYSIS: %s ===\n", qPrintable(map->mapName));
-        fprintf(stdout, "Placed Entities: %d\n", rep.totalPlacedEntities);
-        fprintf(stdout, "Unique Profiles: %d\n", rep.uniqueEntityTypesCount);
-        fprintf(stdout, "Total RAM: %.2f MB\n", rep.totalEstimatedRamBytes / (1024.0 * 1024.0));
-        fprintf(stdout, "  - 3D Meshes: %.2f MB\n", rep.totalMeshRamBytes / (1024.0 * 1024.0));
-        fprintf(stdout, "  - Textures: %.2f MB\n", rep.totalTextureRamBytes / (1024.0 * 1024.0));
-        fprintf(stdout, "  - Audio: %.2f MB\n", rep.totalAudioRamBytes / (1024.0 * 1024.0));
+        fprintf(stdout, "Total Estimated Level RAM: %.2f MB\n", rep.totalEstimatedRamBytes / (1024.0 * 1024.0));
+        fprintf(stdout, "  - Segment Architecture: %.2f MB (%d types, %d blocks)\n",
+                rep.totalSegmentRamBytes / (1024.0 * 1024.0), rep.uniqueSegmentTypesCount, rep.totalPlacedSegmentBlocks);
+        fprintf(stdout, "  - Placed Entities: %.2f MB (%d types, %d placed)\n",
+                rep.totalEntityRamBytes / (1024.0 * 1024.0), rep.uniqueEntityTypesCount, rep.totalPlacedEntities);
+        fprintf(stdout, "  - Universe & Lightmaps: %.2f MB\n", (rep.universeCsgRamBytes + rep.lightmapsRamBytes) / (1024.0 * 1024.0));
+        fprintf(stdout, "  - Engine Baseline: %.2f MB\n", rep.engineBaselineRamBytes / (1024.0 * 1024.0));
         fprintf(stdout, "Engine 32-bit Limit: %.1f%% (Status: %s)\n", rep.engineLimitPercent, qPrintable(rep.riskLevel));
         fflush(stdout);
         std::exit(0);

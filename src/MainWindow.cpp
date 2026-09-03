@@ -435,6 +435,12 @@ void MainWindow::loadMapFile(const QString& filePath) {
     if (m_visZoneDock) {
         m_visZoneDock->setMap(m_currentMap);
     }
+    if (m_portalLeakDialog) {
+        m_portalLeakDialog->setMap(m_currentMap);
+    }
+    if (m_memoryAnalyzerDialog) {
+        m_memoryAnalyzerDialog->setMap(m_currentMap);
+    }
 
     // Save to Recent Maps list in QSettings
     QSettings settings(QStringLiteral("TGC"), QStringLiteral("FPSCMapViewer"));
@@ -492,8 +498,16 @@ void MainWindow::onOpenMemoryAnalyzer() {
         return;
     }
 
-    MemoryAnalyzerDialog dlg(m_currentMap, this);
-    dlg.exec();
+    if (!m_memoryAnalyzerDialog) {
+        m_memoryAnalyzerDialog = new MemoryAnalyzerDialog(m_currentMap, this);
+        m_memoryAnalyzerDialog->setAttribute(Qt::WA_DeleteOnClose);
+        m_memoryAnalyzerDialog->show();
+    } else {
+        m_memoryAnalyzerDialog->setMap(m_currentMap);
+        m_memoryAnalyzerDialog->raise();
+        m_memoryAnalyzerDialog->activateWindow();
+        m_memoryAnalyzerDialog->show();
+    }
 }
 
 void MainWindow::updateFloorControls() {
@@ -608,12 +622,10 @@ void MainWindow::updateStatusBar() {
         .arg(m_currentMap->header.layerMax)
         .arg(m_canvas->currentFloor() * 100));
 
-    // Estimate quick total memory
-    qint64 totalBytes = 0;
-    for (const auto& prof : m_currentMap->entityProfiles) {
-        if (prof) totalBytes += prof->estimatedRAMBytes;
-    }
-    m_statusMemory->setText(QString("Entity RAM: %1 MB").arg(totalBytes / (1024.0 * 1024.0), 0, 'f', 1));
+    auto rep = MemoryAnalyzer::analyze(m_currentMap);
+    m_statusMemory->setText(QString("Level RAM: %1 MB (%2%)")
+        .arg(rep.totalEstimatedRamBytes / (1024.0 * 1024.0), 0, 'f', 1)
+        .arg(rep.engineLimitPercent, 0, 'f', 1));
 }
 
 void MainWindow::onOpenPortalLeakDetector() {
@@ -621,10 +633,17 @@ void MainWindow::onOpenPortalLeakDetector() {
         QMessageBox::warning(this, "Error", "Please open a map first.");
         return;
     }
-    PortalLeakDialog* dlg = new PortalLeakDialog(m_currentMap, this);
-    connect(dlg, &PortalLeakDialog::cellSelected, m_canvas, &MapCanvas::highlightCell);
-    dlg->setAttribute(Qt::WA_DeleteOnClose);
-    dlg->show();
+    if (!m_portalLeakDialog) {
+        m_portalLeakDialog = new PortalLeakDialog(m_currentMap, this);
+        m_portalLeakDialog->setAttribute(Qt::WA_DeleteOnClose);
+        connect(m_portalLeakDialog, &PortalLeakDialog::cellSelected, m_canvas, &MapCanvas::highlightCell);
+        m_portalLeakDialog->show();
+    } else {
+        m_portalLeakDialog->setMap(m_currentMap);
+        m_portalLeakDialog->raise();
+        m_portalLeakDialog->activateWindow();
+        m_portalLeakDialog->show();
+    }
 
     // Also auto-refresh canvas portals
     PortalLeakAnalyzer analyzer(m_currentMap);

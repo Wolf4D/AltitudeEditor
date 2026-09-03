@@ -1,19 +1,22 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "FPSCData.h"
-#include "MapCanvas.h"
-#include "EntitySearchDock.h"
-#include "EntityInspector.h"
-#include "VisZoneDock.h"
-#include "VisZoneManager.h"
 #include <QMainWindow>
+#include <QPointer>
 #include <QComboBox>
 #include <QSpinBox>
 #include <QSlider>
 #include <QLabel>
 #include <QAction>
 #include <memory>
+#include "FPSCData.h"
+#include "MapCanvas.h"
+#include "EntitySearchDock.h"
+#include "EntityInspector.h"
+#include "VisZoneDock.h"
+#include "VisZoneManager.h"
+#include "PortalLeakDialog.h"
+#include "MemoryAnalyzerDialog.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -63,6 +66,8 @@ private:
     EntityInspector* m_inspectorDock = nullptr;
     VisZoneDock* m_visZoneDock = nullptr;
     std::shared_ptr<VisZoneManager> m_visZoneManager;
+    QPointer<PortalLeakDialog> m_portalLeakDialog;
+    QPointer<MemoryAnalyzerDialog> m_memoryAnalyzerDialog;
 
     // Floor UI Controls
     QComboBox* m_floorCombo = nullptr;

@@ -11,7 +11,8 @@
 PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, QWidget* parent)
     : QDialog(parent), m_map(map)
 {
-    setWindowTitle(QStringLiteral("Детектор утечек порталов и разрывов CSG (Portal & CSG Leak Detector)"));
+    QString mapName = m_map ? m_map->mapName : QStringLiteral("No Map");
+    setWindowTitle(QString("Детектор утечек порталов и разрывов CSG — %1").arg(mapName));
     resize(900, 500);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
@@ -163,3 +164,26 @@ void PortalLeakDialog::onCellDoubleClicked(int row, int /*column*/) {
         emit cellSelected(w.layer, w.x, w.y);
     }
 }
+
+void PortalLeakDialog::setMap(std::shared_ptr<FPSCMap> map) {
+    m_map = map;
+    QString mapName = m_map ? m_map->mapName : QStringLiteral("No Map");
+    setWindowTitle(QString("Детектор утечек порталов и разрывов CSG — %1").arg(mapName));
+
+    PortalLeakAnalyzer analyzer(m_map);
+    auto val = analyzer.validateCompiledUniverse();
+    m_chkCompiledBsp->setChecked(val.matchesCurrentMap);
+    m_lblDbuStatus->setText(val.message);
+    if (!val.fileExists) {
+        m_lblDbuStatus->setStyleSheet(QStringLiteral("color: #ff9100; font-size: 11px;"));
+    } else if (!val.matchesCurrentMap) {
+        m_lblDbuStatus->setStyleSheet(QStringLiteral("color: #ff5252; font-weight: bold; font-size: 11px;"));
+    } else if (val.isOutdated) {
+        m_lblDbuStatus->setStyleSheet(QStringLiteral("color: #ffb300; font-size: 11px;"));
+    } else {
+        m_lblDbuStatus->setStyleSheet(QStringLiteral("color: #00e676; font-weight: bold; font-size: 11px;"));
+    }
+
+    runAnalysis();
+}
+
