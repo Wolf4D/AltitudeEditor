@@ -395,9 +395,8 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
             int ground = (layer < m_map->gridGround.size() && y < m_map->gridGround[layer].size() && x < m_map->gridGround[layer][y].size())
                          ? m_map->gridGround[layer][y][x] : 0;
 
-            // In FPS Creator, ground == 2 is an auto-generated ceiling/roof slab placed on layer+1.
             // In .fps spec, groundMode == 2 and visRoof >= 0 or (visFloor == -1 && visRoof >= 0) defines a ceiling/roof slab.
-            bool isCeilingSeg = (ground == 2) || (seg->groundMode == 2 && seg->hasRoofOnThisLayer) ||
+            bool isCeilingSeg = (seg->groundMode == 2 && seg->hasRoofOnThisLayer) ||
                                 (seg->visFloor == -1 && seg->visRoof >= 0);
 
             int symbol = (layer < m_map->gridSymbol.size() && y < m_map->gridSymbol[layer].size() && x < m_map->gridSymbol[layer][y].size())
@@ -417,8 +416,9 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
             } else if (seg->hasFloorOnThisLayer && seg->visFloor >= 0) {
                 drawFloor = (symbol != 1) && !seg->floorTexture.isEmpty();
             }
-            // Roof slabs capping a room below do not have interior room walls
-            bool drawWalls = !isCeilingSeg && !seg->isPlatformOrGantry && !seg->isStairs;
+            // Segments render their walls if they have wall geometry defined
+            bool drawWalls = !seg->isPlatformOrGantry && !seg->isStairs &&
+                             (seg->hasWall[0] || seg->hasWall[1] || seg->hasWall[2] || seg->hasWall[3]);
 
             int orient = (layer < m_map->gridOrientation.size() && y < m_map->gridOrientation[layer].size() && x < m_map->gridOrientation[layer][y].size())
                          ? m_map->gridOrientation[layer][y][x] : 0;
@@ -570,39 +570,7 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                     }
                 }
 
-                // In FPS Creator engine (FPSC-Game.DBA:48540-48547): "doors punch out walls!"
-                bool doorPunched = false;
-                if (layer < m_map->gridTileOverlays.size() && y < m_map->gridTileOverlays[layer].size() && x < m_map->gridTileOverlays[layer][y].size()) {
-                    for (const auto& o : m_map->gridTileOverlays[layer][y][x]) {
-                        auto oseg = m_map->segments.value(o.segmentId);
-                        if (oseg && oseg->hasPunch && (o.orient & 3) == rotSide) {
-                            doorPunched = true;
-                            break;
-                        }
-                    }
-                }
-                if (!doorPunched) {
-                    int pnx = x, pny = y;
-                    switch (rotSide) {
-                        case 0: pny -= 1; break;
-                        case 1: pnx += 1; break;
-                        case 2: pny += 1; break;
-                        case 3: pnx -= 1; break;
-                    }
-                    if (layer < m_map->gridTileOverlays.size() && pny >= 0 && pny < rows && pnx >= 0 && pnx < cols) {
-                        int oppSide = (rotSide + 2) % 4;
-                        for (const auto& no : m_map->gridTileOverlays[layer][pny][pnx]) {
-                            auto noseg = m_map->segments.value(no.segmentId);
-                            if (noseg && noseg->hasPunch && (no.orient & 3) == oppSide) {
-                                doorPunched = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (doorPunched) {
-                    continue;
-                }
+
 
                 QRectF wallRect;
                 QLineF outerLine, innerLine;
@@ -1402,7 +1370,7 @@ void MapCanvas::setActiveVisZone(int zoneId) {
         }
         if (m_visZoneManager && zoneId >= 0) {
             const VisZone* z = m_visZoneManager->getZone(zoneId);
-            if (z && z->floor != m_currentFloor) {
+            if (z && !z->hasFloor(m_currentFloor)) {
                 setFloor(z->floor);
             }
         }
@@ -1440,7 +1408,9 @@ void MapCanvas::drawPortals(QPainter& p) {
     if (m_visZoneManager) {
         if (m_colorAllVisZones) {
             for (const auto& zone : m_visZoneManager->zones()) {
-                if (zone.floor != m_currentFloor) continue;
+                if (!zone.hasFloor(m_currentFloor)) continue;
+                const auto& tiles = zone.getTilesOnFloor(m_currentFloor);
+                if (tiles.empty()) continue;
                 bool isActive = (zone.id == m_activeVisZoneId);
 
                 p.save();
@@ -1449,19 +1419,19 @@ void MapCanvas::drawPortals(QPainter& p) {
                 p.setBrush(zColor);
                 p.setPen(QPen(zone.color, isActive ? 2.5f : 1.2f, isActive ? Qt::DashLine : Qt::SolidLine));
 
-                for (const auto& tile : zone.tiles) {
+                for (const auto& tile : tiles) {
                     QRectF cr = getCellRectScreen(tile.x(), tile.y());
                     p.drawRect(cr);
                 }
 
-                if (!zone.tiles.empty() && m_zoom >= 0.20f) {
+                if (m_zoom >= 0.20f) {
                     int sumX = 0, sumY = 0;
-                    for (const auto& t : zone.tiles) {
+                    for (const auto& t : tiles) {
                         sumX += t.x();
                         sumY += t.y();
                     }
-                    float avgX = static_cast<float>(sumX) / zone.tiles.size();
-                    float avgY = static_cast<float>(sumY) / zone.tiles.size();
+                    float avgX = static_cast<float>(sumX) / tiles.size();
+                    float avgY = static_cast<float>(sumY) / tiles.size();
                     QPointF centerScreen = worldToScreen(QPointF((avgX + 0.5f) * TILE_SIZE, (avgY + 0.5f) * TILE_SIZE));
 
                     QString badgeText = QString("Z%1").arg(zone.id + 1);
@@ -1484,13 +1454,14 @@ void MapCanvas::drawPortals(QPainter& p) {
             }
         } else if (m_activeVisZoneId >= 0) {
             const VisZone* curZone = m_visZoneManager->getZone(m_activeVisZoneId);
-            if (curZone && curZone->floor == m_currentFloor) {
+            if (curZone && curZone->hasFloor(m_currentFloor)) {
+                const auto& tiles = curZone->getTilesOnFloor(m_currentFloor);
                 p.save();
                 QColor zColor = curZone->color;
                 zColor.setAlpha(45);
                 p.setBrush(zColor);
                 p.setPen(QPen(curZone->color, 2.5f, Qt::DashLine));
-                for (const auto& tile : curZone->tiles) {
+                for (const auto& tile : tiles) {
                     QRectF cr = getCellRectScreen(tile.x(), tile.y());
                     p.drawRect(cr);
                 }
@@ -1757,7 +1728,8 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
                     // Cutout Label
                     p.setPen(QColor(160, 255, 180));
                     p.setFont(QFont("Segoe UI", 8, QFont::Bold));
-                    QString label = (oId == 1) ? QStringLiteral("CSG Cutout (Window / Slit)") : QStringLiteral("CSG Cutout (Doorway)");
+                    bool isWindow = (oId == 1) || seg->name.contains("window", Qt::CaseInsensitive) || seg->relPath.contains("window", Qt::CaseInsensitive);
+                    QString label = isWindow ? QStringLiteral("CSG Cutout (Window)") : QStringLiteral("CSG Cutout (Doorway)");
                     if (effectiveRot == 0) {
                         p.drawText(cutoutRect.bottomLeft() + QPointF(0, 14), label);
                     } else if (effectiveRot == 2) {
@@ -1765,7 +1737,7 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
                     } else {
                         p.drawText(cutoutRect.topRight() + QPointF(6, 12), label);
                     }
-                } else if (seg->isPlatformOrGantry || seg->isStairs || seg->visOverlay > 0) {
+                } else if (seg->isPlatformOrGantry || seg->isStairs) {
                     int orient = olay.orient & 3;
 
                     // 1. Draw floor / walkway surface texture (or metal grating pattern)
@@ -1832,6 +1804,20 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
                     p.setFont(QFont("Segoe UI", 7, QFont::Bold));
                     QString pLabel = seg->isStairs ? QStringLiteral("STAIRS") : QStringLiteral("GANTRY");
                     p.drawText(cellRect, Qt::AlignCenter, pLabel);
+                } else if (seg->visOverlay > 0) {
+                    // Decorative wall overlay (e.g. scifiwall1D, wall trim, molding)
+                    int orient = olay.orient & 3;
+                    float trimW = 6.0f * m_zoom;
+                    QRectF trimRect;
+                    switch (orient) {
+                        case 0: trimRect = QRectF(cellRect.left(), cellRect.top(), cellRect.width(), trimW); break;
+                        case 1: trimRect = QRectF(cellRect.right() - trimW, cellRect.top(), trimW, cellRect.height()); break;
+                        case 2: trimRect = QRectF(cellRect.left(), cellRect.bottom() - trimW, cellRect.width(), trimW); break;
+                        case 3: trimRect = QRectF(cellRect.left(), cellRect.top(), trimW, cellRect.height()); break;
+                    }
+                    p.fillRect(trimRect, QColor(70, 130, 180, 160)); // Steel-blue decorative trim
+                    p.setPen(QPen(QColor(135, 206, 250, 200), 1.0f));
+                    p.drawRect(trimRect);
                 }
             }
         }

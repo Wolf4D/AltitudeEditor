@@ -137,11 +137,40 @@ int main(int argc, char* argv[]) {
                     dock->show();
                     dock->setColorAllZones(true);
                 }
+                if (auto* canvas = window.findChild<MapCanvas*>()) {
+                    canvas->setColorAllVisZones(true);
+                }
             }
 
-            // Select entity to show in inspector
-            // Focus on entity
-            QMetaObject::invokeMethod(&window, "onFocusEntityRequested", Q_ARG(int, entIdx));
+            if (args.contains("--zone")) {
+                int zIdx = args.indexOf("--zone");
+                if (args.size() > zIdx + 1) {
+                    int zid = args.value(zIdx + 1).toInt();
+                    if (auto* dock = window.findChild<VisZoneDock*>()) {
+                        dock->show();
+                        dock->onExternalZoneSelected(zid);
+                    }
+                }
+            }
+
+            if (args.contains("--floor")) {
+                int fIdx = args.indexOf("--floor");
+                if (args.size() > fIdx + 1) {
+                    int fl = args.value(fIdx + 1).toInt();
+                    if (auto* canvas = window.findChild<MapCanvas*>()) {
+                        canvas->setFloor(fl);
+                        canvas->zoomFit();
+                    }
+                }
+            } else if (entIdx >= 0) {
+                // Select entity to show in inspector
+                // Focus on entity
+                QMetaObject::invokeMethod(&window, "onFocusEntityRequested", Q_ARG(int, entIdx));
+            } else {
+                if (auto* canvas = window.findChild<MapCanvas*>()) {
+                    canvas->zoomFit();
+                }
+            }
             app.processEvents();
 
             QPixmap pix(window.size());
@@ -190,6 +219,8 @@ int main(int argc, char* argv[]) {
     }
 
     MainWindow window;
+    window.show();
+
     if (args.size() > 1 && !args[1].startsWith('-')) {
         window.loadMapFile(args[1]);
     } else {
@@ -198,7 +229,6 @@ int main(int argc, char* argv[]) {
             window.loadMapFile(defaultMap);
         }
     }
-    window.show();
 
     return app.exec();
 }

@@ -167,8 +167,7 @@ std::shared_ptr<FPSCSegment> SegmentParser::parse(const QString& relPath, int se
                         seg->relPath.contains("catwalk", Qt::CaseInsensitive) ||
                         seg->name.contains("catwalk", Qt::CaseInsensitive) ||
                         seg->relPath.contains("walkway", Qt::CaseInsensitive) ||
-                        seg->name.contains("walkway", Qt::CaseInsensitive) ||
-                        (seg->kindOf > 0 && !seg->hasPunch);
+                        seg->name.contains("walkway", Qt::CaseInsensitive);
     bool isStairsPath = seg->relPath.contains("stair", Qt::CaseInsensitive) ||
                         seg->name.contains("stair", Qt::CaseInsensitive) ||
                         seg->relPath.contains("step", Qt::CaseInsensitive) ||

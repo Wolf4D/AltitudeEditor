@@ -1,6 +1,7 @@
 #include "VisZoneManager.h"
 #include <cmath>
 #include <queue>
+#include <set>
 #include <QDebug>
 
 bool VisZoneManager::isMaptileWallPresent(int l, int x, int y, int side) const {
@@ -14,10 +15,8 @@ bool VisZoneManager::isMaptileWallPresent(int l, int x, int y, int side) const {
     auto seg = m_map->segments.value(b);
     if (!seg) return false;
 
-    // Structural roof slabs, platforms, stairs, and scenery have no interior room walls
-    if (seg->groundMode == 2 || seg->isPlatformOrGantry || seg->isStairs || seg->isScenery) return false;
-    if (seg->relPath.contains("ceiling", Qt::CaseInsensitive) || seg->name.contains("ceiling", Qt::CaseInsensitive)) return false;
-    if (seg->relPath.contains("roof", Qt::CaseInsensitive) || seg->name.contains("roof", Qt::CaseInsensitive)) return false;
+    // Scenery props, platforms and stairs do not have standard wall ribbons
+    if (seg->isPlatformOrGantry || seg->isStairs || seg->isScenery) return false;
 
     int maptile = m_map->gridTileType[l][y][x];
     int rot = m_map->gridRotation[l][y][x];
@@ -76,17 +75,6 @@ bool VisZoneManager::hasDoorwayOnEdge(int l, int x1, int y1, int x2, int y2, int
             }
         }
     }
-
-    // Door entity check (fast prefiltered lookup)
-    float edgeMidX = (x1 + x2 + 1) * 50.0f;
-    float edgeMidY = (y1 + y2 + 1) * 50.0f;
-    if (l >= 0 && l < static_cast<int>(m_floorDoors.size())) {
-        for (const auto& d : m_floorDoors[l]) {
-            float dx = d.x - edgeMidX;
-            float dy = d.y - edgeMidY;
-            if (dx * dx + dy * dy < 55.0f * 55.0f) return true;
-        }
-    }
     return false;
 }
 
@@ -95,7 +83,6 @@ void VisZoneManager::buildFromMap(std::shared_ptr<FPSCMap> map, const QString& /
     m_zones.clear();
     m_portals.clear();
     m_tileZoneMap.clear();
-    m_floorDoors.clear();
 
     if (!m_map) return;
 
@@ -105,18 +92,6 @@ void VisZoneManager::buildFromMap(std::shared_ptr<FPSCMap> map, const QString& /
     if (rows == 0) return;
     int cols = m_map->gridBlocks[0][0].size();
 
-    m_floorDoors.resize(layers);
-    for (const auto& e : m_map->placedEntities) {
-        if (e.floorLayer >= 0 && e.floorLayer < layers) {
-            bool isDoor = (e.profile && e.profile->category == EntityCategory::Door) ||
-                          (e.profile && e.profile->name.contains("door", Qt::CaseInsensitive)) ||
-                          (e.instanceName.contains("door", Qt::CaseInsensitive));
-            if (isDoor) {
-                m_floorDoors[e.floorLayer].push_back({e.x, -e.z});
-            }
-        }
-    }
-
     m_tileZoneMap.resize(layers);
     for (int l = 0; l < layers; ++l) {
         m_tileZoneMap[l].resize(rows, std::vector<int>(cols, -1));
@@ -125,81 +100,184 @@ void VisZoneManager::buildFromMap(std::shared_ptr<FPSCMap> map, const QString& /
     partitionRooms();
     buildPortals();
     associateEntities();
+    pruneOpenRoofZones();
 }
 
 void VisZoneManager::partitionRooms() {
     int layers = m_map->gridBlocks.size();
+    if (layers == 0) return;
     int rows = m_map->gridBlocks[0].size();
+    if (rows == 0) return;
     int cols = m_map->gridBlocks[0][0].size();
 
-    auto canPass = [&](int l, int x1, int y1, int x2, int y2, int sideFrom1) -> bool {
+    auto hasCeilingBarrier = [&](int l, int x, int y) -> bool {
+        if (l < 0 || l >= layers || y < 0 || y >= rows || x < 0 || x >= cols) return true;
+        int b = m_map->gridBlocks[l][y][x];
+        if (b <= 0) return false;
+        int sym = (l < m_map->gridSymbol.size() && y < m_map->gridSymbol[l].size() && x < m_map->gridSymbol[l][y].size())
+                  ? m_map->gridSymbol[l][y][x] : 0;
+        if (sym == 1) return false; // mapsymbol == 1 hides vis.r in FPS Creator
+        auto seg = m_map->segments.value(b);
+        if (!seg || seg->isScenery) return false;
+        return (seg->visRoof >= 0 || seg->hasRoofOnThisLayer);
+    };
+
+    auto hasFloorBarrier = [&](int l, int x, int y) -> bool {
+        if (l < 0 || l >= layers || y < 0 || y >= rows || x < 0 || x >= cols) return true;
+        int b = m_map->gridBlocks[l][y][x];
+        if (b <= 0) return false;
+        int sym = (l < m_map->gridSymbol.size() && y < m_map->gridSymbol[l].size() && x < m_map->gridSymbol[l][y].size())
+                  ? m_map->gridSymbol[l][y][x] : 0;
+        if (sym == 1) return false; // mapsymbol == 1 hides vis.f in FPS Creator
+        auto seg = m_map->segments.value(b);
+        if (!seg || seg->isScenery) return false;
+        return (seg->visFloor >= 0 || seg->hasFloorOnThisLayer);
+    };
+
+    auto canPassVertical = [&](int lFrom, int lTo, int x, int y) -> bool {
+        if (lFrom < 0 || lFrom >= layers || lTo < 0 || lTo >= layers) return false;
+        if (y < 0 || y >= rows || x < 0 || x >= cols) return false;
+        int bFrom = m_map->gridBlocks[lFrom][y][x];
+        int bTo = m_map->gridBlocks[lTo][y][x];
+        // Vertical pass is ONLY valid between actual placed segment blocks!
+        if (bFrom <= 0 || bTo <= 0) return false;
+
+        if (lTo == lFrom + 1) {
+            if (hasCeilingBarrier(lFrom, x, y)) return false;
+            if (hasFloorBarrier(lTo, x, y)) return false;
+            return true;
+        } else if (lTo == lFrom - 1) {
+            if (hasCeilingBarrier(lTo, x, y)) return false;
+            if (hasFloorBarrier(lFrom, x, y)) return false;
+            return true;
+        }
+        return false;
+    };
+
+    auto hasStructureAbove = [&](int startL, int x, int y) -> bool {
+        for (int k = startL; k < layers; ++k) {
+            if (m_map->gridBlocks[k][y][x] > 0) return true;
+        }
+        return false;
+    };
+
+    auto canPassHorizontal = [&](int l, int x1, int y1, int x2, int y2, int sideFrom1) -> bool {
         int sideFrom2 = (sideFrom1 + 2) % 4;
-        if (isMaptileWallPresent(l, x1, y1, sideFrom1)) return false;
-        if (isMaptileWallPresent(l, x2, y2, sideFrom2)) return false;
-        if (hasDoorwayOnEdge(l, x1, y1, x2, y2, sideFrom1)) return false; // Doorway is a PORTAL, separate zones!
+        int b1 = m_map->gridBlocks[l][y1][x1];
+        int b2 = m_map->gridBlocks[l][y2][x2];
+        if (b1 > 0 && isMaptileWallPresent(l, x1, y1, sideFrom1)) return false;
+        if (b2 > 0 && isMaptileWallPresent(l, x2, y2, sideFrom2)) return false;
+        if (hasDoorwayOnEdge(l, x1, y1, x2, y2, sideFrom1)) return false; // Doorway is a PORTAL
         return true;
     };
 
+    struct Cell3D { int l, x, y; };
     int nextZoneId = 0;
 
+    auto floodFillZone = [&](int startL, int startX, int startY) {
+        int currentZoneId = nextZoneId++;
+        VisZone zone;
+        zone.id = currentZoneId;
+        zone.minFloor = startL;
+        zone.maxFloor = startL;
+
+        int hue = (currentZoneId * 137) % 360;
+        zone.color = QColor::fromHsv(hue, 180, 240);
+
+        int minX = startX, maxX = startX, minY = startY, maxY = startY;
+        std::vector<Cell3D> q = {{startL, startX, startY}};
+        m_tileZoneMap[startL][startY][startX] = currentZoneId;
+        int head = 0;
+
+        std::set<std::pair<int, int>> uniqueFootprint;
+
+        while (head < static_cast<int>(q.size())) {
+            Cell3D c = q[head++];
+            zone.floorTiles[c.l].push_back(QPoint(c.x, c.y));
+            uniqueFootprint.insert({c.x, c.y});
+
+            minX = qMin(minX, c.x);
+            maxX = qMax(maxX, c.x);
+            minY = qMin(minY, c.y);
+            maxY = qMax(maxY, c.y);
+            zone.minFloor = qMin(zone.minFloor, c.l);
+            zone.maxFloor = qMax(zone.maxFloor, c.l);
+
+            // 4 horizontal neighbors
+            const int dx[4] = {0, 1, 0, -1}; // N, E, S, W
+            const int dy[4] = {-1, 0, 1, 0};
+            for (int d = 0; d < 4; ++d) {
+                int nx = c.x + dx[d], ny = c.y + dy[d];
+                if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
+                    if (m_tileZoneMap[c.l][ny][nx] < 0) {
+                        int nb = m_map->gridBlocks[c.l][ny][nx];
+                        bool validTile = false;
+                        if (nb > 0) {
+                            auto nseg = m_map->segments.value(nb);
+                            if (nseg && !nseg->isScenery) validTile = true;
+                        } else if (c.l > 0 && m_tileZoneMap[c.l - 1][ny][nx] == currentZoneId) {
+                            // Empty air tile directly above our room floor that is capped by a structure above
+                            if (!hasCeilingBarrier(c.l - 1, nx, ny) && hasStructureAbove(c.l, nx, ny)) {
+                                validTile = true;
+                            }
+                        }
+                        if (validTile && canPassHorizontal(c.l, c.x, c.y, nx, ny, d)) {
+                            m_tileZoneMap[c.l][ny][nx] = currentZoneId;
+                            q.push_back({c.l, nx, ny});
+                        }
+                    }
+                }
+            }
+
+            // Vertical up neighbor
+            if (c.l + 1 < layers && m_tileZoneMap[c.l + 1][c.y][c.x] < 0) {
+                int nbUp = m_map->gridBlocks[c.l + 1][c.y][c.x];
+                bool allowUp = false;
+                if (nbUp > 0) {
+                    allowUp = canPassVertical(c.l, c.l + 1, c.x, c.y);
+                } else if (!hasCeilingBarrier(c.l, c.x, c.y) && hasStructureAbove(c.l + 1, c.x, c.y)) {
+                    allowUp = true;
+                }
+                if (allowUp) {
+                    m_tileZoneMap[c.l + 1][c.y][c.x] = currentZoneId;
+                    q.push_back({c.l + 1, c.x, c.y});
+                }
+            }
+
+            // Vertical down neighbor
+            if (c.l - 1 >= 0 && m_tileZoneMap[c.l - 1][c.y][c.x] < 0) {
+                if (canPassVertical(c.l, c.l - 1, c.x, c.y)) {
+                    m_tileZoneMap[c.l - 1][c.y][c.x] = currentZoneId;
+                    q.push_back({c.l - 1, c.x, c.y});
+                }
+            }
+        }
+
+        zone.floor = zone.minFloor;
+        zone.bounds = QRect(minX, minY, maxX - minX + 1, maxY - minY + 1);
+        for (const auto& pt : uniqueFootprint) {
+            zone.tiles.push_back(QPoint(pt.first, pt.second));
+        }
+
+        if (zone.minFloor == zone.maxFloor) {
+            zone.name = QString("Zone %1 (Floor %2: %3 tiles)").arg(currentZoneId + 1).arg(zone.floor).arg(zone.tiles.size());
+        } else {
+            zone.name = QString("Zone %1 (Floors %2..%3: %4 tiles)").arg(currentZoneId + 1).arg(zone.minFloor).arg(zone.maxFloor).arg(zone.tiles.size());
+        }
+        m_zones.push_back(zone);
+    };
+
+    // Pass 1: Seed from floor slabs (bottom of rooms)
     for (int l = 0; l < layers; ++l) {
         for (int y = 0; y < rows; ++y) {
             for (int x = 0; x < cols; ++x) {
                 int b = m_map->gridBlocks[l][y][x];
                 if (b <= 0 || m_tileZoneMap[l][y][x] >= 0) continue;
-
                 auto seg = m_map->segments.value(b);
-                if (!seg) continue;
-                // Treat floor and ceiling/roof slabs equally as navigable horizontal surfaces!
-                // Only skip pure decorative scenery props.
-                if (seg->isScenery) continue;
+                if (!seg || seg->isScenery) continue;
+                if (!hasFloorBarrier(l, x, y)) continue;
 
-                int currentZoneId = nextZoneId++;
-                VisZone zone;
-                zone.id = currentZoneId;
-                zone.floor = l;
-
-                // Golden ratio hue distribution for high distinctiveness
-                int hue = (currentZoneId * 137) % 360;
-                zone.color = QColor::fromHsv(hue, 180, 240);
-
-                int minX = x, maxX = x, minY = y, maxY = y;
-
-                std::vector<QPoint> q = {{x, y}};
-                m_tileZoneMap[l][y][x] = currentZoneId;
-                int head = 0;
-
-                while (head < static_cast<int>(q.size())) {
-                    QPoint pt = q[head++];
-                    zone.tiles.push_back(pt);
-
-                    minX = qMin(minX, pt.x());
-                    maxX = qMax(maxX, pt.x());
-                    minY = qMin(minY, pt.y());
-                    maxY = qMax(maxY, pt.y());
-
-                    const int dx[4] = {0, 1, 0, -1}; // N, E, S, W
-                    const int dy[4] = {-1, 0, 1, 0};
-                    for (int d = 0; d < 4; ++d) {
-                        int nx = pt.x() + dx[d], ny = pt.y() + dy[d];
-                        if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
-                            int nb = m_map->gridBlocks[l][ny][nx];
-                            if (nb > 0 && m_tileZoneMap[l][ny][nx] < 0) {
-                                auto nseg = m_map->segments.value(nb);
-                                if (nseg && !nseg->isScenery) {
-                                    if (canPass(l, pt.x(), pt.y(), nx, ny, d)) {
-                                        m_tileZoneMap[l][ny][nx] = currentZoneId;
-                                        q.push_back({nx, ny});
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                zone.bounds = QRect(minX, minY, maxX - minX + 1, maxY - minY + 1);
-                zone.name = QString("Zone %1 (Floor %2: %3 tiles)").arg(currentZoneId + 1).arg(l).arg(zone.tiles.size());
-                m_zones.push_back(zone);
+                floodFillZone(l, x, y);
             }
         }
     }
@@ -283,64 +361,6 @@ void VisZoneManager::buildPortals() {
             }
         }
     }
-
-    // 2. Add doorway entity portals (including external doorways connecting room to outside)
-    for (const auto& e : m_map->placedEntities) {
-        bool isDoor = (e.profile && e.profile->category == EntityCategory::Door) ||
-                      (e.profile && e.profile->name.contains("door", Qt::CaseInsensitive)) ||
-                      (e.instanceName.contains("door", Qt::CaseInsensitive));
-        if (isDoor) {
-            int l = e.floorLayer;
-            int tx = static_cast<int>(e.x / 100.0f);
-            int ty = static_cast<int>(std::abs(e.z) / 100.0f);
-            int zId = (l >= 0 && l < layers && ty >= 0 && ty < rows && tx >= 0 && tx < cols)
-                      ? m_tileZoneMap[l][ty][tx] : -1;
-
-            float cx = e.x;
-            float cy = -e.z;
-            int rotDeg = static_cast<int>(std::round(e.ry)) % 360;
-            if (rotDeg < 0) rotDeg += 360;
-            bool isNorthSouth = (rotDeg >= 45 && rotDeg < 135) || (rotDeg >= 225 && rotDeg < 315);
-
-            QPointF p1, p2;
-            if (isNorthSouth) {
-                p1 = QPointF(cx, cy - 50.0f);
-                p2 = QPointF(cx, cy + 50.0f);
-            } else {
-                p1 = QPointF(cx - 50.0f, cy);
-                p2 = QPointF(cx + 50.0f, cy);
-            }
-
-            // Check if this door is already represented by an existing portal
-            bool alreadyExists = false;
-            for (const auto& existing : m_portals) {
-                if (existing.floor == l) {
-                    QPointF mid = (existing.lineWorld.p1() + existing.lineWorld.p2()) * 0.5f;
-                    if (std::hypot(mid.x() - cx, mid.y() - cy) < 60.0f) {
-                        alreadyExists = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!alreadyExists) {
-                MapPortal portal;
-                portal.id = static_cast<int>(m_portals.size());
-                portal.floor = l;
-                portal.tileA = QPoint(tx, ty);
-                portal.tileB = QPoint(tx, ty);
-                portal.zoneA = zId;
-                portal.zoneB = -1; // Leads outside
-                portal.lineWorld = QLineF(p1, p2);
-                portal.name = QString("Portal (Doorway at %1, %2)").arg(tx).arg(ty);
-
-                if (zId >= 0 && zId < static_cast<int>(m_zones.size())) {
-                    m_zones[zId].portalIndices.push_back(portal.id);
-                }
-                m_portals.push_back(portal);
-            }
-        }
-    }
 }
 
 void VisZoneManager::associateEntities() {
@@ -382,7 +402,7 @@ const MapPortal* VisZoneManager::getPortal(int id) const {
 std::vector<int> VisZoneManager::getZonesOnFloor(int floor) const {
     std::vector<int> result;
     for (size_t i = 0; i < m_zones.size(); ++i) {
-        if (m_zones[i].floor == floor) {
+        if (m_zones[i].hasFloor(floor)) {
             result.push_back(static_cast<int>(i));
         }
     }
@@ -421,4 +441,85 @@ void VisZoneManager::recolorAllZones(int hueOffset) {
         if (hue < 0) hue += 360;
         m_zones[i].color = QColor::fromHsv(hue, 180, 240);
     }
+}
+
+void VisZoneManager::pruneOpenRoofZones() {
+    std::vector<int> oldToNew(m_zones.size(), -1);
+    std::vector<VisZone> cleanZones;
+    int nextId = 0;
+
+    for (size_t i = 0; i < m_zones.size(); ++i) {
+        auto& z = m_zones[i];
+        // Check if this zone has any walls or ceiling/structure above
+        bool hasAnyWalls = false;
+        bool hasCeilingAbove = false;
+        for (const auto& pair : z.floorTiles) {
+            int fl = pair.first;
+            for (const auto& pt : pair.second) {
+                for (int s = 0; s < 4; ++s) {
+                    if (isMaptileWallPresent(fl, pt.x(), pt.y(), s)) {
+                        hasAnyWalls = true;
+                        break;
+                    }
+                }
+                if (fl + 1 < static_cast<int>(m_map->gridBlocks.size()) &&
+                    pt.y() < static_cast<int>(m_map->gridBlocks[fl + 1].size()) &&
+                    pt.x() < static_cast<int>(m_map->gridBlocks[fl + 1][pt.y()].size())) {
+                    if (m_map->gridBlocks[fl + 1][pt.y()][pt.x()] > 0) {
+                        hasCeilingAbove = true;
+                    }
+                }
+            }
+        }
+
+        // A bare exterior roof has NO portals, NO entities, NO walls, and NO ceiling above (open to the void)!
+        if (!hasAnyWalls && z.portalIndices.empty() && z.entityIndices.empty() && !hasCeilingAbove) {
+            for (const auto& pair : z.floorTiles) {
+                int fl = pair.first;
+                for (const auto& pt : pair.second) {
+                    if (fl >= 0 && fl < static_cast<int>(m_tileZoneMap.size()) &&
+                        pt.y() >= 0 && pt.y() < static_cast<int>(m_tileZoneMap[fl].size()) &&
+                        pt.x() >= 0 && pt.x() < static_cast<int>(m_tileZoneMap[fl][pt.y()].size())) {
+                        m_tileZoneMap[fl][pt.y()][pt.x()] = -1;
+                    }
+                }
+            }
+            continue;
+        }
+
+        z.id = nextId;
+        oldToNew[i] = nextId++;
+        int hue = (z.id * 137) % 360;
+        z.color = QColor::fromHsv(hue, 180, 240);
+        if (z.minFloor == z.maxFloor) {
+            z.name = QString("Zone %1 (Floor %2: %3 tiles)").arg(z.id + 1).arg(z.floor).arg(z.tiles.size());
+        } else {
+            z.name = QString("Zone %1 (Floors %2..%3: %4 tiles)").arg(z.id + 1).arg(z.minFloor).arg(z.maxFloor).arg(z.tiles.size());
+        }
+        cleanZones.push_back(z);
+    }
+
+    // Update tileZoneMap IDs
+    for (size_t l = 0; l < m_tileZoneMap.size(); ++l) {
+        for (size_t y = 0; y < m_tileZoneMap[l].size(); ++y) {
+            for (size_t x = 0; x < m_tileZoneMap[l][y].size(); ++x) {
+                int oldId = m_tileZoneMap[l][y][x];
+                if (oldId >= 0 && oldId < static_cast<int>(oldToNew.size())) {
+                    m_tileZoneMap[l][y][x] = oldToNew[oldId];
+                }
+            }
+        }
+    }
+
+    // Update portal zone IDs
+    for (auto& portal : m_portals) {
+        if (portal.zoneA >= 0 && portal.zoneA < static_cast<int>(oldToNew.size())) {
+            portal.zoneA = oldToNew[portal.zoneA];
+        }
+        if (portal.zoneB >= 0 && portal.zoneB < static_cast<int>(oldToNew.size())) {
+            portal.zoneB = oldToNew[portal.zoneB];
+        }
+    }
+
+    m_zones = std::move(cleanZones);
 }

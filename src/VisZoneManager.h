@@ -22,15 +22,31 @@ struct MapPortal {
     bool isVertical = false;
 };
 
+#include <map>
+
 struct VisZone {
     int id = 0;
     QString name;
-    int floor = 0;
+    int floor = 0;    // Primary (lowest) floor
+    int minFloor = 0;
+    int maxFloor = 0;
     QRect bounds; // Grid bounding box (minX, minY, width, height)
-    std::vector<QPoint> tiles;
+    std::vector<QPoint> tiles; // Horizontal footprint
+    std::map<int, std::vector<QPoint>> floorTiles; // Tiles grouped by floor
     std::vector<int> entityIndices;
     std::vector<int> portalIndices;
     QColor color;
+
+    bool hasFloor(int f) const {
+        return floorTiles.find(f) != floorTiles.end();
+    }
+
+    const std::vector<QPoint>& getTilesOnFloor(int f) const {
+        static const std::vector<QPoint> s_empty;
+        auto it = floorTiles.find(f);
+        if (it != floorTiles.end()) return it->second;
+        return s_empty;
+    }
 };
 
 class VisZoneManager {
@@ -53,6 +69,9 @@ public:
 
     void recolorAllZones(int hueOffset = 0);
 
+    bool isMaptileWallPresent(int l, int x, int y, int side) const;
+    bool hasDoorwayOnEdge(int l, int x1, int y1, int x2, int y2, int sideFrom1) const;
+
 private:
     std::shared_ptr<FPSCMap> m_map;
     std::vector<VisZone> m_zones;
@@ -64,12 +83,5 @@ private:
     void partitionRooms();
     void associateEntities();
     void buildPortals();
-    bool isMaptileWallPresent(int l, int x, int y, int side) const;
-    bool hasDoorwayOnEdge(int l, int x1, int y1, int x2, int y2, int sideFrom1) const;
-
-    struct DoorPos {
-        float x;
-        float y;
-    };
-    std::vector<std::vector<DoorPos>> m_floorDoors;
+    void pruneOpenRoofZones();
 };

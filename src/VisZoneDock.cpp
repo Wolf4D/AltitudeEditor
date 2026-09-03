@@ -338,11 +338,15 @@ void VisZoneDock::populateZoneCombo() {
     int selectedIdx = 0;
     for (size_t i = 0; i < zones.size(); ++i) {
         const auto& z = zones[i];
-        if (floorOnly && z.floor != m_currentFloor) continue;
+        if (floorOnly && !z.hasFloor(m_currentFloor)) continue;
 
-        QString label = QString("Zone %1 (Floor %2: %3 tiles, %4 entities, %5 portals)")
+        QString floorStr = (z.minFloor == z.maxFloor)
+                           ? QString("Floor %1").arg(z.floor)
+                           : QString("Floors %1..%2").arg(z.minFloor).arg(z.maxFloor);
+
+        QString label = QString("Zone %1 (%2: %3 tiles, %4 entities, %5 portals)")
                         .arg(z.id + 1)
-                        .arg(z.floor)
+                        .arg(floorStr)
                         .arg(z.tiles.size())
                         .arg(z.entityIndices.size())
                         .arg(z.portalIndices.size());
@@ -451,11 +455,15 @@ void VisZoneDock::updateActiveZoneDetails() {
         return;
     }
 
-    m_lblStats->setText(QString("<b>Zone %1</b> on Floor %2<br>"
-                                "Tiles: %3 (%4 m?)<br>"
+    QString floorStr = (z->minFloor == z->maxFloor)
+                       ? QString("Floor %1").arg(z->floor)
+                       : QString("Floors %1..%2").arg(z->minFloor).arg(z->maxFloor);
+
+    m_lblStats->setText(QString("<b>Zone %1</b> on %2<br>"
+                                "Tiles: %3 (%4 m²)<br>"
                                 "Grid Bounds: (%5, %6) to (%7, %8)")
                         .arg(z->id + 1)
-                        .arg(z->floor)
+                        .arg(floorStr)
                         .arg(z->tiles.size())
                         .arg(z->tiles.size() * 9) // approx 3m x 3m tile
                         .arg(z->bounds.left())
