@@ -38,11 +38,12 @@ MainWindow::MainWindow(QWidget* parent)
     m_inspectorDock->setMinimumWidth(330);
     addDockWidget(Qt::RightDockWidgetArea, m_inspectorDock);
 
-    // Right Dock 2: Visibility Zones (PVS / Portals)
+    // Right Dock 2: Visibility Zones (PVS / Portals) - Floating by default
     m_visZoneDock = new VisZoneDock(this);
     m_visZoneDock->setVisZoneManager(m_visZoneManager);
     m_visZoneDock->setMinimumWidth(320);
     addDockWidget(Qt::RightDockWidgetArea, m_visZoneDock);
+    m_visZoneDock->setFloating(true);
 
     createMenusAndToolbars();
 
@@ -304,6 +305,22 @@ void MainWindow::closeEvent(QCloseEvent* event) {
         event->accept();
     } else {
         event->ignore();
+    }
+}
+
+void MainWindow::showEvent(QShowEvent* event) {
+    QMainWindow::showEvent(event);
+    if (m_firstShow) {
+        m_firstShow = false;
+        if (m_visZoneDock) {
+            m_visZoneDock->setFloating(true);
+            m_visZoneDock->resize(340, 580);
+            int targetX = geometry().right() - m_inspectorDock->width() - 360;
+            int targetY = geometry().top() + 80;
+            if (targetX < geometry().left() + 50) targetX = geometry().right() - 360;
+            m_visZoneDock->move(targetX, targetY);
+            m_visZoneDock->raise();
+        }
     }
 }
 

@@ -11,7 +11,160 @@ VisZoneDock::VisZoneDock(QWidget* parent)
     setObjectName("VisZoneDock");
     setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
+    // Distinctive Cyber-Neon / Portal Theme
+    setStyleSheet(QStringLiteral(
+        "QDockWidget#VisZoneDock {"
+        "  color: #e2e8f0;"
+        "  font-family: 'Segoe UI', sans-serif;"
+        "}"
+        "QDockWidget#VisZoneDock::title {"
+        "  background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4c1d95, stop:0.5 #1e1b4b, stop:1 #065f46);"
+        "  color: #38bdf8;"
+        "  font-weight: bold;"
+        "  font-size: 12px;"
+        "  padding: 7px 10px;"
+        "  border-top-left-radius: 6px;"
+        "  border-top-right-radius: 6px;"
+        "  border-bottom: 2px solid #06b6d4;"
+        "}"
+        "QWidget#VisZoneCentral {"
+        "  background-color: #12131f;"
+        "}"
+        "QGroupBox {"
+        "  font-weight: bold;"
+        "  font-size: 11px;"
+        "  color: #38bdf8;"
+        "  border: 1px solid #3b3663;"
+        "  border-radius: 6px;"
+        "  margin-top: 12px;"
+        "  padding-top: 12px;"
+        "  background-color: #17182a;"
+        "}"
+        "QGroupBox::title {"
+        "  subcontrol-origin: margin;"
+        "  subcontrol-position: top left;"
+        "  left: 10px;"
+        "  padding: 1px 6px;"
+        "  background-color: #21223b;"
+        "  border: 1px solid #4f46e5;"
+        "  border-radius: 3px;"
+        "  color: #38bdf8;"
+        "}"
+        "QComboBox {"
+        "  background-color: #0b0f19;"
+        "  color: #7dd3fc;"
+        "  border: 1px solid #0284c7;"
+        "  border-radius: 4px;"
+        "  padding: 5px 8px;"
+        "  font-weight: bold;"
+        "}"
+        "QComboBox:hover {"
+        "  border-color: #38bdf8;"
+        "  background-color: #0e1524;"
+        "}"
+        "QComboBox QAbstractItemView {"
+        "  background-color: #0b0f19;"
+        "  color: #e2e8f0;"
+        "  selection-background-color: #0369a1;"
+        "  selection-color: #ffffff;"
+        "  border: 1px solid #0284c7;"
+        "}"
+        "QPushButton {"
+        "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3730a3, stop:1 #1e1b4b);"
+        "  color: #e0e7ff;"
+        "  border: 1px solid #6366f1;"
+        "  border-radius: 4px;"
+        "  padding: 6px 12px;"
+        "  font-weight: bold;"
+        "}"
+        "QPushButton:hover {"
+        "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4f46e5, stop:1 #312e81);"
+        "  border-color: #a5b4fc;"
+        "  color: #ffffff;"
+        "}"
+        "QPushButton:pressed {"
+        "  background: #1e1b4b;"
+        "}"
+        "QPushButton#btnResetZones {"
+        "  background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0d9488, stop:0.5 #0284c7, stop:1 #2563eb);"
+        "  color: #ffffff;"
+        "  border: 1px solid #22d3ee;"
+        "  border-radius: 5px;"
+        "  padding: 7px;"
+        "  font-weight: bold;"
+        "}"
+        "QPushButton#btnResetZones:hover {"
+        "  background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #14b8a6, stop:0.5 #0ea5e9, stop:1 #3b82f6);"
+        "  border-color: #67e8f9;"
+        "}"
+        "QCheckBox, QRadioButton {"
+        "  color: #cbd5e1;"
+        "  font-weight: 500;"
+        "  spacing: 6px;"
+        "}"
+        "QCheckBox::indicator {"
+        "  width: 14px;"
+        "  height: 14px;"
+        "  border: 1px solid #4f46e5;"
+        "  border-radius: 3px;"
+        "  background-color: #0b0f19;"
+        "}"
+        "QCheckBox::indicator:checked {"
+        "  background-color: #06b6d4;"
+        "  border-color: #22d3ee;"
+        "}"
+        "QRadioButton::indicator {"
+        "  width: 14px;"
+        "  height: 14px;"
+        "  border: 1px solid #4f46e5;"
+        "  border-radius: 7px;"
+        "  background-color: #0b0f19;"
+        "}"
+        "QRadioButton::indicator:checked {"
+        "  background-color: #a855f7;"
+        "  border: 2px solid #c084fc;"
+        "}"
+        "QSlider::groove:horizontal {"
+        "  height: 6px;"
+        "  background: #1e293b;"
+        "  border-radius: 3px;"
+        "}"
+        "QSlider::sub-page:horizontal {"
+        "  background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #8b5cf6, stop:1 #06b6d4);"
+        "  border-radius: 3px;"
+        "}"
+        "QSlider::handle:horizontal {"
+        "  background: #38bdf8;"
+        "  border: 1px solid #ffffff;"
+        "  width: 14px;"
+        "  margin: -4px 0;"
+        "  border-radius: 7px;"
+        "}"
+        "QListWidget {"
+        "  background-color: #090c14;"
+        "  border: 1px solid #2e285a;"
+        "  border-radius: 4px;"
+        "  color: #cbd5e1;"
+        "  padding: 3px;"
+        "}"
+        "QListWidget::item {"
+        "  padding: 3px;"
+        "  border-radius: 3px;"
+        "}"
+        "QListWidget::item:selected {"
+        "  background-color: #4338ca;"
+        "  color: #ffffff;"
+        "}"
+        "QListWidget::item:hover {"
+        "  background-color: #1a1736;"
+        "}"
+        "QLabel {"
+        "  color: #cbd5e1;"
+        "}"
+    ));
+
     QWidget* central = new QWidget(this);
+    central->setObjectName("VisZoneCentral");
     QVBoxLayout* mainLayout = new QVBoxLayout(central);
     mainLayout->setContentsMargins(8, 8, 8, 8);
     mainLayout->setSpacing(8);
@@ -36,9 +189,8 @@ VisZoneDock::VisZoneDock(QWidget* parent)
     selLayout->addLayout(navLayout);
 
     QPushButton* btnReset = new QPushButton(QStringLiteral("Show All Zones (Normal View)"), grpSelection);
+    btnReset->setObjectName("btnResetZones");
     btnReset->setToolTip(QStringLiteral("Reset map display to show all zones and segments"));
-    btnReset->setStyleSheet(QStringLiteral("QPushButton { font-weight: bold; background-color: #253342; color: #4dc4ff; border: 1px solid #36506c; border-radius: 4px; padding: 6px; }"
-                                           "QPushButton:hover { background-color: #314357; color: #80d5ff; }"));
     selLayout->addWidget(btnReset);
     connect(btnReset, &QPushButton::clicked, this, &VisZoneDock::resetToNormalView);
 
@@ -77,16 +229,21 @@ VisZoneDock::VisZoneDock(QWidget* parent)
     QVBoxLayout* detLayout = new QVBoxLayout(grpDetails);
     detLayout->setSpacing(4);
 
-    m_lblStats = new QLabel(QStringLiteral("No active zone selected."), grpDetails);
+    m_lblStats = new QLabel(QStringLiteral("All zones visible. No single zone isolated."), grpDetails);
     m_lblStats->setWordWrap(true);
+    m_lblStats->setStyleSheet(QStringLiteral("background-color: #0b0f19; border: 1px solid #1e3a5f; border-radius: 4px; padding: 6px; color: #34d399; font-weight: bold;"));
     detLayout->addWidget(m_lblStats);
 
-    detLayout->addWidget(new QLabel(QStringLiteral("Connected Portals (double-click to jump):"), grpDetails));
+    QLabel* lblPortals = new QLabel(QStringLiteral("Connected Portals (double-click to jump):"), grpDetails);
+    lblPortals->setStyleSheet(QStringLiteral("color: #a5b4fc; font-weight: bold; font-size: 11px;"));
+    detLayout->addWidget(lblPortals);
     m_listPortals = new QListWidget(grpDetails);
     m_listPortals->setMaximumHeight(90);
     detLayout->addWidget(m_listPortals);
 
-    detLayout->addWidget(new QLabel(QStringLiteral("Contained Entities (click to inspect):"), grpDetails));
+    QLabel* lblEntities = new QLabel(QStringLiteral("Contained Entities (click to inspect):"), grpDetails);
+    lblEntities->setStyleSheet(QStringLiteral("color: #a5b4fc; font-weight: bold; font-size: 11px;"));
+    detLayout->addWidget(lblEntities);
     m_listEntities = new QListWidget(grpDetails);
     detLayout->addWidget(m_listEntities);
 

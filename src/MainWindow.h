@@ -28,6 +28,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
+    void showEvent(QShowEvent* event) override;
 
 private slots:
     void onOpenMap();
@@ -98,6 +99,7 @@ private:
 
     QMenu* m_recentMapsMenu = nullptr;
     bool m_isUpdatingFloorUI = false;
+    bool m_firstShow = true;
 };
 
 #endif // MAINWINDOW_H
