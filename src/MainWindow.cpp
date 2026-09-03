@@ -15,6 +15,56 @@
 #include <QSettings>
 #include <QApplication>
 #include <QCloseEvent>
+#include <QToolButton>
+#include <QPainter>
+#include <QPolygonF>
+
+static QIcon makeGhostFloorIcon() {
+    QPixmap px(24, 24);
+    px.fill(Qt::transparent);
+    QPainter p(&px);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    // Lower ghost floor plane (dashed, translucent)
+    QPolygonF lowerPlane;
+    lowerPlane << QPointF(3, 16) << QPointF(12, 11) << QPointF(21, 16) << QPointF(12, 21);
+    p.setPen(QPen(QColor(130, 170, 210, 180), 1.5f, Qt::DashLine));
+    p.setBrush(QColor(60, 100, 140, 90));
+    p.drawPolygon(lowerPlane);
+
+    // Upper active floor plane (solid cyan/blue)
+    QPolygonF upperPlane;
+    upperPlane << QPointF(3, 8) << QPointF(12, 3) << QPointF(21, 8) << QPointF(12, 13);
+    p.setPen(QPen(QColor(52, 152, 219), 1.8f));
+    p.setBrush(QColor(41, 128, 185, 200));
+    p.drawPolygon(upperPlane);
+
+    return QIcon(px);
+}
+
+static QIcon makePortalIcon() {
+    QPixmap px(24, 24);
+    px.fill(Qt::transparent);
+    QPainter p(&px);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    // Outer glowing portal ellipse
+    p.setPen(QPen(QColor(0, 220, 255), 2.0f));
+    p.setBrush(QBrush(QColor(10, 40, 70, 220)));
+    p.drawEllipse(QRectF(4, 2, 16, 20));
+
+    // Inner energetic core
+    p.setPen(QPen(QColor(180, 245, 255), 1.2f));
+    p.setBrush(QBrush(QColor(0, 180, 255, 170)));
+    p.drawEllipse(QRectF(7, 5, 10, 14));
+
+    // Portal energy crosshair / aperture
+    p.setPen(QPen(QColor(255, 255, 255, 220), 1.2f));
+    p.drawLine(QPointF(12, 8), QPointF(12, 16));
+    p.drawLine(QPointF(9, 12), QPointF(15, 12));
+
+    return QIcon(px);
+}
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -28,22 +78,21 @@ MainWindow::MainWindow(QWidget* parent)
     m_visZoneManager = std::make_shared<VisZoneManager>();
     m_canvas->setVisZoneManager(m_visZoneManager);
 
-    // Left Dock: Entity Search
+    // Left Dock 1: Entity Search
     m_searchDock = new EntitySearchDock(this);
     m_searchDock->setMinimumWidth(260);
     addDockWidget(Qt::LeftDockWidgetArea, m_searchDock);
+
+    // Left Dock 2: Visibility Zones (PVS / Portals) - Docked bottom-left by default
+    m_visZoneDock = new VisZoneDock(this);
+    m_visZoneDock->setVisZoneManager(m_visZoneManager);
+    m_visZoneDock->setMinimumWidth(260);
+    addDockWidget(Qt::LeftDockWidgetArea, m_visZoneDock);
 
     // Right Dock: Entity Inspector
     m_inspectorDock = new EntityInspector(this);
     m_inspectorDock->setMinimumWidth(330);
     addDockWidget(Qt::RightDockWidgetArea, m_inspectorDock);
-
-    // Right Dock 2: Visibility Zones (PVS / Portals) - Floating by default
-    m_visZoneDock = new VisZoneDock(this);
-    m_visZoneDock->setVisZoneManager(m_visZoneManager);
-    m_visZoneDock->setMinimumWidth(320);
-    addDockWidget(Qt::RightDockWidgetArea, m_visZoneDock);
-    m_visZoneDock->setFloating(true);
 
     createMenusAndToolbars();
 
@@ -99,53 +148,56 @@ void MainWindow::createMenusAndToolbars() {
     QAction* actZoomIn = viewMenu->addAction(QStringLiteral("Zoom &In"), m_canvas, &MapCanvas::zoomIn, QKeySequence::ZoomIn);
     QAction* actZoomOut = viewMenu->addAction(QStringLiteral("Zoom &Out"), m_canvas, &MapCanvas::zoomOut, QKeySequence::ZoomOut);
     QAction* actZoomReset = viewMenu->addAction(QStringLiteral("Reset Zoom (100%)"), m_canvas, &MapCanvas::zoomReset, Qt::Key_0);
-    QAction* actZoomFit = viewMenu->addAction(QStringLiteral("Fit Level in View"), m_canvas, &MapCanvas::zoomFit, Qt::Key_Home);
+    QAction* actZoomFit = viewMenu->addAction(QStringLiteral("Fit View"), m_canvas, &MapCanvas::zoomFit, Qt::Key_Home);
 
     viewMenu->addSeparator();
-    m_actWallTex = viewMenu->addAction(QStringLiteral("Show &Wall Textures (Doom Style)"));
+    m_actWallTex = viewMenu->addAction(QStringLiteral("&Wall Textures"));
     m_actWallTex->setCheckable(true);
     m_actWallTex->setChecked(true);
     connect(m_actWallTex, &QAction::toggled, m_canvas, &MapCanvas::setShowWallTextures);
 
-    m_actFloorTex = viewMenu->addAction(QStringLiteral("Show &Floor Textures"));
+    m_actFloorTex = viewMenu->addAction(QStringLiteral("&Floor Textures"));
     m_actFloorTex->setCheckable(true);
     m_actFloorTex->setChecked(true);
     connect(m_actFloorTex, &QAction::toggled, m_canvas, &MapCanvas::setShowFloorTextures);
 
-    m_actGrid = viewMenu->addAction(QStringLiteral("Show &Grid Lines"));
+    m_actGrid = viewMenu->addAction(QStringLiteral("&Grid Lines"));
     m_actGrid->setCheckable(true);
     m_actGrid->setChecked(true);
     connect(m_actGrid, &QAction::toggled, m_canvas, &MapCanvas::setShowGrid);
 
-    m_actEntities = viewMenu->addAction(QStringLiteral("Show &Entities (.BMP Icons)"));
+    m_actEntities = viewMenu->addAction(QStringLiteral("&Entities"));
     m_actEntities->setCheckable(true);
     m_actEntities->setChecked(true);
     connect(m_actEntities, &QAction::toggled, m_canvas, &MapCanvas::setShowEntities);
 
-    m_actLights = viewMenu->addAction(QStringLiteral("Show &Light Halos"));
+    m_actLights = viewMenu->addAction(QStringLiteral("Light &Halos"));
     m_actLights->setCheckable(true);
     m_actLights->setChecked(true);
     connect(m_actLights, &QAction::toggled, m_canvas, &MapCanvas::setShowLights);
 
-    m_actZones = viewMenu->addAction(QStringLiteral("Show &Trigger Zones"));
+    m_actZones = viewMenu->addAction(QStringLiteral("Trigger &Zones"));
     m_actZones->setCheckable(true);
     m_actZones->setChecked(true);
     connect(m_actZones, &QAction::toggled, m_canvas, &MapCanvas::setShowZones);
 
-    m_actWaypoints = viewMenu->addAction(QStringLiteral("Show &Waypoints / AI Paths"));
+    m_actWaypoints = viewMenu->addAction(QStringLiteral("&Waypoints"));
     m_actWaypoints->setCheckable(true);
     m_actWaypoints->setChecked(true);
     connect(m_actWaypoints, &QAction::toggled, m_canvas, &MapCanvas::setShowWaypoints);
 
-    m_actGhostLayer = viewMenu->addAction(QStringLiteral("Show &Ghost Lower Floor"));
+    m_actGhostLayer = viewMenu->addAction(QStringLiteral("&Ghost Lower Floor"));
+    m_actGhostLayer->setIcon(makeGhostFloorIcon());
     m_actGhostLayer->setCheckable(true);
     m_actGhostLayer->setChecked(true);
+    m_actGhostLayer->setToolTip(QStringLiteral("Show Ghost Lower Floor (toggle semi-transparent rendering of the floor below)"));
     connect(m_actGhostLayer, &QAction::toggled, m_canvas, &MapCanvas::setShowGhostLayer);
 
-    m_actShowPortals = viewMenu->addAction(QStringLiteral("Show &Portals / VisZones (DBU)"));
+    m_actShowPortals = viewMenu->addAction(QStringLiteral("&Portals"));
+    m_actShowPortals->setIcon(makePortalIcon());
     m_actShowPortals->setCheckable(true);
     m_actShowPortals->setChecked(false);
-    m_actShowPortals->setToolTip(QStringLiteral("Render BSP Portals and VisZone bounding boxes from compiled universe.dbu"));
+    m_actShowPortals->setToolTip(QStringLiteral("Toggle Portals & VisZones display"));
     connect(m_actShowPortals, &QAction::toggled, this, [this](bool checked) {
         if (checked && m_canvas) {
             PortalLeakAnalyzer analyzer(m_currentMap);
@@ -169,11 +221,11 @@ void MainWindow::createMenusAndToolbars() {
     portalsMenu->addAction(QStringLiteral("🔄 &Show All Zones (Normal View)"), m_visZoneDock, &VisZoneDock::resetToNormalView, QKeySequence(Qt::Key_Escape));
     portalsMenu->addSeparator();
     portalsMenu->addAction(m_actShowPortals);
-    portalsMenu->addAction(QStringLiteral("&Portal Leak Detector..."), this, &MainWindow::onOpenPortalLeakDetector);
+    portalsMenu->addAction(QStringLiteral("&Leak Detector..."), this, &MainWindow::onOpenPortalLeakDetector);
 
     QMenu* toolsMenu = menuBar()->addMenu(QStringLiteral("&Tools"));
-    QAction* actMem = toolsMenu->addAction(QStringLiteral("&Entity Memory Analyzer (MB)..."), this, &MainWindow::onOpenMemoryAnalyzer, QKeySequence(Qt::CTRL + Qt::Key_M));
-    toolsMenu->addAction(QStringLiteral("&Portal Leak Detector..."), this, &MainWindow::onOpenPortalLeakDetector);
+    toolsMenu->addAction(QStringLiteral("&Memory Analyzer..."), this, &MainWindow::onOpenMemoryAnalyzer, QKeySequence(Qt::CTRL + Qt::Key_M));
+    toolsMenu->addAction(QStringLiteral("&Leak Detector..."), this, &MainWindow::onOpenPortalLeakDetector);
     toolsMenu->addAction(QStringLiteral("&Visibility Zones & Portals Panel (PVS)..."), this, [this]() {
         m_visZoneDock->show();
         m_visZoneDock->raise();
@@ -201,8 +253,6 @@ void MainWindow::createMenusAndToolbars() {
     mainBar->setObjectName("MainToolBar");
     mainBar->setMovable(false);
 
-    mainBar->addAction(actOpen);
-    mainBar->addAction(m_actSave);
     mainBar->addAction(actReload);
     mainBar->addSeparator();
 
@@ -227,11 +277,13 @@ void MainWindow::createMenusAndToolbars() {
     m_actFloorUp->setToolTip(QStringLiteral("Go one floor up (PageUp / +)"));
 
     mainBar->addAction(m_actGhostLayer);
+    QToolButton* btnGhost = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actGhostLayer));
+    if (btnGhost) {
+        btnGhost->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    }
     mainBar->addSeparator();
 
-    // Zoom Controls
-    mainBar->addAction(actZoomIn);
-    mainBar->addAction(actZoomOut);
+    // Fit in View
     mainBar->addAction(actZoomFit);
     mainBar->addSeparator();
 
@@ -240,34 +292,70 @@ void MainWindow::createMenusAndToolbars() {
     mainBar->addAction(m_actFloorTex);
     mainBar->addAction(m_actEntities);
     mainBar->addAction(m_actShowPortals);
+    QToolButton* btnPortals = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actShowPortals));
+    if (btnPortals) {
+        btnPortals->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    }
 
-    QAction* actVisZone = mainBar->addAction(QStringLiteral("👁 VisZones (PVS)"));
-    actVisZone->setCheckable(true);
-    actVisZone->setChecked(false);
-    actVisZone->setToolTip(QStringLiteral("Toggle Visibility Zones (PVS) & Portals inspection panel"));
-    connect(actVisZone, &QAction::toggled, this, [this](bool checked) {
+    // -------------------------------------------------------------
+    // Diagnostics & Analysis Toolbar (Separate compact panel)
+    // -------------------------------------------------------------
+    addToolBarBreak();
+    QToolBar* diagBar = addToolBar(QStringLiteral("Analysis Tools"));
+    diagBar->setObjectName("DiagToolBar");
+    diagBar->setMovable(true);
+    diagBar->setStyleSheet(
+        "QToolBar#DiagToolBar { "
+        "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2a1c20, stop:1 #1e1417); "
+        "  border: 1px solid #5a2c35; "
+        "  border-radius: 4px; "
+        "  margin-left: 8px; "
+        "  padding: 1px 4px; "
+        "} "
+        "QToolBar#DiagToolBar QToolButton { "
+        "  color: #f0d5d8; "
+        "  background: #331d22; "
+        "  border: 1px solid #4e262f; "
+        "  border-radius: 3px; "
+        "  padding: 3px 8px; "
+        "} "
+        "QToolBar#DiagToolBar QToolButton:hover { "
+        "  background: #4a252d; "
+        "  border-color: #7b3846; "
+        "  color: #ffffff; "
+        "} "
+        "QToolBar#DiagToolBar QToolButton:checked { "
+        "  background: #5c1f28; "
+        "  border-color: #c0392b; "
+        "  color: #ff8a80; "
+        "}"
+    );
+
+    // Memory Analyzer Button
+    QAction* actLaunchMem = diagBar->addAction(QStringLiteral("💾 Memory Analyzer"), this, &MainWindow::onOpenMemoryAnalyzer);
+    actLaunchMem->setToolTip(QStringLiteral("Measure level RAM weight in Megabytes and inspect memory budget"));
+
+    // Leak Detector Button (no "Portal" in title)
+    QAction* actLaunchLeaks = diagBar->addAction(QStringLiteral("🔍 Leak Detector"), this, &MainWindow::onOpenPortalLeakDetector);
+    actLaunchLeaks->setToolTip(QStringLiteral("Scan compiled universe.dbu and map geometry for occlusion leaks"));
+
+    diagBar->addSeparator();
+
+    // Visibility Zones Toggle Button
+    QAction* actToggleVisZone = diagBar->addAction(QStringLiteral("👁 Visibility Zones"));
+    actToggleVisZone->setCheckable(true);
+    actToggleVisZone->setChecked(true);
+    actToggleVisZone->setToolTip(QStringLiteral("Toggle Visibility Zones & Portals (PVS) bottom-left dock panel"));
+    connect(actToggleVisZone, &QAction::toggled, this, [this](bool checked) {
+        m_visZoneDock->setVisible(checked);
         if (checked) {
-            m_visZoneDock->show();
             m_visZoneDock->raise();
-            m_visZoneDock->activateWindow();
-        } else {
-            m_visZoneDock->resetToNormalView();
-            m_visZoneDock->hide();
         }
     });
-    connect(m_visZoneDock, &QDockWidget::visibilityChanged, actVisZone, &QAction::setChecked);
+    connect(m_visZoneDock, &QDockWidget::visibilityChanged, actToggleVisZone, &QAction::setChecked);
 
-    QAction* actResetZones = mainBar->addAction(QStringLiteral("🔄 Normal View"), m_visZoneDock, &VisZoneDock::resetToNormalView);
+    QAction* actResetZones = diagBar->addAction(QStringLiteral("🔄 Normal View"), m_visZoneDock, &VisZoneDock::resetToNormalView);
     actResetZones->setToolTip(QStringLiteral("Show all zones (Exit isolation mode / Escape)"));
-    mainBar->addSeparator();
-
-    // Memory Analyzer Launch Button
-    QAction* actLaunchMem = mainBar->addAction(QStringLiteral("💾 Entity Memory Analyzer (MB)"), this, &MainWindow::onOpenMemoryAnalyzer);
-    actLaunchMem->setToolTip(QStringLiteral("Measure entity RAM weight in Megabytes and inspect memory budget"));
-
-    // Portal Leak Detector Button
-    QAction* actLaunchPortals = mainBar->addAction(QStringLiteral("🔍 Portal Leak Detector"), this, &MainWindow::onOpenPortalLeakDetector);
-    actLaunchPortals->setToolTip(QStringLiteral("Scan compiled universe.dbu and map geometry for portal occlusion leaks"));
 }
 
 void MainWindow::updateWindowTitle() {
@@ -312,15 +400,8 @@ void MainWindow::showEvent(QShowEvent* event) {
     QMainWindow::showEvent(event);
     if (m_firstShow) {
         m_firstShow = false;
-        if (m_visZoneDock) {
-            m_visZoneDock->setFloating(true);
-            m_visZoneDock->resize(340, 580);
-            int targetX = geometry().right() - m_inspectorDock->width() - 360;
-            int targetY = geometry().top() + 80;
-            if (targetX < geometry().left() + 50) targetX = geometry().right() - 360;
-            m_visZoneDock->move(targetX, targetY);
-            m_visZoneDock->raise();
-        }
+        int halfH = (height() - 100) / 2;
+        resizeDocks({m_searchDock, m_visZoneDock}, {halfH, halfH}, Qt::Vertical);
     }
 }
 
