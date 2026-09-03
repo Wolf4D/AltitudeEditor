@@ -450,32 +450,36 @@ void VisZoneManager::pruneOpenRoofZones() {
 
     for (size_t i = 0; i < m_zones.size(); ++i) {
         auto& z = m_zones[i];
-        // Check if this zone has any walls or ceiling/structure above
-        bool hasAnyWalls = false;
-        bool hasCeilingAbove = false;
+        // Count open exterior edges (edges facing outside the zone with no wall)
+        int openEdges = 0;
         for (const auto& pair : z.floorTiles) {
             int fl = pair.first;
             for (const auto& pt : pair.second) {
+                const int dx[4] = {0, 1, 0, -1};
+                const int dy[4] = {-1, 0, 1, 0};
                 for (int s = 0; s < 4; ++s) {
-                    if (isMaptileWallPresent(fl, pt.x(), pt.y(), s)) {
-                        hasAnyWalls = true;
-                        break;
+                    int nx = pt.x() + dx[s], ny = pt.y() + dy[s];
+                    bool inZone = false;
+                    for (const auto& npt : pair.second) {
+                        if (npt.x() == nx && npt.y() == ny) {
+                            inZone = true;
+                            break;
+                        }
                     }
-                }
-                if (fl + 1 < static_cast<int>(m_map->gridBlocks.size()) &&
-                    pt.y() < static_cast<int>(m_map->gridBlocks[fl + 1].size()) &&
-                    pt.x() < static_cast<int>(m_map->gridBlocks[fl + 1][pt.y()].size())) {
-                    if (m_map->gridBlocks[fl + 1][pt.y()][pt.x()] > 0) {
-                        hasCeilingAbove = true;
+                    if (!inZone) {
+                        if (!isMaptileWallPresent(fl, pt.x(), pt.y(), s)) {
+                            openEdges++;
+                        }
                     }
                 }
             }
         }
 
-        // An unenclosed exterior roof has NO portals, NO walls, and NO ceiling above (open to the sky)!
-        // Note: Entity presence is intentionally excluded from zone validation/preservation criteria,
-        // so stray lights or rooftop props do not turn an exterior roof into a room.
-        if (!hasAnyWalls && z.portalIndices.empty() && !hasCeilingAbove) {
+        // A valid room or column MUST either:
+        // 1) Be connected via doorways/portals (portalIndices > 0)
+        // 2) Be a fully enclosed geometry (openEdges == 0, e.g. standalone enclosed room or solid pillar)
+        // If it has NO portals and has open edges to the void, it is an unenclosed exterior roof/ledge!
+        if (z.portalIndices.empty() && openEdges > 0) {
             for (const auto& pair : z.floorTiles) {
                 int fl = pair.first;
                 for (const auto& pt : pair.second) {
