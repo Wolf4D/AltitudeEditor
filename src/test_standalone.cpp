@@ -15,8 +15,8 @@ int main(int argc, char* argv[]) {
         printf("1.fpm total zones: %zu\n", vm.zones().size());
         for (size_t i = 0; i < vm.zones().size(); ++i) {
             const auto& z = vm.zones()[i];
-            printf("  Zone %zu: minFloor=%d maxFloor=%d tiles=%zu name='%s'\n",
-                   i + 1, z.minFloor, z.maxFloor, z.tiles.size(), qPrintable(z.name));
+            printf("  Zone %zu: minFloor=%d maxFloor=%d name='%s'\n",
+                   i + 1, z.minFloor, z.maxFloor, qPrintable(z.name));
         }
     }
 
@@ -27,6 +27,13 @@ int main(int argc, char* argv[]) {
         VisZoneManager vm;
         vm.buildFromMap(map);
         printf("CloseContacts total zones: %zu\n", vm.zones().size());
+        for (size_t i = 0; i < vm.zones().size(); ++i) {
+            const auto& z = vm.zones()[i];
+            if (z.hasFloor(8)) {
+                printf("  Zone on floor 8: Zone %zu (id %d) minFloor=%d maxFloor=%d name='%s'\n",
+                       i + 1, z.id, z.minFloor, z.maxFloor, qPrintable(z.name));
+            }
+        }
     }
 
     return 0;

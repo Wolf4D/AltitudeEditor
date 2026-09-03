@@ -99,8 +99,8 @@ void VisZoneManager::buildFromMap(std::shared_ptr<FPSCMap> map, const QString& /
 
     partitionRooms();
     buildPortals();
-    associateEntities();
     pruneOpenRoofZones();
+    associateEntities();
 }
 
 void VisZoneManager::partitionRooms() {
@@ -472,8 +472,8 @@ void VisZoneManager::pruneOpenRoofZones() {
             }
         }
 
-        // A bare exterior roof has NO portals, NO entities, NO walls, and NO ceiling above (open to the void)!
-        if (!hasAnyWalls && z.portalIndices.empty() && z.entityIndices.empty() && !hasCeilingAbove) {
+        // An unenclosed exterior roof has NO portals, NO walls, and NO ceiling above (open to the sky)!
+        if (!hasAnyWalls && z.portalIndices.empty() && !hasCeilingAbove) {
             for (const auto& pair : z.floorTiles) {
                 int fl = pair.first;
                 for (const auto& pt : pair.second) {
