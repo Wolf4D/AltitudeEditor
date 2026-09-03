@@ -372,18 +372,19 @@ void PortalLeakAnalyzer::checkVerticalGaps() {
 
         for (const auto& pt : z.tiles) {
             bool covered = false;
-            // Check if covered on the same floor or any floor above
-            for (int l = z.floor; l <= m_map->header.layerMax; ++l) {
+            // A room occupies layers from z.minFloor to z.maxFloor.
+            // A column is only capped at or above the room's ceiling (z.maxFloor).
+            for (int l = z.maxFloor; l <= m_map->header.layerMax; ++l) {
                 int seg = m_map->gridBlocks[l][pt.y()][pt.x()];
                 if (seg > 0) {
                     int g = mapGround(l, pt.x(), pt.y());
-                    // Segment with roof or ceiling slab (ground == 2)
+                    // Segment with roof or ceiling slab (ground == 2 or isCeilingAt)
                     if (g == 2 || isCeilingAt(l, pt.x(), pt.y())) {
                         covered = true;
                         break;
                     }
-                    // Any segment placed on a higher layer caps this column
-                    if (l > z.floor) {
+                    // A solid floor of another room directly on a higher floor also caps this column
+                    if (l > z.maxFloor && isFloorAt(l, pt.x(), pt.y())) {
                         covered = true;
                         break;
                     }
@@ -541,71 +542,74 @@ void PortalLeakAnalyzer::checkWallHolesToVoid() {
         }
         if (!allInterior) continue;
 
-        for (const auto& pt : z.tiles) {
-            int tile = (z.floor < m_map->gridTileType.size() && pt.y() < m_map->gridTileType[z.floor].size() && pt.x() < m_map->gridTileType[z.floor][pt.y()].size())
-                       ? m_map->gridTileType[z.floor][pt.y()][pt.x()] : 0;
-            int rot = (z.floor < m_map->gridRotation.size() && pt.y() < m_map->gridRotation[z.floor].size() && pt.x() < m_map->gridRotation[z.floor][pt.y()].size())
-                      ? m_map->gridRotation[z.floor][pt.y()][pt.x()] : 0;
+        for (const auto& pair : z.floorTiles) {
+            int fl = pair.first;
+            for (const auto& pt : pair.second) {
+                int tile = (fl < m_map->gridTileType.size() && pt.y() < m_map->gridTileType[fl].size() && pt.x() < m_map->gridTileType[fl][pt.y()].size())
+                           ? m_map->gridTileType[fl][pt.y()][pt.x()] : 0;
+                int rot = (fl < m_map->gridRotation.size() && pt.y() < m_map->gridRotation[fl].size() && pt.x() < m_map->gridRotation[fl][pt.y()].size())
+                          ? m_map->gridRotation[fl][pt.y()][pt.x()] : 0;
 
-            for (int s = 0; s < 4; ++s) {
-                int nx = pt.x() + dx[s];
-                int ny = pt.y() + dy[s];
+                for (int s = 0; s < 4; ++s) {
+                    int nx = pt.x() + dx[s];
+                    int ny = pt.y() + dy[s];
 
-                // Only consider it an exterior breach if (nx, ny) is true universe void
-                // (i.e. outside the map bounds or has zero segments on ANY floor)
-                if (!isUniverseVoid(nx, ny)) continue;
+                    // Only consider it an exterior breach if (nx, ny) is true universe void
+                    // (i.e. outside the map bounds or has zero segments on ANY floor)
+                    if (!isUniverseVoid(nx, ny)) continue;
 
-                // If wall is present on this side, no leak
-                if (isMaptileWallPresent(tile, rot, s)) continue;
+                    // If wall is present on this side, no leak
+                    if (isMaptileWallPresent(tile, rot, s)) continue;
 
-                // Check if segment definition has an explicit wall mesh part on this side
-                int segId = m_map->gridBlocks[z.floor][pt.y()][pt.x()];
-                if (segId > 0 && m_map->segments.contains(segId)) {
-                    const auto& seg = m_map->segments[segId];
-                    bool hasWallMesh = false;
-                    for (const auto& part : seg->parts) {
-                        if (part.isWall) {
-                            int partSide = -1;
-                            int rotYInt = (static_cast<int>(std::round(part.rotY)) % 360 + 360) % 360;
-                            if (part.offX <= -25.0f || rotYInt == 270) partSide = 3;
-                            else if (part.offX >= 25.0f || rotYInt == 90) partSide = 1;
-                            else if (part.offZ >= 25.0f || rotYInt == 0) partSide = 0;
-                            else if (part.offZ <= -25.0f || rotYInt == 180) partSide = 2;
-                            if (partSide >= 0) {
-                                int effSide = (partSide + (rot & 3)) % 4;
-                                if (effSide == s) {
-                                    hasWallMesh = true;
-                                    break;
+                    // Check if segment definition has an explicit wall mesh part on this side
+                    int segId = m_map->gridBlocks[fl][pt.y()][pt.x()];
+                    if (segId > 0 && m_map->segments.contains(segId)) {
+                        const auto& seg = m_map->segments[segId];
+                        bool hasWallMesh = false;
+                        for (const auto& part : seg->parts) {
+                            if (part.isWall) {
+                                int partSide = -1;
+                                int rotYInt = (static_cast<int>(std::round(part.rotY)) % 360 + 360) % 360;
+                                if (part.offX <= -25.0f || rotYInt == 270) partSide = 3;
+                                else if (part.offX >= 25.0f || rotYInt == 90) partSide = 1;
+                                else if (part.offZ >= 25.0f || rotYInt == 0) partSide = 0;
+                                else if (part.offZ <= -25.0f || rotYInt == 180) partSide = 2;
+                                if (partSide >= 0) {
+                                    int effSide = (partSide + (rot & 3)) % 4;
+                                    if (effSide == s) {
+                                        hasWallMesh = true;
+                                        break;
+                                    }
                                 }
                             }
                         }
+                        if (hasWallMesh) continue;
                     }
-                    if (hasWallMesh) continue;
-                }
 
-                // Check if there is a door entity placed on this edge
-                bool hasDoor = false;
-                for (const auto& p : zm.portals()) {
-                    if (p.floor == z.floor && (p.tileA == pt || p.tileB == pt)) {
-                        hasDoor = true;
-                        break;
+                    // Check if there is a door entity placed on this edge
+                    bool hasDoor = false;
+                    for (const auto& p : zm.portals()) {
+                        if (p.floor == fl && (p.tileA == pt || p.tileB == pt)) {
+                            hasDoor = true;
+                            break;
+                        }
                     }
+                    if (hasDoor) continue;
+
+                    quint64 wallKey = (quint64(fl) << 36) | (quint64(pt.y()) << 20) | (quint64(pt.x()) << 4) | quint64(s);
+                    if (reportedWallLeaks.contains(wallKey)) continue;
+                    reportedWallLeaks.insert(wallKey);
+
+                    PortalLeakWarning w;
+                    w.severity = PortalLeakWarning::WARNING;
+                    w.type = "Missing Perimeter Wall (Void Leak)";
+                    w.layer = fl;
+                    w.x = pt.x();
+                    w.y = pt.y();
+                    w.description = QString("Perimeter wall missing at Floor %1 (%2, %3) side %4 facing universe void. Camera may leak into void.")
+                                        .arg(fl).arg(pt.x()).arg(pt.y()).arg(sideNames[s]);
+                    m_warnings.push_back(w);
                 }
-                if (hasDoor) continue;
-
-                quint64 wallKey = (quint64(z.floor) << 36) | (quint64(pt.y()) << 20) | (quint64(pt.x()) << 4) | quint64(s);
-                if (reportedWallLeaks.contains(wallKey)) continue;
-                reportedWallLeaks.insert(wallKey);
-
-                PortalLeakWarning w;
-                w.severity = PortalLeakWarning::WARNING;
-                w.type = "Missing Perimeter Wall (Void Leak)";
-                w.layer = z.floor;
-                w.x = pt.x();
-                w.y = pt.y();
-                w.description = QString("Open room edge at (%1, %2) [%3 edge] faces empty void without a wall or door. Camera may see universe void.")
-                                    .arg(pt.x()).arg(pt.y()).arg(sideNames[s]);
-                m_warnings.push_back(w);
             }
         }
     }
