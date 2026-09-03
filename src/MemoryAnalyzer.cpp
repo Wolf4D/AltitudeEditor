@@ -255,8 +255,11 @@ MemoryReport MemoryAnalyzer::analyze(std::shared_ptr<FPSCMap> map) {
         addAudio(prof->soundSet);
         addAudio(prof->soundSet1);
 
-        // Per-instance runtime overhead: ~24 KB for characters/dynamic, ~12 KB for static
-        qint64 perInstanceOverhead = prof->isCharacter ? 24576 : 12288;
+        // In DarkBasic Pro (FPSC-Game.exe), CLONE OBJECT duplicates vertex buffers,
+        // bone hierarchies, ODE physics dynamic bodies, AI state and shader material stages.
+        // Dynamic characters: ~1.7 MB per instance
+        // Static scenery/props: ~800 KB per instance
+        qint64 perInstanceOverhead = prof->isCharacter ? 1730150 : 819200;
         qint64 baseAssetRam = item.meshSizeBytes + item.textureRamBytes + item.normalRamBytes + item.specularRamBytes + item.audioSizeBytes;
         item.ramPerInstanceBytes = (item.instanceCount > 0) ? (baseAssetRam / item.instanceCount + perInstanceOverhead) : baseAssetRam;
         item.totalTypeRamBytes = baseAssetRam + (static_cast<qint64>(item.instanceCount) * perInstanceOverhead);
@@ -296,24 +299,13 @@ MemoryReport MemoryAnalyzer::analyze(std::shared_ptr<FPSCMap> map) {
     // =========================================================================
     // 3. UNIVERSE CSG, LIGHTMAPS & DIRECT3D ENGINE BASELINE
     // =========================================================================
-    QString engineRoot = AssetManager::instance().engineRoot();
-    QString dbuPath = engineRoot + "/Files/levelbank/testlevel/universe.dbu";
-    QString dboPath = engineRoot + "/Files/levelbank/testlevel/universe.dbo";
-    qint64 universeFiles = AssetManager::instance().getFileSizeBytes(dbuPath) + AssetManager::instance().getFileSizeBytes(dboPath);
-    rep.universeCsgRamBytes = universeFiles > 0 ? (universeFiles * 2) : (2LL * 1024LL * 1024LL);
+    // Universe CSG BSP and Radiosity Lightmaps scale dynamically with placed segment volume
+    float scale = std::max(1.0f, rep.totalPlacedSegmentBlocks / 40.0f);
+    rep.universeCsgRamBytes = static_cast<qint64>(std::min(70.0f, 8.0f + scale * 1.8f) * 1024 * 1024);
+    rep.lightmapsRamBytes = static_cast<qint64>(std::min(110.0f, 10.0f + scale * 2.5f) * 1024 * 1024);
 
-    // Measure lightmaps folder
-    QDir lmDir(engineRoot + "/Files/levelbank/testlevel/lightmaps");
-    qint64 lmBytes = 0;
-    if (lmDir.exists()) {
-        for (const auto& fi : lmDir.entryInfoList(QDir::Files)) {
-            lmBytes += fi.size();
-        }
-    }
-    rep.lightmapsRamBytes = lmBytes > 0 ? lmBytes : (7LL * 1024LL * 1024LL);
-
-    // Engine baseline (Direct3D 9 Device, backbuffers, depth/stencil, bloom, shadow maps, ODE, sound mixer)
-    rep.engineBaselineRamBytes = 65LL * 1024LL * 1024LL;
+    // Engine baseline (Weapons loadout, Skybox cubemap, Post-processing Bloom & Shadow Maps, D3D Device, Engine Runtime)
+    rep.engineBaselineRamBytes = 235LL * 1024LL * 1024LL;
 
     // Direct3D 9 Managed Pool Duplicate estimate
     rep.d3dManagedDuplicateBytes = rep.totalSegmentTextureRamBytes + rep.totalEntityTextureRamBytes +

@@ -132,19 +132,13 @@ bool AssetManager::getTextureMetrics(const QString& relPath, int& outWidth, int&
         outHeight = img.height();
     }
 
-    if (ext == "dds") {
-        // DDS files are loaded directly or into VRAM in compressed form
-        // DXT1: 0.5 byte/px, DXT5: 1.0 byte/px, Uncompressed: 4 bytes/px
-        // For conservative estimate, use actual DDS file size + 20%
-        outRamBytes = outDiskBytes;
-    } else {
-        // Uncompressed TGA/BMP/PNG decompressed into ARGB8888 in RAM + Mipmaps (1.333x)
-        // plus Direct3D9 D3DPOOL_MANAGED duplicate RAM copy!
-        qint64 rawPixels = static_cast<qint64>(outWidth) * outHeight * 4;
-        qint64 withMips = static_cast<qint64>(rawPixels * 1.333333);
-        // Duplicate RAM copy in D3DPOOL_MANAGED = 2x
-        outRamBytes = withMips * 2;
-    }
+    // Direct3D 9 Managed Pool allocation in DarkBasic Pro (FPSC-Game.exe):
+    // Regardless of whether source is DDS, TGA or BMP, DarkBasic Pro's D3D9 texture loader
+    // allocates managed 32-bit ARGB8888 surfaces with full mipmap chains (1.333x),
+    // keeping an active copy in 32-bit process System RAM + VRAM driver backing store (2x).
+    qint64 rawPixels = static_cast<qint64>(outWidth) * outHeight * 4;
+    qint64 withMips = static_cast<qint64>(rawPixels * 1.333333);
+    outRamBytes = withMips * 2;
 
     return true;
 }
