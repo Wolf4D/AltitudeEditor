@@ -234,7 +234,15 @@ void PortalLeakAnalyzer::checkVerticalGaps() {
     VisZoneManager zm;
     zm.buildFromMap(m_map);
 
-    for (const auto& z : zm.zones()) {
+    // Sort zones by floor descending so we process upper room tiers first
+    auto zones = zm.zones();
+    std::sort(zones.begin(), zones.end(), [](const VisZone& a, const VisZone& b) {
+        return a.floor > b.floor;
+    });
+
+    QSet<quint32> reportedCeilingColumns;
+
+    for (const auto& z : zones) {
         if (z.tiles.size() < 2) continue;
 
         // Must be an interior floor room (not pure roof slab)
@@ -283,14 +291,28 @@ void PortalLeakAnalyzer::checkVerticalGaps() {
         // If room is predominantly roofed (> 75%), but has missing ceiling tiles -> TRUE CEILING LEAK
         if (coverage >= 0.75f && coverage < 1.0f) {
             for (const auto& hole : missingTiles) {
+                quint32 colKey = (static_cast<quint32>(hole.y()) << 16) | (static_cast<quint32>(hole.x()) & 0xFFFF);
+                if (reportedCeilingColumns.contains(colKey)) continue;
+                reportedCeilingColumns.insert(colKey);
+
+                // Find highest occupied room layer in this column
+                int topRoomLayer = z.floor;
+                for (int l = z.floor; l <= m_map->header.layerMax; ++l) {
+                    if (m_map->gridBlocks[l][hole.y()][hole.x()] > 0) {
+                        topRoomLayer = l;
+                    }
+                }
+                int missingRoofFloor = topRoomLayer + 1;
+
                 PortalLeakWarning w;
                 w.severity = PortalLeakWarning::ERROR;
                 w.type = "Missing Ceiling Leak";
-                w.layer = z.floor; // Room floor layer so the user sees the actual room and missing spot!
+                // Report on the layer where the ceiling tile is missing
+                w.layer = (missingRoofFloor <= m_map->header.layerMax) ? missingRoofFloor : topRoomLayer;
                 w.x = hole.x();
                 w.y = hole.y();
-                w.description = QString("Missing ceiling slab at Floor %1 over enclosed room at (%2, %3) (Floor %4). Camera will leak visibility into the void.")
-                                    .arg(z.floor + 1).arg(hole.x()).arg(hole.y()).arg(z.floor);
+                w.description = QString("Missing ceiling slab at Floor %1 over enclosed room at (%2, %3) (Room top: Floor %4). Camera will leak visibility into the void.")
+                                    .arg(missingRoofFloor).arg(hole.x()).arg(hole.y()).arg(topRoomLayer);
                 m_warnings.push_back(w);
             }
         }
@@ -328,6 +350,14 @@ void PortalLeakAnalyzer::checkWallHolesToVoid() {
     int rows = m_map->header.maxY + 1;
     int cols = m_map->header.maxX + 1;
 
+    auto isUniverseVoid = [&](int x, int y) -> bool {
+        if (x < 0 || x >= cols || y < 0 || y >= rows) return true;
+        for (int l = 0; l <= m_map->header.layerMax; ++l) {
+            if (m_map->gridBlocks[l][y][x] > 0) return false;
+        }
+        return true;
+    };
+
     auto isMaptileWallPresent = [](int maptile, int rot, int side) -> bool {
         if (maptile <= 0 || maptile == 6) return false;
         static const bool baseWalls[16][4] = {
@@ -345,13 +375,15 @@ void PortalLeakAnalyzer::checkWallHolesToVoid() {
     const int dy[4] = {-1, 0, 1, 0};
     const char* sideNames[4] = {"North", "East", "South", "West"};
 
+    QSet<quint64> reportedWallLeaks;
+
     for (const auto& z : zm.zones()) {
         if (z.tiles.size() < 3) continue;
 
-        // Only check enclosed interior rooms (all tiles ground == 0)
+        // Only check enclosed interior rooms (ground <= 1)
         bool allInterior = true;
         for (const auto& pt : z.tiles) {
-            if (mapGround(z.floor, pt.x(), pt.y()) != 0) {
+            if (mapGround(z.floor, pt.x(), pt.y()) > 1) {
                 allInterior = false;
                 break;
             }
@@ -365,37 +397,64 @@ void PortalLeakAnalyzer::checkWallHolesToVoid() {
                       ? m_map->gridRotation[z.floor][pt.y()][pt.x()] : 0;
 
             for (int s = 0; s < 4; ++s) {
-                if (!isMaptileWallPresent(tile, rot, s)) {
-                    int nx = pt.x() + dx[s];
-                    int ny = pt.y() + dy[s];
-                    bool isVoid = false;
-                    if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) {
-                        isVoid = true;
-                    } else if (m_map->gridBlocks[z.floor][ny][nx] <= 0) {
-                        isVoid = true;
-                    }
+                int nx = pt.x() + dx[s];
+                int ny = pt.y() + dy[s];
 
-                    if (isVoid) {
-                        bool hasDoor = false;
-                        for (const auto& p : zm.portals()) {
-                            if (p.floor == z.floor && (p.tileA == pt || p.tileB == pt)) {
-                                hasDoor = true;
-                                break;
+                // Only consider it an exterior breach if (nx, ny) is true universe void
+                // (i.e. outside the map bounds or has zero segments on ANY floor)
+                if (!isUniverseVoid(nx, ny)) continue;
+
+                // If wall is present on this side, no leak
+                if (isMaptileWallPresent(tile, rot, s)) continue;
+
+                // Check if segment definition has an explicit wall mesh part on this side
+                int segId = m_map->gridBlocks[z.floor][pt.y()][pt.x()];
+                if (segId > 0 && m_map->segments.contains(segId)) {
+                    const auto& seg = m_map->segments[segId];
+                    bool hasWallMesh = false;
+                    for (const auto& part : seg->parts) {
+                        if (part.isWall) {
+                            int partSide = -1;
+                            int rotYInt = (static_cast<int>(std::round(part.rotY)) % 360 + 360) % 360;
+                            if (part.offX <= -25.0f || rotYInt == 270) partSide = 3;
+                            else if (part.offX >= 25.0f || rotYInt == 90) partSide = 1;
+                            else if (part.offZ >= 25.0f || rotYInt == 0) partSide = 0;
+                            else if (part.offZ <= -25.0f || rotYInt == 180) partSide = 2;
+                            if (partSide >= 0) {
+                                int effSide = (partSide + (rot & 3)) % 4;
+                                if (effSide == s) {
+                                    hasWallMesh = true;
+                                    break;
+                                }
                             }
                         }
-                        if (!hasDoor) {
-                            PortalLeakWarning w;
-                            w.severity = PortalLeakWarning::WARNING;
-                            w.type = "Missing Perimeter Wall (Void Leak)";
-                            w.layer = z.floor;
-                            w.x = pt.x();
-                            w.y = pt.y();
-                            w.description = QString("Open room edge at (%1, %2) [%3 edge] faces empty void without a wall or door. Camera may see universe void.")
-                                                .arg(pt.x()).arg(pt.y()).arg(sideNames[s]);
-                            m_warnings.push_back(w);
-                        }
+                    }
+                    if (hasWallMesh) continue;
+                }
+
+                // Check if there is a door entity placed on this edge
+                bool hasDoor = false;
+                for (const auto& p : zm.portals()) {
+                    if (p.floor == z.floor && (p.tileA == pt || p.tileB == pt)) {
+                        hasDoor = true;
+                        break;
                     }
                 }
+                if (hasDoor) continue;
+
+                quint64 wallKey = (quint64(z.floor) << 36) | (quint64(pt.y()) << 20) | (quint64(pt.x()) << 4) | quint64(s);
+                if (reportedWallLeaks.contains(wallKey)) continue;
+                reportedWallLeaks.insert(wallKey);
+
+                PortalLeakWarning w;
+                w.severity = PortalLeakWarning::WARNING;
+                w.type = "Missing Perimeter Wall (Void Leak)";
+                w.layer = z.floor;
+                w.x = pt.x();
+                w.y = pt.y();
+                w.description = QString("Open room edge at (%1, %2) [%3 edge] faces empty void without a wall or door. Camera may see universe void.")
+                                    .arg(pt.x()).arg(pt.y()).arg(sideNames[s]);
+                m_warnings.push_back(w);
             }
         }
     }
