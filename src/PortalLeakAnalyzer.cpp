@@ -428,21 +428,62 @@ void PortalLeakAnalyzer::checkVerticalGaps() {
 }
 
 void PortalLeakAnalyzer::checkCoplanarOverlaps() {
+    if (!m_map) return;
+
+    // 1. Same-layer Overlay conflicts (Base segment vs Overlay segment)
+    for (int layer = 0; layer < m_map->gridBlocks.size(); ++layer) {
+        for (int y = 0; y < m_map->gridBlocks[layer].size(); ++y) {
+            for (int x = 0; x < m_map->gridBlocks[layer][y].size(); ++x) {
+                int baseSeg = m_map->gridBlocks[layer][y][x];
+                int olaySeg = (layer < m_map->gridOverlays.size() && y < m_map->gridOverlays[layer].size() && x < m_map->gridOverlays[layer][y].size())
+                              ? m_map->gridOverlays[layer][y][x] : 0;
+                if (baseSeg > 0 && olaySeg > 0) {
+                    auto sBase = m_map->segments.value(baseSeg);
+                    auto sOlay = m_map->segments.value(olaySeg);
+                    if (sBase && sOlay) {
+                        // An overlay without CSG punch will draw directly on top of the base segment -> true Z-fighting
+                        if (!sOlay->hasPunch) {
+                            PortalLeakWarning w;
+                            w.severity = PortalLeakWarning::WARNING;
+                            w.type = QStringLiteral("Coplanar Overlay Z-Fighting");
+                            w.layer = layer; w.x = x; w.y = y;
+                            w.description = QString("Overlay segment \"%1\" placed directly over \"%2\" on Floor %3 at (%4, %5) without CSG punch cutout. Causes severe in-game texture flickering (Z-fighting).")
+                                                .arg(sOlay->name).arg(sBase->name).arg(layer).arg(x).arg(y);
+                            m_warnings.push_back(w);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Inter-floor volume penetration (tall segments extending across floor boundaries)
     for (int layer = 0; layer < m_map->gridBlocks.size() - 1; ++layer) {
         for (int y = 0; y < m_map->gridBlocks[layer].size(); ++y) {
             for (int x = 0; x < m_map->gridBlocks[layer][y].size(); ++x) {
                 int segBelow = m_map->gridBlocks[layer][y][x];
                 int segAbove = m_map->gridBlocks[layer + 1][y][x];
-                if (segBelow > 0 && segAbove > 0 && segBelow != segAbove) {
-                    bool ceilingHere = isCeilingAt(layer, x, y);
-                    bool floorAbove = isFloorAt(layer + 1, x, y);
-                    if (ceilingHere && floorAbove) {
-                        PortalLeakWarning w;
-                        w.severity = PortalLeakWarning::WARNING;
-                        w.type = "Coplanar CSG Overlap";
-                        w.layer = layer; w.x = x; w.y = y;
-                        w.description = QString("Ceiling on Layer %1 shares exact height plane with Floor on Layer %2. May cause degenerate BSP portal recursion.").arg(layer).arg(layer + 1);
-                        m_warnings.push_back(w);
+                if (segBelow > 0 && segAbove > 0) {
+                    auto sBelow = m_map->segments.value(segBelow);
+                    auto sAbove = m_map->segments.value(segAbove);
+                    if (sBelow && sAbove) {
+                        // Check if segment below has parts extending upward into layer above (offY > 50.0f)
+                        bool penetratesAbove = false;
+                        for (const auto& p : sBelow->parts) {
+                            if (p.offY > 50.0f) {
+                                penetratesAbove = true;
+                                break;
+                            }
+                        }
+                        if (penetratesAbove) {
+                            PortalLeakWarning w;
+                            w.severity = PortalLeakWarning::WARNING;
+                            w.type = QStringLiteral("Segment Height Collision");
+                            w.layer = layer; w.x = x; w.y = y;
+                            w.description = QString("Tall segment \"%1\" on Floor %2 physically penetrates into Floor %3, colliding with \"%4\".")
+                                                .arg(sBelow->name).arg(layer).arg(layer + 1).arg(sAbove->name);
+                            m_warnings.push_back(w);
+                        }
                     }
                 }
             }
