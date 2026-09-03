@@ -473,6 +473,8 @@ void VisZoneManager::pruneOpenRoofZones() {
         }
 
         // An unenclosed exterior roof has NO portals, NO walls, and NO ceiling above (open to the sky)!
+        // Note: Entity presence is intentionally excluded from zone validation/preservation criteria,
+        // so stray lights or rooftop props do not turn an exterior roof into a room.
         if (!hasAnyWalls && z.portalIndices.empty() && !hasCeilingAbove) {
             for (const auto& pair : z.floorTiles) {
                 int fl = pair.first;
