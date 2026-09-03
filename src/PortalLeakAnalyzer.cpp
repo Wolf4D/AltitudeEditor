@@ -345,15 +345,25 @@ void PortalLeakAnalyzer::checkVerticalGaps() {
     for (const auto& z : zones) {
         if (z.tiles.size() < 2) continue;
 
-        // Must be an interior floor room (not pure roof slab)
-        bool isInterior = false;
+        int floorCount = 0;
+        int roofCount = 0;
+        int wallTileCount = 0;
+
         for (const auto& pt : z.tiles) {
-            if (mapGround(z.floor, pt.x(), pt.y()) <= 1) {
-                isInterior = true;
-                break;
-            }
+            int g = mapGround(z.floor, pt.x(), pt.y());
+            if (g == 2) roofCount++;
+            else floorCount++;
+
+            int tile = (z.floor < m_map->gridTileType.size() && pt.y() < m_map->gridTileType[z.floor].size() && pt.x() < m_map->gridTileType[z.floor][pt.y()].size())
+                       ? m_map->gridTileType[z.floor][pt.y()][pt.x()] : 0;
+            if (tile > 0 && tile != 6) wallTileCount++;
         }
-        if (!isInterior) continue;
+
+        // Must be predominantly floor tiles, NOT roof slabs (a roof slab layer cannot leak into itself)
+        if (floorCount <= roofCount || floorCount < 2) continue;
+
+        // An enclosed interior room must have walls (cannot be a 100% flat open slab with zero walls)
+        if (wallTileCount == 0) continue;
 
         int coveredCount = 0;
         std::vector<QPoint> missingTiles;
@@ -365,15 +375,13 @@ void PortalLeakAnalyzer::checkVerticalGaps() {
                 int seg = m_map->gridBlocks[l][pt.y()][pt.x()];
                 if (seg > 0) {
                     int g = mapGround(l, pt.x(), pt.y());
-                    int sym = (l < m_map->gridSymbol.size() && pt.y() < m_map->gridSymbol[l].size() && pt.x() < m_map->gridSymbol[l][pt.y()].size())
-                              ? m_map->gridSymbol[l][pt.y()][pt.x()] : 0;
                     // Segment with roof or ceiling slab (ground == 2)
                     if (g == 2 || isCeilingAt(l, pt.x(), pt.y())) {
                         covered = true;
                         break;
                     }
-                    // Upper floor tile capping the room below
-                    if (l > z.floor && isFloorAt(l, pt.x(), pt.y()) && sym != 1) {
+                    // Any segment placed on a higher layer caps this column
+                    if (l > z.floor) {
                         covered = true;
                         break;
                     }
