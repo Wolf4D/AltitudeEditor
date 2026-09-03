@@ -82,9 +82,13 @@ struct FPSCSegment {
     
     int visWallB = -1, visWallR = -1, visWallF = -1, visWallL = -1;
     int visFloor = -1, visRoof = -1;
+    int visOverlay = 0;
     int kindOf = 0;
     int groundMode = 0;
+    int mode = 0;
     bool isScenery = false;
+    bool isPlatformOrGantry = false;
+    bool isStairs = false;
     bool hasFloorOnThisLayer = true;
     bool hasRoofOnThisLayer = false;
 };

@@ -324,9 +324,13 @@ std::shared_ptr<FPSCMap> FPMReader::loadMap(const QString& fpmPath, const QStrin
                             if (val == 0) break;
                             int sId = (val >> 20) & 0xFFF;
                             auto it = map->segments.find(sId);
-                            if (it != map->segments.end() && it.value()->hasPunch) {
-                                chosenMapId = val; // Only real CSG punch segments (doors, windows, slits) are cutouts!
-                                break;
+                            if (it != map->segments.end()) {
+                                if (it.value()->hasPunch || it.value()->isPlatformOrGantry || it.value()->isStairs) {
+                                    chosenMapId = val;
+                                    break;
+                                } else if (chosenMapId == 0) {
+                                    chosenMapId = val;
+                                }
                             }
                         }
 

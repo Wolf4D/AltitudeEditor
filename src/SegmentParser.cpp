@@ -57,6 +57,8 @@ std::shared_ptr<FPSCSegment> SegmentParser::parse(const QString& relPath, int se
 
     if (kv.contains("kindof")) seg->kindOf = kv["kindof"].toInt();
     if (kv.contains("groundmode")) seg->groundMode = kv["groundmode"].toInt();
+    if (kv.contains("mode")) seg->mode = kv["mode"].toInt();
+    if (kv.contains("visoverlay")) seg->visOverlay = kv["visoverlay"].toInt();
     if (kv.contains("viswallb")) seg->visWallB = kv["viswallb"].toInt();
     if (kv.contains("viswallr")) seg->visWallR = kv["viswallr"].toInt();
     if (kv.contains("viswallf")) seg->visWallF = kv["viswallf"].toInt();
@@ -158,6 +160,37 @@ std::shared_ptr<FPSCSegment> SegmentParser::parse(const QString& relPath, int se
     seg->hasFloorOnThisLayer = (seg->visFloor >= 0);
     seg->hasRoofOnThisLayer = (seg->visRoof >= 0);
 
+    // Detect Platforms, Gantries, Walkways, and Stairs
+    bool isGantryPath = seg->relPath.contains("gantry", Qt::CaseInsensitive) ||
+                        seg->name.contains("gantry", Qt::CaseInsensitive) ||
+                        seg->relPath.contains("platform", Qt::CaseInsensitive) ||
+                        seg->name.contains("platform", Qt::CaseInsensitive) ||
+                        seg->relPath.contains("catwalk", Qt::CaseInsensitive) ||
+                        seg->name.contains("catwalk", Qt::CaseInsensitive);
+    bool isStairsPath = seg->relPath.contains("stair", Qt::CaseInsensitive) ||
+                        seg->name.contains("stair", Qt::CaseInsensitive) ||
+                        seg->relPath.contains("step", Qt::CaseInsensitive) ||
+                        seg->name.contains("step", Qt::CaseInsensitive);
+
+    if (seg->visOverlay >= 1 || isGantryPath || isStairsPath) {
+        if (isStairsPath) {
+            seg->isStairs = true;
+        } else {
+            seg->isPlatformOrGantry = true;
+        }
+        seg->hasFloorOnThisLayer = true;
+
+        // Ensure floor texture is populated from the first available part
+        if (seg->floorTexture.isEmpty() && !seg->parts.isEmpty()) {
+            for (const auto& p : seg->parts) {
+                if (!p.texture.isEmpty()) {
+                    seg->floorTexture = p.texture;
+                    break;
+                }
+            }
+        }
+    }
+
     // Floor slab (groundmode == 2, e.g. ground.fps or techfloor1.fps) with single mesh
     if (seg->parts.size() == 1 && seg->groundMode == 2) {
         seg->hasFloorOnThisLayer = true;
@@ -168,7 +201,8 @@ std::shared_ptr<FPSCSegment> SegmentParser::parse(const QString& relPath, int se
 
     // Pure scenery/prop object: single mesh without any wall or floor visibility indices
     if (seg->parts.size() == 1 && seg->visFloor == -1 && seg->visRoof == -1 &&
-        seg->visWallB == -1 && seg->visWallR == -1 && seg->visWallF == -1 && seg->visWallL == -1) {
+        seg->visWallB == -1 && seg->visWallR == -1 && seg->visWallF == -1 && seg->visWallL == -1 &&
+        !seg->isPlatformOrGantry && !seg->isStairs) {
         seg->isScenery = true;
         if (seg->floorTexture.isEmpty() && !primaryWallTex.isEmpty()) {
             seg->floorTexture = primaryWallTex;
