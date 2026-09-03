@@ -6,6 +6,7 @@
 #include "FPSCData.h"
 #include "UniverseDBUParser.h"
 #include <QHash>
+#include <QDateTime>
 
 struct PortalLeakWarning {
     enum Severity {
@@ -21,11 +22,22 @@ struct PortalLeakWarning {
     int y;
 };
 
+struct DBUValidationResult {
+    bool fileExists = false;
+    bool matchesCurrentMap = false;
+    bool isOutdated = false;
+    QDateTime dbuTime;
+    QDateTime mapTime;
+    QString message;
+};
+
 class PortalLeakAnalyzer {
 public:
     PortalLeakAnalyzer(std::shared_ptr<FPSCMap> map);
 
     std::vector<PortalLeakWarning> analyze();
+
+    DBUValidationResult validateCompiledUniverse() const;
 
     void setCheckCompiledUniverse(bool enable) { m_checkCompiledUniverse = enable; }
     void setCheckStaticMap(bool enable) { m_checkStaticMap = enable; }

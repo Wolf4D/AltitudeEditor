@@ -25,19 +25,24 @@ PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, QWidget* parent
     // Method 1: Compiled BSP Universe
     QHBoxLayout* rowBsp = new QHBoxLayout();
     m_chkCompiledBsp = new QCheckBox(QStringLiteral("1. Физический анализ скомпилированного BSP (universe.dbu)"), grpMethods);
-    m_chkCompiledBsp->setChecked(true);
-    m_chkCompiledBsp->setToolTip(QStringLiteral("Проверяет реальные физические щели, несомкнутые многогранники CSG и сквозные порталы в пустоту из скомпилированного universe.dbu (после запуска Test Level в FPS Creator)."));
+    m_chkCompiledBsp->setToolTip(QStringLiteral("Проверяет реальные физические щели, несомкнутые многогранники CSG и сквозные порталы в пустоту из скомпилированного universe.dbu (после запуска Test Game в FPS Creator)."));
     rowBsp->addWidget(m_chkCompiledBsp);
 
-    QString dbuPath = AssetManager::instance().engineRoot() + "/Files/levelbank/testlevel/universe.dbu";
-    bool dbuExists = QFile::exists(dbuPath);
+    PortalLeakAnalyzer initAnalyzer(m_map);
+    auto val = initAnalyzer.validateCompiledUniverse();
+
+    m_chkCompiledBsp->setChecked(val.matchesCurrentMap);
+
     m_lblDbuStatus = new QLabel(grpMethods);
-    if (dbuExists) {
-        m_lblDbuStatus->setText(QStringLiteral("✓ universe.dbu найден (готов к физическому анализу)"));
-        m_lblDbuStatus->setStyleSheet(QStringLiteral("color: #00e676; font-weight: bold; font-size: 11px;"));
-    } else {
-        m_lblDbuStatus->setText(QStringLiteral("⚠ universe.dbu не найден (запустите Test Level в движке для сборки BSP)"));
+    m_lblDbuStatus->setText(val.message);
+    if (!val.fileExists) {
         m_lblDbuStatus->setStyleSheet(QStringLiteral("color: #ff9100; font-size: 11px;"));
+    } else if (!val.matchesCurrentMap) {
+        m_lblDbuStatus->setStyleSheet(QStringLiteral("color: #ff5252; font-weight: bold; font-size: 11px;"));
+    } else if (val.isOutdated) {
+        m_lblDbuStatus->setStyleSheet(QStringLiteral("color: #ffb300; font-size: 11px;"));
+    } else {
+        m_lblDbuStatus->setStyleSheet(QStringLiteral("color: #00e676; font-weight: bold; font-size: 11px;"));
     }
     rowBsp->addStretch();
     rowBsp->addWidget(m_lblDbuStatus);

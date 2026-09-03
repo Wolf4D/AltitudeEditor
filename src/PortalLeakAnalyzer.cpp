@@ -1,8 +1,10 @@
 #include "PortalLeakAnalyzer.h"
 #include "AssetManager.h"
 #include "VisZoneManager.h"
+#include "FPMReader.h"
 #include <QFile>
 #include <QFileInfo>
+#include <QDateTime>
 #include <QTextStream>
 #include <QDebug>
 #include <cmath>
@@ -10,6 +12,84 @@
 
 PortalLeakAnalyzer::PortalLeakAnalyzer(std::shared_ptr<FPSCMap> map)
     : m_map(map) {
+}
+
+DBUValidationResult PortalLeakAnalyzer::validateCompiledUniverse() const {
+    DBUValidationResult res;
+    if (!m_map) {
+        res.message = QStringLiteral("Карта не загружена.");
+        return res;
+    }
+
+    QString dbuPath = AssetManager::instance().engineRoot() + "/Files/levelbank/testlevel/universe.dbu";
+    QFileInfo dbuInfo(dbuPath);
+    if (!dbuInfo.exists()) {
+        res.fileExists = false;
+        res.message = QStringLiteral("Файл universe.dbu не найден. Запустите Test Game (F9) в FPS Creator.");
+        return res;
+    }
+    res.fileExists = true;
+    res.dbuTime = dbuInfo.lastModified();
+
+    // Check against map file timestamp if available
+    if (!m_map->filePath.isEmpty()) {
+        QFileInfo mapInfo(m_map->filePath);
+        if (mapInfo.exists()) {
+            res.mapTime = mapInfo.lastModified();
+            if (res.mapTime > res.dbuTime.addSecs(2)) {
+                res.isOutdated = true;
+            }
+        }
+    }
+
+    // Check against temp.fpm (the exact map passed to compiler)
+    QString tempFpmPath = AssetManager::instance().engineRoot() + "/Files/editors/gridedit/temp.fpm";
+    QFileInfo tempInfo(tempFpmPath);
+    if (tempInfo.exists()) {
+        auto tempMap = FPMReader::loadMap(tempFpmPath, "mypassword");
+        if (tempMap) {
+            bool match = (m_map->header.layerMax == tempMap->header.layerMax &&
+                          m_map->header.maxX == tempMap->header.maxX &&
+                          m_map->header.maxY == tempMap->header.maxY &&
+                          m_map->placedEntities.size() == tempMap->placedEntities.size());
+            
+            if (match) {
+                for (int l = 0; l <= m_map->header.layerMax && match; ++l) {
+                    if (l >= (int)m_map->gridBlocks.size() || l >= (int)tempMap->gridBlocks.size()) continue;
+                    for (int y = 0; y <= m_map->header.maxY && match; ++y) {
+                        for (int x = 0; x <= m_map->header.maxX && match; ++x) {
+                            if (m_map->gridBlocks[l][y][x] != tempMap->gridBlocks[l][y][x]) {
+                                match = false;
+                            }
+                        }
+                    }
+                }
+            }
+
+            res.matchesCurrentMap = match;
+            if (match) {
+                if (res.isOutdated) {
+                    res.message = QString("⚠ universe.dbu устарел (карта сохранена: %1, сборка: %2). Нажмите Test Game (F9).")
+                                  .arg(res.mapTime.toString("HH:mm:ss")).arg(res.dbuTime.toString("HH:mm:ss"));
+                } else {
+                    res.message = QString("✓ universe.dbu актуален (собран %1 для этой карты)").arg(res.dbuTime.toString("HH:mm:ss"));
+                }
+            } else {
+                res.message = QString("⚠ universe.dbu от ДРУГОЙ карты (собран %1). Для этой карты запустите Test Game (F9) в FPS Creator.")
+                              .arg(res.dbuTime.toString("HH:mm:ss"));
+            }
+            return res;
+        }
+    }
+
+    // Fallback if temp.fpm is absent
+    res.matchesCurrentMap = !res.isOutdated;
+    if (res.isOutdated) {
+        res.message = QStringLiteral("⚠ universe.dbu устарел. Запустите Test Game (F9) в FPS Creator.");
+    } else {
+        res.message = QString("✓ universe.dbu найден (%1)").arg(res.dbuTime.toString("HH:mm:ss"));
+    }
+    return res;
 }
 
 std::vector<PortalLeakWarning> PortalLeakAnalyzer::analyze() {
@@ -34,9 +114,29 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::analyze() {
 }
 
 void PortalLeakAnalyzer::checkCompiledUniverse() {
-    QString dbuPath = AssetManager::instance().engineRoot() + "/Files/levelbank/testlevel/universe.dbu";
-    if (!QFile::exists(dbuPath)) return;
+    auto val = validateCompiledUniverse();
+    if (!val.fileExists) return;
 
+    if (!val.matchesCurrentMap) {
+        PortalLeakWarning w;
+        w.severity = PortalLeakWarning::WARNING;
+        w.type = QStringLiteral("Compiled BSP Mismatch");
+        w.layer = 0; w.x = 0; w.y = 0;
+        w.description = val.message;
+        m_warnings.push_back(w);
+        return;
+    }
+
+    if (val.isOutdated) {
+        PortalLeakWarning w;
+        w.severity = PortalLeakWarning::WARNING;
+        w.type = QStringLiteral("Compiled BSP Outdated");
+        w.layer = 0; w.x = 0; w.y = 0;
+        w.description = val.message;
+        m_warnings.push_back(w);
+    }
+
+    QString dbuPath = AssetManager::instance().engineRoot() + "/Files/levelbank/testlevel/universe.dbu";
     if (!m_dbuParser.parse(dbuPath)) return;
     m_hasCompiledUniverse = true;
 
