@@ -61,6 +61,43 @@ static QIcon makePortalIcon() {
     return QIcon(px);
 }
 
+static QIcon makeMemoryIcon() {
+    QPixmap px(20, 20);
+    px.fill(Qt::transparent);
+    QPainter p(&px);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    // PCB board (dark emerald/teal circuit board)
+    QRectF pcb(2, 4, 16, 11);
+    p.setPen(QPen(QColor(46, 125, 88), 1.2f));
+    p.setBrush(QColor(22, 58, 42));
+    p.drawRoundedRect(pcb, 1.5, 1.5);
+
+    // Gold contact pins at bottom edge with DIMM key notch
+    p.setPen(QPen(QColor(230, 185, 65), 1.2f));
+    for (float x = 3.5f; x <= 8.5f; x += 1.5f) {
+        p.drawLine(QPointF(x, 13.0f), QPointF(x, 15.0f));
+    }
+    for (float x = 11.5f; x <= 16.5f; x += 1.5f) {
+        p.drawLine(QPointF(x, 13.0f), QPointF(x, 15.0f));
+    }
+
+    // 3 Memory DRAM IC chips
+    p.setPen(QPen(QColor(30, 38, 50), 1.0f));
+    p.setBrush(QColor(16, 20, 26));
+    p.drawRect(QRectF(3.5, 6.0, 3.0, 5.5));
+    p.drawRect(QRectF(8.5, 6.0, 3.0, 5.5));
+    p.drawRect(QRectF(13.5, 6.0, 3.0, 5.5));
+
+    // Chip pin solder accents
+    p.setPen(QPen(QColor(160, 185, 210, 190), 1.0f));
+    p.drawLine(QPointF(4.0, 5.5), QPointF(6.0, 5.5));
+    p.drawLine(QPointF(9.0, 5.5), QPointF(11.0, 5.5));
+    p.drawLine(QPointF(14.0, 5.5), QPointF(16.0, 5.5));
+
+    return QIcon(px);
+}
+
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
@@ -73,21 +110,21 @@ MainWindow::MainWindow(QWidget* parent)
     m_visZoneManager = std::make_shared<VisZoneManager>();
     m_canvas->setVisZoneManager(m_visZoneManager);
 
-    // Left Dock 1: Entity Search
+    // Left Dock: Entity Search (full height)
     m_searchDock = new EntitySearchDock(this);
     m_searchDock->setMinimumWidth(260);
     addDockWidget(Qt::LeftDockWidgetArea, m_searchDock);
 
-    // Left Dock 2: Visibility Zones (PVS / Portals) - Docked bottom-left by default
-    m_visZoneDock = new VisZoneDock(this);
-    m_visZoneDock->setVisZoneManager(m_visZoneManager);
-    m_visZoneDock->setMinimumWidth(260);
-    addDockWidget(Qt::LeftDockWidgetArea, m_visZoneDock);
-
-    // Right Dock: Entity Inspector
+    // Right Dock 1: Entity Inspector
     m_inspectorDock = new EntityInspector(this);
     m_inspectorDock->setMinimumWidth(330);
     addDockWidget(Qt::RightDockWidgetArea, m_inspectorDock);
+
+    // Right Dock 2: Visibility Zones (PVS / Portals) - Opens in right dock
+    m_visZoneDock = new VisZoneDock(this);
+    m_visZoneDock->setVisZoneManager(m_visZoneManager);
+    m_visZoneDock->setMinimumWidth(330);
+    addDockWidget(Qt::RightDockWidgetArea, m_visZoneDock);
 
     createMenusAndToolbars();
 
@@ -279,8 +316,6 @@ void MainWindow::createMenusAndToolbars() {
     if (btnGhost) {
         btnGhost->setToolButtonStyle(Qt::ToolButtonIconOnly);
     }
-    mainBar->addAction(m_actWallTex);
-    mainBar->addAction(m_actFloorTex);
     mainBar->addAction(m_actEntities);
     mainBar->addAction(m_actShowPortals);
     QToolButton* btnPortals = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actShowPortals));
@@ -291,29 +326,29 @@ void MainWindow::createMenusAndToolbars() {
 
     // Fit in View
     mainBar->addAction(actZoomFit);
+    mainBar->addSeparator();
 
-    // -------------------------------------------------------------
-    // Analysis & Diagnostics Toolbar (Separate small panel on same row)
-    // -------------------------------------------------------------
-    QToolBar* diagBar = addToolBar(QStringLiteral("Analysis"));
-    diagBar->setObjectName("DiagToolBar");
-    diagBar->setMovable(false);
-
-    // Memory Analyzer Button
-    QAction* actLaunchMem = diagBar->addAction(QStringLiteral("💾 Memory"), this, &MainWindow::onOpenMemoryAnalyzer);
+    // Analysis Tools
+    QAction* actLaunchMem = mainBar->addAction(makeMemoryIcon(), QStringLiteral("Memory"), this, &MainWindow::onOpenMemoryAnalyzer);
     actLaunchMem->setToolTip(QStringLiteral("Measure level RAM weight in Megabytes and inspect memory budget"));
+    QToolButton* btnMem = qobject_cast<QToolButton*>(mainBar->widgetForAction(actLaunchMem));
+    if (btnMem) {
+        btnMem->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    }
 
-    // Leak Detector Button (no "Portal" in title)
-    QAction* actLaunchLeaks = diagBar->addAction(QStringLiteral("🔍 Leak Detector"), this, &MainWindow::onOpenPortalLeakDetector);
+    QAction* actLaunchLeaks = mainBar->addAction(QStringLiteral("🔍 Leak Detector"), this, &MainWindow::onOpenPortalLeakDetector);
     actLaunchLeaks->setToolTip(QStringLiteral("Scan compiled universe.dbu and map geometry for occlusion leaks"));
 
-    diagBar->addSeparator();
+    // Expanding spacer to push VisZones button to the far right
+    QWidget* rightSpacer = new QWidget(this);
+    rightSpacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    mainBar->addWidget(rightSpacer);
 
-    // Visibility Zones Toggle Button
-    QAction* actToggleVisZone = diagBar->addAction(QStringLiteral("👁 VisZones"), this, [this]() {});
+    // Visibility Zones Toggle Button (Pinned to the right, directly above the right dock!)
+    QAction* actToggleVisZone = mainBar->addAction(QStringLiteral("👁 VisZones"), this, [this]() {});
     actToggleVisZone->setCheckable(true);
     actToggleVisZone->setChecked(true);
-    actToggleVisZone->setToolTip(QStringLiteral("Toggle Visibility Zones & Portals (PVS) bottom-left dock panel"));
+    actToggleVisZone->setToolTip(QStringLiteral("Toggle Visibility Zones & Portals (PVS) right dock panel"));
     connect(actToggleVisZone, &QAction::toggled, this, [this](bool checked) {
         m_visZoneDock->setVisible(checked);
         if (checked) {
@@ -366,7 +401,7 @@ void MainWindow::showEvent(QShowEvent* event) {
     if (m_firstShow) {
         m_firstShow = false;
         int halfH = (height() - 100) / 2;
-        resizeDocks({m_searchDock, m_visZoneDock}, {halfH, halfH}, Qt::Vertical);
+        resizeDocks({m_inspectorDock, m_visZoneDock}, {halfH, halfH}, Qt::Vertical);
     }
 }
 
