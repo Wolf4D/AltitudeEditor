@@ -142,12 +142,9 @@ void VisZoneManager::partitionRooms() {
 
                 auto seg = m_map->segments.value(b);
                 if (!seg) continue;
-                bool isCeilingOrScenery = (seg->groundMode == 2) || seg->isScenery ||
-                                          seg->relPath.contains("ceiling", Qt::CaseInsensitive) ||
-                                          seg->name.contains("ceiling", Qt::CaseInsensitive) ||
-                                          seg->relPath.contains("roof", Qt::CaseInsensitive) ||
-                                          seg->name.contains("roof", Qt::CaseInsensitive);
-                if (isCeilingOrScenery) continue;
+                // Treat floor and ceiling/roof slabs equally as navigable horizontal surfaces!
+                // Only skip pure decorative scenery props.
+                if (seg->isScenery) continue;
 
                 int currentZoneId = nextZoneId++;
                 VisZone zone;
@@ -181,9 +178,7 @@ void VisZoneManager::partitionRooms() {
                             int nb = m_map->gridBlocks[l][ny][nx];
                             if (nb > 0 && m_tileZoneMap[l][ny][nx] < 0) {
                                 auto nseg = m_map->segments.value(nb);
-                                if (nseg && nseg->groundMode != 2 && !nseg->isScenery &&
-                                    !nseg->relPath.contains("ceiling", Qt::CaseInsensitive) &&
-                                    !nseg->relPath.contains("roof", Qt::CaseInsensitive)) {
+                                if (nseg && !nseg->isScenery) {
                                     if (canPass(l, pt.x(), pt.y(), nx, ny, d)) {
                                         m_tileZoneMap[l][ny][nx] = currentZoneId;
                                         q.push_back({nx, ny});
