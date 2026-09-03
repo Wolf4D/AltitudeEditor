@@ -20,48 +20,43 @@
 #include <QPolygonF>
 
 static QIcon makeGhostFloorIcon() {
-    QPixmap px(24, 24);
+    QPixmap px(20, 20);
     px.fill(Qt::transparent);
     QPainter p(&px);
     p.setRenderHint(QPainter::Antialiasing);
 
-    // Lower ghost floor plane (dashed, translucent)
+    // Lower ghost floor plane (dashed outline)
     QPolygonF lowerPlane;
-    lowerPlane << QPointF(3, 16) << QPointF(12, 11) << QPointF(21, 16) << QPointF(12, 21);
-    p.setPen(QPen(QColor(130, 170, 210, 180), 1.5f, Qt::DashLine));
-    p.setBrush(QColor(60, 100, 140, 90));
+    lowerPlane << QPointF(2, 13) << QPointF(10, 9) << QPointF(18, 13) << QPointF(10, 17);
+    p.setPen(QPen(QColor(110, 125, 150, 180), 1.2f, Qt::DashLine));
+    p.setBrush(QColor(40, 50, 70, 100));
     p.drawPolygon(lowerPlane);
 
-    // Upper active floor plane (solid cyan/blue)
+    // Upper active floor plane (crisp outline, translucent fill)
     QPolygonF upperPlane;
-    upperPlane << QPointF(3, 8) << QPointF(12, 3) << QPointF(21, 8) << QPointF(12, 13);
-    p.setPen(QPen(QColor(52, 152, 219), 1.8f));
-    p.setBrush(QColor(41, 128, 185, 200));
+    upperPlane << QPointF(2, 6) << QPointF(10, 2) << QPointF(18, 6) << QPointF(10, 10);
+    p.setPen(QPen(QColor(170, 195, 230), 1.4f));
+    p.setBrush(QColor(60, 85, 125, 180));
     p.drawPolygon(upperPlane);
 
     return QIcon(px);
 }
 
 static QIcon makePortalIcon() {
-    QPixmap px(24, 24);
+    QPixmap px(20, 20);
     px.fill(Qt::transparent);
     QPainter p(&px);
     p.setRenderHint(QPainter::Antialiasing);
 
-    // Outer glowing portal ellipse
-    p.setPen(QPen(QColor(0, 220, 255), 2.0f));
-    p.setBrush(QBrush(QColor(10, 40, 70, 220)));
-    p.drawEllipse(QRectF(4, 2, 16, 20));
+    // Outer portal frame
+    p.setPen(QPen(QColor(130, 190, 240), 1.4f));
+    p.setBrush(QBrush(QColor(35, 60, 95, 160)));
+    p.drawEllipse(QRectF(4, 2, 12, 16));
 
-    // Inner energetic core
-    p.setPen(QPen(QColor(180, 245, 255), 1.2f));
-    p.setBrush(QBrush(QColor(0, 180, 255, 170)));
-    p.drawEllipse(QRectF(7, 5, 10, 14));
-
-    // Portal energy crosshair / aperture
-    p.setPen(QPen(QColor(255, 255, 255, 220), 1.2f));
-    p.drawLine(QPointF(12, 8), QPointF(12, 16));
-    p.drawLine(QPointF(9, 12), QPointF(15, 12));
+    // Inner portal core
+    p.setPen(QPen(QColor(210, 235, 255), 1.0f));
+    p.setBrush(QBrush(QColor(70, 145, 220, 180)));
+    p.drawEllipse(QRectF(7, 5, 6, 10));
 
     return QIcon(px);
 }
@@ -257,12 +252,13 @@ void MainWindow::createMenusAndToolbars() {
     mainBar->addSeparator();
 
     // Floor Navigation Controls
-    m_actFloorDown = mainBar->addAction(QStringLiteral("▼ Lower Floor"), m_canvas, &MapCanvas::floorDown);
+    m_actFloorDown = mainBar->addAction(QStringLiteral("▼"), m_canvas, &MapCanvas::floorDown);
     m_actFloorDown->setShortcuts({QKeySequence(Qt::Key_PageDown), QKeySequence(Qt::Key_Minus), QKeySequence(Qt::Key_Underscore)});
     m_actFloorDown->setToolTip(QStringLiteral("Go one floor down (PageDown / -)"));
 
     m_floorCombo = new QComboBox(this);
-    m_floorCombo->setMinimumWidth(170);
+    m_floorCombo->setMaximumWidth(170);
+    m_floorCombo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
     mainBar->addWidget(m_floorCombo);
     connect(m_floorCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::onFloorComboChanged);
 
@@ -272,22 +268,17 @@ void MainWindow::createMenusAndToolbars() {
     mainBar->addWidget(m_floorSpin);
     connect(m_floorSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &MainWindow::onFloorSpinChanged);
 
-    m_actFloorUp = mainBar->addAction(QStringLiteral("▲ Upper Floor"), m_canvas, &MapCanvas::floorUp);
+    m_actFloorUp = mainBar->addAction(QStringLiteral("▲"), m_canvas, &MapCanvas::floorUp);
     m_actFloorUp->setShortcuts({QKeySequence(Qt::Key_PageUp), QKeySequence(Qt::Key_Plus), QKeySequence(Qt::Key_Equal)});
     m_actFloorUp->setToolTip(QStringLiteral("Go one floor up (PageUp / +)"));
+    mainBar->addSeparator();
 
+    // View Toggles (Grouped together)
     mainBar->addAction(m_actGhostLayer);
     QToolButton* btnGhost = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actGhostLayer));
     if (btnGhost) {
         btnGhost->setToolButtonStyle(Qt::ToolButtonIconOnly);
     }
-    mainBar->addSeparator();
-
-    // Fit in View
-    mainBar->addAction(actZoomFit);
-    mainBar->addSeparator();
-
-    // View Toggles
     mainBar->addAction(m_actWallTex);
     mainBar->addAction(m_actFloorTex);
     mainBar->addAction(m_actEntities);
@@ -296,43 +287,20 @@ void MainWindow::createMenusAndToolbars() {
     if (btnPortals) {
         btnPortals->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     }
+    mainBar->addSeparator();
+
+    // Fit in View
+    mainBar->addAction(actZoomFit);
 
     // -------------------------------------------------------------
-    // Diagnostics & Analysis Toolbar (Separate compact panel)
+    // Analysis & Diagnostics Toolbar (Separate small panel on same row)
     // -------------------------------------------------------------
-    addToolBarBreak();
-    QToolBar* diagBar = addToolBar(QStringLiteral("Analysis Tools"));
+    QToolBar* diagBar = addToolBar(QStringLiteral("Analysis"));
     diagBar->setObjectName("DiagToolBar");
-    diagBar->setMovable(true);
-    diagBar->setStyleSheet(
-        "QToolBar#DiagToolBar { "
-        "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2a1c20, stop:1 #1e1417); "
-        "  border: 1px solid #5a2c35; "
-        "  border-radius: 4px; "
-        "  margin-left: 8px; "
-        "  padding: 1px 4px; "
-        "} "
-        "QToolBar#DiagToolBar QToolButton { "
-        "  color: #f0d5d8; "
-        "  background: #331d22; "
-        "  border: 1px solid #4e262f; "
-        "  border-radius: 3px; "
-        "  padding: 3px 8px; "
-        "} "
-        "QToolBar#DiagToolBar QToolButton:hover { "
-        "  background: #4a252d; "
-        "  border-color: #7b3846; "
-        "  color: #ffffff; "
-        "} "
-        "QToolBar#DiagToolBar QToolButton:checked { "
-        "  background: #5c1f28; "
-        "  border-color: #c0392b; "
-        "  color: #ff8a80; "
-        "}"
-    );
+    diagBar->setMovable(false);
 
     // Memory Analyzer Button
-    QAction* actLaunchMem = diagBar->addAction(QStringLiteral("💾 Memory Analyzer"), this, &MainWindow::onOpenMemoryAnalyzer);
+    QAction* actLaunchMem = diagBar->addAction(QStringLiteral("💾 Memory"), this, &MainWindow::onOpenMemoryAnalyzer);
     actLaunchMem->setToolTip(QStringLiteral("Measure level RAM weight in Megabytes and inspect memory budget"));
 
     // Leak Detector Button (no "Portal" in title)
@@ -342,7 +310,7 @@ void MainWindow::createMenusAndToolbars() {
     diagBar->addSeparator();
 
     // Visibility Zones Toggle Button
-    QAction* actToggleVisZone = diagBar->addAction(QStringLiteral("👁 Visibility Zones"));
+    QAction* actToggleVisZone = diagBar->addAction(QStringLiteral("👁 VisZones"), this, [this]() {});
     actToggleVisZone->setCheckable(true);
     actToggleVisZone->setChecked(true);
     actToggleVisZone->setToolTip(QStringLiteral("Toggle Visibility Zones & Portals (PVS) bottom-left dock panel"));
@@ -353,9 +321,6 @@ void MainWindow::createMenusAndToolbars() {
         }
     });
     connect(m_visZoneDock, &QDockWidget::visibilityChanged, actToggleVisZone, &QAction::setChecked);
-
-    QAction* actResetZones = diagBar->addAction(QStringLiteral("🔄 Normal View"), m_visZoneDock, &VisZoneDock::resetToNormalView);
-    actResetZones->setToolTip(QStringLiteral("Show all zones (Exit isolation mode / Escape)"));
 }
 
 void MainWindow::updateWindowTitle() {

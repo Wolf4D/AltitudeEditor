@@ -38,18 +38,20 @@ int main(int argc, char* argv[]) {
 
     app.setStyleSheet(
         "QToolTip { color: #ffffff; background-color: #1e222d; border: 1px solid #4a5568; padding: 4px; border-radius: 3px; }"
-        "QToolBar { background: #222634; border-bottom: 1px solid #333a4c; spacing: 6px; padding: 3px; }"
-        "QToolButton { background: #2c3244; border: 1px solid #3d465c; border-radius: 4px; padding: 4px 8px; color: #d0d8e8; font-weight: bold; }"
-        "QToolButton:hover { background: #3a4258; border-color: #5c6c8e; color: #ffffff; }"
-        "QToolButton:pressed { background: #1f2330; }"
-        "QToolButton:checked { background: #2980b9; border-color: #3498db; color: #ffffff; }"
-        "QComboBox, QSpinBox, QLineEdit { background: #1e222d; border: 1px solid #3d465c; border-radius: 4px; padding: 4px; color: #ffffff; }"
-        "QComboBox:hover, QSpinBox:hover, QLineEdit:hover { border-color: #5288db; }"
-        "QTableWidget, QTreeWidget { background: #181b24; alternate-background-color: #1f2330; border: 1px solid #333a4c; gridline-color: #2b3140; color: #d0d8e8; }"
-        "QHeaderView::section { background: #242938; color: #9bb0d0; border: 1px solid #333a4c; padding: 4px; font-weight: bold; }"
+        "QToolBar { background: #1e222d; border-bottom: 1px solid #2e3545; spacing: 5px; padding: 3px 6px; }"
+        "QToolBar::separator { background: #353d4f; width: 1px; margin: 4px 6px; }"
+        "QToolButton { background: #262c3a; border: 1px solid #384256; border-radius: 4px; padding: 4px 10px; color: #c4cede; font-size: 12px; }"
+        "QToolButton:hover { background: #303748; border-color: #4a5670; color: #ffffff; }"
+        "QToolButton:pressed { background: #1c202a; }"
+        "QToolButton:checked { background: #2b3d59; border: 1px solid #4f6e9e; color: #ffffff; font-weight: bold; }"
+        "QToolButton:checked:hover { background: #354768; border-color: #6185bd; }"
+        "QComboBox, QSpinBox, QLineEdit { background: #181b24; border: 1px solid #384256; border-radius: 4px; padding: 3px 6px; color: #ffffff; font-size: 12px; }"
+        "QComboBox:hover, QSpinBox:hover, QLineEdit:hover { border-color: #4a75b5; }"
+        "QTableWidget, QTreeWidget { background: #181b24; alternate-background-color: #1f2330; border: 1px solid #2e3545; gridline-color: #262b37; color: #d0d8e8; }"
+        "QHeaderView::section { background: #222634; color: #9bb0d0; border: 1px solid #2e3545; padding: 4px; font-weight: bold; }"
         "QDockWidget { titlebar-close-icon: url(); titlebar-normal-icon: url(); font-weight: bold; }"
-        "QDockWidget::title { background: #242938; border: 1px solid #333a4c; padding: 6px; text-align: left; }"
-        "QStatusBar { background: #1a1d26; border-top: 1px solid #2d3344; color: #90a0b8; }"
+        "QDockWidget::title { background: #222634; border-bottom: 1px solid #2e3545; padding: 6px; text-align: left; color: #c4cede; }"
+        "QStatusBar { background: #181b24; border-top: 1px solid #262c3a; color: #8898b0; }"
     );
 
     // Check for CLI memory analysis mode
