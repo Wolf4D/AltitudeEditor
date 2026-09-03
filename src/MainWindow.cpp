@@ -284,6 +284,7 @@ void MainWindow::createMenusAndToolbars() {
     QToolBar* mainBar = addToolBar(QStringLiteral("Main Controls"));
     mainBar->setObjectName("MainToolBar");
     mainBar->setMovable(false);
+    mainBar->setIconSize(QSize(18, 18));
 
     mainBar->addAction(actReload);
     mainBar->addSeparator();
