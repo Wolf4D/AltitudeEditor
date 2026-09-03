@@ -53,6 +53,8 @@ private:
     void checkVerticalGaps();
     void checkCoplanarOverlaps();
     void checkWallHolesToVoid();
+    void checkInvertedWalls();
+    void checkDoubleWallClashes();
 
     std::shared_ptr<FPSCMap> m_map;
     std::vector<PortalLeakWarning> m_warnings;

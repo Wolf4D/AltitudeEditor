@@ -108,6 +108,8 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::analyze() {
         checkVerticalGaps();
         checkCoplanarOverlaps();
         checkWallHolesToVoid();
+        checkInvertedWalls();
+        checkDoubleWallClashes();
     }
 
     return m_warnings;
@@ -604,6 +606,178 @@ void PortalLeakAnalyzer::checkWallHolesToVoid() {
                 w.description = QString("Open room edge at (%1, %2) [%3 edge] faces empty void without a wall or door. Camera may see universe void.")
                                     .arg(pt.x()).arg(pt.y()).arg(sideNames[s]);
                 m_warnings.push_back(w);
+            }
+        }
+    }
+}
+
+void PortalLeakAnalyzer::checkInvertedWalls() {
+    if (!m_map) return;
+    VisZoneManager zm;
+    zm.buildFromMap(m_map);
+
+    const int dx[4] = {0, 1, 0, -1};
+    const int dy[4] = {-1, 0, 1, 0};
+    const char* sideNames[4] = {"North", "East", "South", "West"};
+
+    auto isMaptileWallPresent = [](int maptile, int rot, int side) -> bool {
+        if (maptile <= 0 || maptile == 6) return false;
+        static const bool baseWalls[16][4] = {
+            {0, 0, 0, 0}, {1, 1, 1, 1}, {1, 0, 1, 1}, {1, 0, 0, 1},
+            {1, 0, 1, 0}, {1, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0},
+            {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0},
+            {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 1}
+        };
+        int unrotatedSide = (side - (rot & 3) + 4) % 4;
+        if (maptile >= 0 && maptile < 16) return baseWalls[maptile][unrotatedSide];
+        return false;
+    };
+
+    auto isUniverseVoid = [&](int x, int y) -> bool {
+        if (x < 0 || x > m_map->header.maxX || y < 0 || y > m_map->header.maxY) return true;
+        for (int l = 0; l <= m_map->header.layerMax; ++l) {
+            if (m_map->gridBlocks[l][y][x] > 0) return false;
+        }
+        return true;
+    };
+
+    QSet<quint32> reportedInverted;
+
+    for (const auto& z : zm.zones()) {
+        if (z.tiles.size() < 2) continue;
+        // Room must be interior (ground <= 1)
+        bool isInterior = false;
+        for (const auto& pt : z.tiles) {
+            if (mapGround(z.floor, pt.x(), pt.y()) <= 1) {
+                isInterior = true;
+                break;
+            }
+        }
+        if (!isInterior) continue;
+
+        for (const auto& pt : z.tiles) {
+            int segId = m_map->gridBlocks[z.floor][pt.y()][pt.x()];
+            if (segId <= 0 || !m_map->segments.contains(segId)) continue;
+            const auto& s = m_map->segments[segId];
+
+            int tile = (z.floor < m_map->gridTileType.size() && pt.y() < m_map->gridTileType[z.floor].size() && pt.x() < m_map->gridTileType[z.floor][pt.y()].size())
+                       ? m_map->gridTileType[z.floor][pt.y()][pt.x()] : 0;
+            int rot = (z.floor < m_map->gridRotation.size() && pt.y() < m_map->gridRotation[z.floor].size() && pt.x() < m_map->gridRotation[z.floor][pt.y()].size())
+                      ? m_map->gridRotation[z.floor][pt.y()][pt.x()] : 0;
+            int orient = (z.floor < m_map->gridOrientation.size() && pt.y() < m_map->gridOrientation[z.floor].size() && pt.x() < m_map->gridOrientation[z.floor][pt.y()].size())
+                         ? m_map->gridOrientation[z.floor][pt.y()][pt.x()] : 0;
+
+            quint32 key = (static_cast<quint32>(z.floor) << 24) | (static_cast<quint32>(pt.y()) << 12) | static_cast<quint32>(pt.x());
+            if (reportedInverted.contains(key)) continue;
+
+            // Check 1: Exterior segment placed inside an interior room
+            if (s->groundMode == 3 && tile != 6) {
+                reportedInverted.insert(key);
+                PortalLeakWarning w;
+                w.severity = PortalLeakWarning::WARNING;
+                w.type = QStringLiteral("Exterior Wall in Interior Room");
+                w.layer = z.floor;
+                w.x = pt.x();
+                w.y = pt.y();
+                w.description = QString("Exterior segment \"%1\" (groundmode=3) is placed inside an interior room at Floor %2 (%3, %4). Exterior facade faces inward into the room.")
+                                    .arg(s->name).arg(z.floor).arg(pt.x()).arg(pt.y());
+                m_warnings.push_back(w);
+                continue;
+            }
+        }
+    }
+}
+
+void PortalLeakAnalyzer::checkDoubleWallClashes() {
+    if (!m_map) return;
+    int rows = m_map->header.maxY + 1;
+    int cols = m_map->header.maxX + 1;
+
+    auto isMaptileWallPresent = [](int maptile, int rot, int side) -> bool {
+        if (maptile <= 0 || maptile == 6) return false;
+        static const bool baseWalls[16][4] = {
+            {0, 0, 0, 0}, {1, 1, 1, 1}, {1, 0, 1, 1}, {1, 0, 0, 1},
+            {1, 0, 1, 0}, {1, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0},
+            {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0},
+            {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 1}
+        };
+        int unrotatedSide = (side - (rot & 3) + 4) % 4;
+        if (maptile >= 0 && maptile < 16) return baseWalls[maptile][unrotatedSide];
+        return false;
+    };
+
+    auto isDoorOrWindowEntityBetween = [&](int l, int x1, int y1, int x2, int y2) -> bool {
+        float midX = (x1 + x2 + 1) * 50.0f;
+        float midZ = -(y1 + y2 + 1) * 50.0f;
+        for (const auto& e : m_map->placedEntities) {
+            if (e.floorLayer == l) {
+                if (std::abs(e.x - midX) < 60.0f && std::abs(e.z - midZ) < 60.0f) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
+    const int dx[4] = {0, 1, 0, -1};
+    const int dy[4] = {-1, 0, 1, 0};
+    const int opp[4] = {2, 3, 0, 1};
+    const char* sideNames[4] = {"North", "East", "South", "West"};
+
+    QSet<quint64> reportedClashes;
+
+    for (int l = 0; l <= m_map->header.layerMax; ++l) {
+        if (l >= m_map->gridBlocks.size()) continue;
+        for (int y = 0; y < rows; ++y) {
+            for (int x = 0; x < cols; ++x) {
+                int segA = m_map->gridBlocks[l][y][x];
+                if (segA <= 0 || mapGround(l, x, y) > 1) continue;
+                int tileA = (l < m_map->gridTileType.size() && y < m_map->gridTileType[l].size() && x < m_map->gridTileType[l][y].size())
+                            ? m_map->gridTileType[l][y][x] : 0;
+                int rotA = (l < m_map->gridRotation.size() && y < m_map->gridRotation[l].size() && x < m_map->gridRotation[l][y].size())
+                           ? m_map->gridRotation[l][y][x] : 0;
+
+                // Check East (s=1) and South (s=2)
+                for (int s = 1; s <= 2; ++s) {
+                    int nx = x + dx[s];
+                    int ny = y + dy[s];
+                    if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) continue;
+
+                    int segB = m_map->gridBlocks[l][ny][nx];
+                    if (segB <= 0 || segB == segA || mapGround(l, nx, ny) > 1) continue;
+                    int tileB = (l < m_map->gridTileType.size() && ny < m_map->gridTileType[l].size() && nx < m_map->gridTileType[l][ny].size())
+                                ? m_map->gridTileType[l][ny][nx] : 0;
+                    int rotB = (l < m_map->gridRotation.size() && ny < m_map->gridRotation[l].size() && nx < m_map->gridRotation[l][ny].size())
+                               ? m_map->gridRotation[l][ny][nx] : 0;
+
+                    if (isMaptileWallPresent(tileA, rotA, s) && isMaptileWallPresent(tileB, rotB, opp[s])) {
+                        // Check if from different segment packs / rooms
+                        auto sA = m_map->segments.value(segA);
+                        auto sB = m_map->segments.value(segB);
+                        QString dirA = sA ? QFileInfo(sA->relPath).path().replace("\\", "/").toLower() : "";
+                        QString dirB = sB ? QFileInfo(sB->relPath).path().replace("\\", "/").toLower() : "";
+
+                        // If different segment packs and no door/window entity between them
+                        if (dirA != dirB && !isDoorOrWindowEntityBetween(l, x, y, nx, ny)) {
+                            quint64 clashKey = (quint64(l) << 40) | (quint64(y) << 28) | (quint64(x) << 16) | (quint64(ny) << 8) | quint64(nx);
+                            if (reportedClashes.contains(clashKey)) continue;
+                            reportedClashes.insert(clashKey);
+
+                            QString nameA = sA ? sA->name : QString::number(segA);
+                            QString nameB = sB ? sB->name : QString::number(segB);
+
+                            PortalLeakWarning w;
+                            w.severity = PortalLeakWarning::WARNING;
+                            w.type = QStringLiteral("Double-Wall Boundary Clash");
+                            w.layer = l;
+                            w.x = x;
+                            w.y = y;
+                            w.description = QString("Both adjacent rooms (\"%1\" and \"%2\") place solid walls on the exact same shared boundary at Floor %3 between (%4, %5) and (%6, %7) without a doorway. Causes severe in-game Z-fighting flickering and degenerate BSP portal bleed.")
+                                                .arg(nameA).arg(nameB).arg(l).arg(x).arg(y).arg(nx).arg(ny);
+                            m_warnings.push_back(w);
+                        }
+                    }
+                }
             }
         }
     }
