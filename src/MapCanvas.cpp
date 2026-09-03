@@ -281,13 +281,13 @@ void MapCanvas::drawGrid(QPainter& p) {
     p.setPen(QPen(QColor(75, 85, 110), 2, Qt::SolidLine));
     p.drawRect(QRectF(mapTL, mapBR));
 
-    // Highlight hovered tile
+    // Highlight hovered tile (neutral soft highlight so it doesn't look like a portal or zone)
     if (m_hoveredTile.x() >= 0 && m_hoveredTile.x() < cols &&
         m_hoveredTile.y() >= 0 && m_hoveredTile.y() < rows)
     {
         QRectF hRect = getCellRectScreen(m_hoveredTile.x(), m_hoveredTile.y());
-        p.fillRect(hRect, QColor(0, 180, 255, 45));
-        p.setPen(QPen(QColor(50, 200, 255, 220), 1.5f, Qt::SolidLine));
+        p.fillRect(hRect, QColor(255, 255, 255, 18));
+        p.setPen(QPen(QColor(180, 200, 230, 130), 1.0f, Qt::DashLine));
         p.drawRect(hRect);
     }
 
