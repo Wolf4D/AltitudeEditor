@@ -43,6 +43,9 @@ void MapCanvas::setMap(std::shared_ptr<FPSCMap> map) {
     m_selectedEntityIndex = -1;
     m_hoveredEntityIndex = -1;
     m_activeVisZoneId = -1;
+    if (!m_visZoneManager) {
+        m_visZoneManager = std::make_shared<VisZoneManager>();
+    }
     if (m_visZoneManager && m_map) {
         m_visZoneManager->buildFromMap(m_map);
     }
@@ -235,7 +238,7 @@ void MapCanvas::renderMap(QPainter& p) {
     }
 
     // 7. Portals & VisZones (from compiled universe.dbu or topological zones)
-    if (m_showPortals || m_activeVisZoneId >= 0) {
+    if (m_showPortals || m_activeVisZoneId >= 0 || m_colorAllVisZones) {
         drawPortals(p);
     }
 
@@ -1413,6 +1416,13 @@ void MapCanvas::setVisZoneCulling(bool enable, float dimOpacity) {
     update();
 }
 
+void MapCanvas::setColorAllVisZones(bool enable) {
+    if (m_colorAllVisZones != enable) {
+        m_colorAllVisZones = enable;
+        update();
+    }
+}
+
 void MapCanvas::setVisZoneManager(std::shared_ptr<VisZoneManager> mgr) {
     m_visZoneManager = mgr;
     if (m_visZoneManager && m_map) {
@@ -1426,20 +1436,66 @@ void MapCanvas::drawPortals(QPainter& p) {
 
     p.save();
 
-    // 0. Render Active VisZone Contour & Tile Tint
-    if (m_visZoneManager && m_activeVisZoneId >= 0) {
-        const VisZone* curZone = m_visZoneManager->getZone(m_activeVisZoneId);
-        if (curZone && curZone->floor == m_currentFloor) {
-            p.save();
-            QColor zColor = curZone->color;
-            zColor.setAlpha(35);
-            p.setBrush(zColor);
-            p.setPen(QPen(curZone->color, 2.5f, Qt::DashLine));
-            for (const auto& tile : curZone->tiles) {
-                QRectF cr = getCellRectScreen(tile.x(), tile.y());
-                p.drawRect(cr);
+    // 0. Render VisZone Contours & Tile Tints
+    if (m_visZoneManager) {
+        if (m_colorAllVisZones) {
+            for (const auto& zone : m_visZoneManager->zones()) {
+                if (zone.floor != m_currentFloor) continue;
+                bool isActive = (zone.id == m_activeVisZoneId);
+
+                p.save();
+                QColor zColor = zone.color;
+                zColor.setAlpha(isActive ? 70 : 40);
+                p.setBrush(zColor);
+                p.setPen(QPen(zone.color, isActive ? 2.5f : 1.2f, isActive ? Qt::DashLine : Qt::SolidLine));
+
+                for (const auto& tile : zone.tiles) {
+                    QRectF cr = getCellRectScreen(tile.x(), tile.y());
+                    p.drawRect(cr);
+                }
+
+                if (!zone.tiles.empty() && m_zoom >= 0.20f) {
+                    int sumX = 0, sumY = 0;
+                    for (const auto& t : zone.tiles) {
+                        sumX += t.x();
+                        sumY += t.y();
+                    }
+                    float avgX = static_cast<float>(sumX) / zone.tiles.size();
+                    float avgY = static_cast<float>(sumY) / zone.tiles.size();
+                    QPointF centerScreen = worldToScreen(QPointF((avgX + 0.5f) * TILE_SIZE, (avgY + 0.5f) * TILE_SIZE));
+
+                    QString badgeText = QString("Z%1").arg(zone.id + 1);
+                    QFont badgeFont("Segoe UI", 9, QFont::Bold);
+                    QFontMetrics fm(badgeFont);
+                    int tw = fm.horizontalAdvance(badgeText) + 8;
+                    int th = fm.height() + 4;
+                    QRectF badgeRect(centerScreen.x() - tw / 2.0f, centerScreen.y() - th / 2.0f, tw, th);
+
+                    p.setBrush(QColor(18, 22, 30, 215));
+                    p.setPen(QPen(zone.color, 1.2f));
+                    p.drawRoundedRect(badgeRect, 3, 3);
+
+                    p.setFont(badgeFont);
+                    p.setPen(Qt::white);
+                    p.drawText(badgeRect, Qt::AlignCenter, badgeText);
+                }
+
+                p.restore();
             }
-            p.restore();
+        } else if (m_activeVisZoneId >= 0) {
+            const VisZone* curZone = m_visZoneManager->getZone(m_activeVisZoneId);
+            if (curZone && curZone->floor == m_currentFloor) {
+                p.save();
+                QColor zColor = curZone->color;
+                zColor.setAlpha(45);
+                p.setBrush(zColor);
+                p.setPen(QPen(curZone->color, 2.5f, Qt::DashLine));
+                for (const auto& tile : curZone->tiles) {
+                    QRectF cr = getCellRectScreen(tile.x(), tile.y());
+                    p.drawRect(cr);
+                }
+                p.restore();
+            }
         }
     }
 

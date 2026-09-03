@@ -177,6 +177,33 @@ VisZoneDock::VisZoneDock(QWidget* parent)
     m_chkCurrentFloorOnly->setChecked(true);
     selLayout->addWidget(m_chkCurrentFloorOnly);
 
+    QHBoxLayout* colorRow = new QHBoxLayout();
+    colorRow->setSpacing(6);
+    m_chkColorAll = new QCheckBox(QStringLiteral("🎨 Покрасить все зоны"), grpSelection);
+    m_chkColorAll->setToolTip(QStringLiteral("Отображать цветовую карту всех виз-зон на этаже одновременно (Ctrl+Shift+C)"));
+    m_btnRecolor = new QPushButton(QStringLiteral("🎲 Палитра"), grpSelection);
+    m_btnRecolor->setToolTip(QStringLiteral("Перегенерировать случайную палитру цветов для всех зон"));
+    m_btnRecolor->setFixedWidth(90);
+    colorRow->addWidget(m_chkColorAll, 1);
+    colorRow->addWidget(m_btnRecolor, 0);
+    selLayout->addLayout(colorRow);
+
+    connect(m_chkColorAll, &QCheckBox::toggled, this, [this](bool checked) {
+        emit colorAllZonesToggled(checked);
+    });
+    connect(m_btnRecolor, &QPushButton::clicked, this, [this]() {
+        if (m_mgr) {
+            static int s_hueShift = 0;
+            s_hueShift = (s_hueShift + 67) % 360;
+            m_mgr->recolorAllZones(s_hueShift);
+            if (!m_chkColorAll->isChecked()) {
+                m_chkColorAll->setChecked(true);
+            } else {
+                emit colorAllZonesToggled(true);
+            }
+        }
+    });
+
     m_zoneCombo = new QComboBox(grpSelection);
     selLayout->addWidget(m_zoneCombo);
 
@@ -523,5 +550,17 @@ void VisZoneDock::resetToNormalView() {
 void VisZoneDock::closeEvent(QCloseEvent* event) {
     resetToNormalView();
     QDockWidget::closeEvent(event);
+}
+
+void VisZoneDock::setColorAllZones(bool enabled) {
+    if (m_chkColorAll && m_chkColorAll->isChecked() != enabled) {
+        m_chkColorAll->blockSignals(true);
+        m_chkColorAll->setChecked(enabled);
+        m_chkColorAll->blockSignals(false);
+    }
+}
+
+bool VisZoneDock::isColorAllZones() const {
+    return m_chkColorAll ? m_chkColorAll->isChecked() : false;
 }
 

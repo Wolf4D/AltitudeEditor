@@ -24,6 +24,8 @@ public slots:
     void onFloorChanged(int floor);
     void onExternalZoneSelected(int zoneId);
     void resetToNormalView();
+    void setColorAllZones(bool enabled);
+    bool isColorAllZones() const;
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -32,6 +34,7 @@ signals:
     void zoneSelected(int zoneId);
     void isolationChanged(bool isolate, float dimOpacity);
     void entitySelected(int entityIndex);
+    void colorAllZonesToggled(bool enabled);
 
 private slots:
     void onZoneComboChanged(int index);
@@ -52,6 +55,8 @@ private:
     int m_activeZoneId = -1;
 
     QCheckBox* m_chkCurrentFloorOnly = nullptr;
+    QCheckBox* m_chkColorAll = nullptr;
+    QPushButton* m_btnRecolor = nullptr;
     QComboBox* m_zoneCombo = nullptr;
     QPushButton* m_btnPrev = nullptr;
     QPushButton* m_btnNext = nullptr;

@@ -75,6 +75,8 @@ public slots:
     void setVisZoneCulling(bool enable, float dimOpacity = 0.0f);
     bool visZoneCulling() const { return m_cullInactiveVisZones; }
     float visZoneDimOpacity() const { return m_visZoneDimOpacity; }
+    void setColorAllVisZones(bool enable);
+    bool colorAllVisZones() const { return m_colorAllVisZones; }
     void setVisZoneManager(std::shared_ptr<VisZoneManager> mgr);
     std::shared_ptr<VisZoneManager> visZoneManager() const { return m_visZoneManager; }
 
@@ -154,6 +156,7 @@ private:
 
     std::shared_ptr<VisZoneManager> m_visZoneManager;
     int m_activeVisZoneId = -1; // -1 = Show All (normal)
+    bool m_colorAllVisZones = false;
     bool m_cullInactiveVisZones = false;
     float m_visZoneDimOpacity = 0.0f; // 0.0f = completely hide, 0.15f = dimmed ghost
 

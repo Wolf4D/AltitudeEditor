@@ -104,6 +104,9 @@ int main(int argc, char* argv[]) {
             canvas.resize(1400, 1000);
             canvas.setMap(map);
             canvas.setFloor(floor);
+            if (args.contains("--color-zones")) {
+                canvas.setColorAllVisZones(true);
+            }
             canvas.zoomFit();
 
             QPixmap pix(canvas.size());
@@ -128,6 +131,13 @@ int main(int argc, char* argv[]) {
             window.loadMapFile(mapPath);
             window.show();
             app.processEvents();
+
+            if (args.contains("--color-zones")) {
+                if (auto* dock = window.findChild<VisZoneDock*>()) {
+                    dock->show();
+                    dock->setColorAllZones(true);
+                }
+            }
 
             // Select entity to show in inspector
             // Focus on entity

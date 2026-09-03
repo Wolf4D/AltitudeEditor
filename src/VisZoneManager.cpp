@@ -414,3 +414,11 @@ bool VisZoneManager::isEntityInZone(int zoneId, int entityIndex) const {
     }
     return false;
 }
+
+void VisZoneManager::recolorAllZones(int hueOffset) {
+    for (size_t i = 0; i < m_zones.size(); ++i) {
+        int hue = (static_cast<int>(i * 137) + hueOffset) % 360;
+        if (hue < 0) hue += 360;
+        m_zones[i].color = QColor::fromHsv(hue, 180, 240);
+    }
+}

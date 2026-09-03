@@ -147,6 +147,7 @@ MainWindow::MainWindow(QWidget* parent)
 
     connect(m_visZoneDock, &VisZoneDock::zoneSelected, m_canvas, &MapCanvas::setActiveVisZone);
     connect(m_visZoneDock, &VisZoneDock::isolationChanged, m_canvas, &MapCanvas::setVisZoneCulling);
+    connect(m_visZoneDock, &VisZoneDock::colorAllZonesToggled, m_canvas, &MapCanvas::setColorAllVisZones);
     connect(m_visZoneDock, &VisZoneDock::entitySelected, this, &MainWindow::onEntitySelected);
     connect(m_canvas, &MapCanvas::visZoneSelected, m_visZoneDock, &VisZoneDock::onExternalZoneSelected);
 
@@ -255,6 +256,16 @@ void MainWindow::createMenusAndToolbars() {
         m_visZoneDock->activateWindow();
     }, QKeySequence(Qt::CTRL + Qt::Key_P));
     portalsMenu->addAction(QStringLiteral("🔄 &Show All Zones (Normal View)"), m_visZoneDock, &VisZoneDock::resetToNormalView, QKeySequence(Qt::Key_Escape));
+    portalsMenu->addSeparator();
+
+    QAction* actColorAllZones = portalsMenu->addAction(QStringLiteral("🎨 &Color All Vis-Zones (Show Overlay)"));
+    actColorAllZones->setCheckable(true);
+    actColorAllZones->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_C));
+    connect(actColorAllZones, &QAction::toggled, m_canvas, &MapCanvas::setColorAllVisZones);
+    connect(actColorAllZones, &QAction::toggled, m_visZoneDock, &VisZoneDock::setColorAllZones);
+    connect(m_visZoneDock, &VisZoneDock::colorAllZonesToggled, actColorAllZones, &QAction::setChecked);
+    viewMenu->addAction(actColorAllZones);
+
     portalsMenu->addSeparator();
     portalsMenu->addAction(m_actShowPortals);
     portalsMenu->addAction(QStringLiteral("&Leak Detector..."), this, &MainWindow::onOpenPortalLeakDetector);

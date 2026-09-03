@@ -51,6 +51,8 @@ public:
     bool isTileInZone(int zoneId, int floor, int x, int y) const;
     bool isEntityInZone(int zoneId, int entityIndex) const;
 
+    void recolorAllZones(int hueOffset = 0);
+
 private:
     std::shared_ptr<FPSCMap> m_map;
     std::vector<VisZone> m_zones;
