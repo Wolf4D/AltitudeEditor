@@ -180,6 +180,12 @@ void VisZoneDock::onZoneComboChanged(int index) {
     int zoneId = m_zoneCombo->itemData(index).toInt();
     m_activeZoneId = zoneId;
 
+    if (zoneId >= 0 && m_chkIsolate && !m_chkIsolate->isChecked()) {
+        m_chkIsolate->blockSignals(true);
+        m_chkIsolate->setChecked(true);
+        m_chkIsolate->blockSignals(false);
+    }
+
     updateActiveZoneDetails();
     emit zoneSelected(zoneId);
     onIsolationOptionChanged();
@@ -205,12 +211,18 @@ void VisZoneDock::onNextZone() {
 
 void VisZoneDock::onExternalZoneSelected(int zoneId) {
     m_activeZoneId = zoneId;
+    if (zoneId >= 0 && m_chkIsolate && !m_chkIsolate->isChecked()) {
+        m_chkIsolate->blockSignals(true);
+        m_chkIsolate->setChecked(true);
+        m_chkIsolate->blockSignals(false);
+    }
     for (int i = 0; i < m_zoneCombo->count(); ++i) {
         if (m_zoneCombo->itemData(i).toInt() == zoneId) {
             m_updatingCombo = true;
             m_zoneCombo->setCurrentIndex(i);
             m_updatingCombo = false;
             updateActiveZoneDetails();
+            onIsolationOptionChanged();
             return;
         }
     }
@@ -224,14 +236,16 @@ void VisZoneDock::onExternalZoneSelected(int zoneId) {
                 m_zoneCombo->setCurrentIndex(i);
                 m_updatingCombo = false;
                 updateActiveZoneDetails();
+                onIsolationOptionChanged();
                 return;
             }
         }
     }
+    onIsolationOptionChanged();
 }
 
 void VisZoneDock::onIsolationOptionChanged() {
-    bool isolate = m_chkIsolate->isChecked() && (m_activeZoneId >= 0);
+    bool isolate = (m_activeZoneId >= 0) && (m_chkIsolate ? m_chkIsolate->isChecked() : true);
     float dimOpacity = 0.0f;
     if (isolate && m_radioDim->isChecked()) {
         dimOpacity = m_sliderDim->value() / 100.0f;
@@ -340,9 +354,6 @@ void VisZoneDock::onEntityClicked(QListWidgetItem* item) {
 
 void VisZoneDock::resetToNormalView() {
     m_activeZoneId = -1;
-    if (m_chkIsolate) {
-        m_chkIsolate->setChecked(false);
-    }
     if (m_zoneCombo && m_zoneCombo->count() > 0) {
         m_updatingCombo = true;
         m_zoneCombo->setCurrentIndex(0); // "All Zones (Normal View)"

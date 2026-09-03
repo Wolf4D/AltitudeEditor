@@ -1,5 +1,6 @@
 #include "PortalLeakAnalyzer.h"
 #include "AssetManager.h"
+#include "VisZoneManager.h"
 #include <QFile>
 #include <QFileInfo>
 #include <QTextStream>
@@ -16,32 +17,108 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::analyze() {
     m_hasCompiledUniverse = false;
     if (!m_map) return m_warnings;
 
-    // 1. Check if compiled universe.dbu is present (Primary ground-truth geometry)
-    checkCompiledUniverse();
+    // 1. Method 1: Check compiled universe.dbu (Primary ground-truth physics / BSP compiler)
+    if (m_checkCompiledUniverse) {
+        checkCompiledUniverse();
+    }
 
-    // 2. Load segment properties for fallback / pre-build static checking
-    loadSegmentInfos();
-    checkVerticalGaps();
-    checkCoplanarOverlaps();
-    checkCornerGaps();
-    checkGroundModeMismatches();
+    // 2. Method 2: Static map & segment geometry analysis
+    if (m_checkStaticMap) {
+        loadSegmentInfos();
+        checkVerticalGaps();
+        checkCoplanarOverlaps();
+        checkWallHolesToVoid();
+    }
 
     return m_warnings;
 }
 
 void PortalLeakAnalyzer::checkCompiledUniverse() {
     QString dbuPath = AssetManager::instance().engineRoot() + "/Files/levelbank/testlevel/universe.dbu";
-    if (QFile::exists(dbuPath)) {
-        if (m_dbuParser.parse(dbuPath)) {
-            m_hasCompiledUniverse = true;
-            for (const auto& portal : m_dbuParser.leakingPortals()) {
+    if (!QFile::exists(dbuPath)) return;
+
+    if (!m_dbuParser.parse(dbuPath)) return;
+    m_hasCompiledUniverse = true;
+
+    QSet<quint64> reportedCells;
+
+    for (size_t i = 0; i < m_dbuParser.allPortals().size(); ++i) {
+        const auto& portal = m_dbuParser.allPortals()[i];
+        int gx = portal.gridX();
+        int gy = portal.gridY();
+        int layer = qBound(0, portal.minLayer(), (int)m_map->gridBlocks.size() - 1);
+
+        quint64 cellKey = (quint64(layer) << 32) | (quint64(gy) << 16) | quint64(gx);
+
+        bool isHorizontal = (portal.box.maxY - portal.box.minY) < 50.0f;
+        int seg = (layer >= 0 && layer < m_map->gridBlocks.size() &&
+                   gy >= 0 && gy < m_map->gridBlocks[layer].size() &&
+                   gx >= 0 && gx < m_map->gridBlocks[layer][gy].size())
+                  ? m_map->gridBlocks[layer][gy][gx] : 0;
+
+        // 1. Check for physical BSP ceiling or floor hole
+        if (isHorizontal && seg <= 0) {
+            bool hasRoomBelow = false;
+            for (int l = 0; l < layer; ++l) {
+                if (m_map->gridBlocks[l][gy][gx] > 0) { hasRoomBelow = true; break; }
+            }
+            if (hasRoomBelow && !reportedCells.contains(cellKey)) {
+                reportedCells.insert(cellKey);
                 PortalLeakWarning w;
                 w.severity = PortalLeakWarning::ERROR;
-                w.type = "Universe Portal Leak (BSP)";
-                w.layer = std::max(0, std::min(19, portal.minLayer()));
-                w.x = std::max(0, std::min(39, portal.gridX()));
-                w.y = std::max(0, std::min(39, portal.gridY()));
-                w.description = QString("Compiled BSP Portal connects VisZone %1 to outside Universe Void at 3D pos (%2, %3, %4). Normal: (%5, %6, %7)")
+                w.type = QStringLiteral("Compiled BSP Ceiling Hole");
+                w.layer = layer;
+                w.x = gx;
+                w.y = gy;
+                w.description = QStringLiteral("Compiled BSP portal %1 at 3D pos (%2, %3, %4) is an open hole in the ceiling into universe void. Missing ceiling slab at Floor %5 (%6, %7).")
+                                .arg(i)
+                                .arg(portal.box.cenX, 0, 'f', 0)
+                                .arg(portal.box.cenY, 0, 'f', 0)
+                                .arg(portal.box.cenZ, 0, 'f', 0)
+                                .arg(layer)
+                                .arg(gx)
+                                .arg(gy);
+                m_warnings.push_back(w);
+                continue;
+            }
+
+            bool hasRoomAbove = false;
+            for (int l = layer + 1; l < m_map->gridBlocks.size(); ++l) {
+                if (m_map->gridBlocks[l][gy][gx] > 0) { hasRoomAbove = true; break; }
+            }
+            if (hasRoomAbove && !reportedCells.contains(cellKey)) {
+                reportedCells.insert(cellKey);
+                PortalLeakWarning w;
+                w.severity = PortalLeakWarning::ERROR;
+                w.type = QStringLiteral("Compiled BSP Floor Hole");
+                w.layer = layer;
+                w.x = gx;
+                w.y = gy;
+                w.description = QStringLiteral("Compiled BSP portal %1 at 3D pos (%2, %3, %4) is an open hole in the floor into universe void. Missing floor slab at Floor %5 (%6, %7).")
+                                .arg(i)
+                                .arg(portal.box.cenX, 0, 'f', 0)
+                                .arg(portal.box.cenY, 0, 'f', 0)
+                                .arg(portal.box.cenZ, 0, 'f', 0)
+                                .arg(layer)
+                                .arg(gx)
+                                .arg(gy);
+                m_warnings.push_back(w);
+                continue;
+            }
+        }
+
+        // 2. Check for portals touching outer limits or marked as leak
+        if (portal.isLeak || portal.targetZone >= m_dbuParser.zones().size()) {
+            if (!reportedCells.contains(cellKey)) {
+                reportedCells.insert(cellKey);
+                PortalLeakWarning w;
+                w.severity = PortalLeakWarning::ERROR;
+                w.type = QStringLiteral("Universe Portal Leak (BSP)");
+                w.layer = layer;
+                w.x = gx;
+                w.y = gy;
+                w.description = QStringLiteral("Compiled BSP Portal %1 connects VisZone %2 to outside Universe Void at 3D pos (%3, %4, %5). Normal: (%6, %7, %8)")
+                                .arg(i)
                                 .arg(portal.fromZone)
                                 .arg(portal.box.cenX, 0, 'f', 0)
                                 .arg(portal.box.cenY, 0, 'f', 0)
@@ -142,95 +219,79 @@ bool PortalLeakAnalyzer::isCeilingAt(int layer, int x, int y) {
     return m_segmentInfoCache.value(segId - 1).isCeiling;
 }
 
+int PortalLeakAnalyzer::mapGround(int layer, int x, int y) const {
+    if (!m_map) return 0;
+    if (layer >= 0 && layer < m_map->gridGround.size() &&
+        y >= 0 && y < m_map->gridGround[layer].size() &&
+        x >= 0 && x < m_map->gridGround[layer][y].size()) {
+        return m_map->gridGround[layer][y][x];
+    }
+    return 0;
+}
+
 void PortalLeakAnalyzer::checkVerticalGaps() {
-    int layers = m_map->gridBlocks.size();
-    if (layers == 0) return;
-    int rows = m_map->gridBlocks[0].size();
-    if (rows == 0) return;
-    int cols = m_map->gridBlocks[0][0].size();
+    if (!m_map) return;
+    VisZoneManager zm;
+    zm.buildFromMap(m_map);
 
-    // Check connected interior floor clusters per layer
-    for (int baseLayer = 0; baseLayer < layers; ++baseLayer) {
-        std::vector<std::vector<bool>> visited(rows, std::vector<bool>(cols, false));
+    for (const auto& z : zm.zones()) {
+        if (z.tiles.size() < 2) continue;
 
-        for (int y = 0; y < rows; ++y) {
-            for (int x = 0; x < cols; ++x) {
-                int seg = m_map->gridBlocks[baseLayer][y][x];
-                if (seg <= 0 || visited[y][x]) continue;
+        // Must be an interior floor room (not pure roof slab)
+        bool isInterior = false;
+        for (const auto& pt : z.tiles) {
+            if (mapGround(z.floor, pt.x(), pt.y()) <= 1) {
+                isInterior = true;
+                break;
+            }
+        }
+        if (!isInterior) continue;
 
-                // Flood-fill cluster
-                std::vector<QPoint> cluster;
-                std::queue<QPoint> q;
-                q.push(QPoint(x, y));
-                visited[y][x] = true;
+        int coveredCount = 0;
+        std::vector<QPoint> missingTiles;
 
-                while (!q.empty()) {
-                    QPoint pt = q.front();
-                    q.pop();
-                    cluster.push_back(pt);
-
-                    const int dx[4] = {1, -1, 0, 0};
-                    const int dy[4] = {0, 0, 1, -1};
-                    for (int d = 0; d < 4; ++d) {
-                        int nx = pt.x() + dx[d];
-                        int ny = pt.y() + dy[d];
-                        if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
-                            if (!visited[ny][nx] && m_map->gridBlocks[baseLayer][ny][nx] > 0) {
-                                visited[ny][nx] = true;
-                                q.push(QPoint(nx, ny));
-                            }
-                        }
+        for (const auto& pt : z.tiles) {
+            bool covered = false;
+            // Check if covered on the same floor or any floor above
+            for (int l = z.floor; l <= m_map->header.layerMax; ++l) {
+                int seg = m_map->gridBlocks[l][pt.y()][pt.x()];
+                if (seg > 0) {
+                    int g = mapGround(l, pt.x(), pt.y());
+                    int sym = (l < m_map->gridSymbol.size() && pt.y() < m_map->gridSymbol[l].size() && pt.x() < m_map->gridSymbol[l][pt.y()].size())
+                              ? m_map->gridSymbol[l][pt.y()][pt.x()] : 0;
+                    // Segment with roof or ceiling slab (ground == 2)
+                    if (g == 2 || isCeilingAt(l, pt.x(), pt.y())) {
+                        covered = true;
+                        break;
+                    }
+                    // Upper floor tile capping the room below
+                    if (l > z.floor && isFloorAt(l, pt.x(), pt.y()) && sym != 1) {
+                        covered = true;
+                        break;
                     }
                 }
+            }
+            if (covered) {
+                coveredCount++;
+            } else {
+                missingTiles.push_back(pt);
+            }
+        }
 
-                if (cluster.size() < 2) continue;
+        float coverage = static_cast<float>(coveredCount) / static_cast<float>(z.tiles.size());
 
-                // Check ceiling coverage for this room cluster
-                int roofedCount = 0;
-                std::vector<QPoint> unroofedTiles;
-                int maxRoofLayer = baseLayer;
-
-                for (const auto& pt : cluster) {
-                    bool hasRoof = false;
-                    for (int l = baseLayer + 1; l < layers; ++l) {
-                        if (isCeilingAt(l, pt.x(), pt.y())) {
-                            hasRoof = true;
-                            maxRoofLayer = std::max(maxRoofLayer, l);
-                            break;
-                        }
-                    }
-                    if (hasRoof) {
-                        roofedCount++;
-                    } else {
-                        unroofedTiles.push_back(pt);
-                    }
-                }
-
-                float coverage = static_cast<float>(roofedCount) / static_cast<float>(cluster.size());
-
-                // If room is predominantly roofed (> 50%), but has missing ceiling tiles -> TRUE DEFECT LEAK
-                if (coverage >= 0.5f && coverage < 1.0f) {
-                    for (const auto& hole : unroofedTiles) {
-                        bool alreadyFound = false;
-                        for (const auto& w : m_warnings) {
-                            if (w.layer == maxRoofLayer && w.x == hole.x() && w.y == hole.y()) {
-                                alreadyFound = true;
-                                break;
-                            }
-                        }
-                        if (!alreadyFound) {
-                            PortalLeakWarning w;
-                            w.severity = PortalLeakWarning::ERROR;
-                            w.type = "Vertical Gap Leak";
-                            w.layer = maxRoofLayer; 
-                            w.x = hole.x(); 
-                            w.y = hole.y();
-                            w.description = QString("Missing ceiling tile at (%1, %2) in an enclosed roofed room (Layer %3). Camera can see into the void.")
-                                                .arg(hole.x()).arg(hole.y()).arg(maxRoofLayer);
-                            m_warnings.push_back(w);
-                        }
-                    }
-                }
+        // If room is predominantly roofed (> 75%), but has missing ceiling tiles -> TRUE CEILING LEAK
+        if (coverage >= 0.75f && coverage < 1.0f) {
+            for (const auto& hole : missingTiles) {
+                PortalLeakWarning w;
+                w.severity = PortalLeakWarning::ERROR;
+                w.type = "Missing Ceiling Leak";
+                w.layer = z.floor; // Room floor layer so the user sees the actual room and missing spot!
+                w.x = hole.x();
+                w.y = hole.y();
+                w.description = QString("Missing ceiling slab at Floor %1 over enclosed room at (%2, %3) (Floor %4). Camera will leak visibility into the void.")
+                                    .arg(z.floor + 1).arg(hole.x()).arg(hole.y()).arg(z.floor);
+                m_warnings.push_back(w);
             }
         }
     }
@@ -259,120 +320,79 @@ void PortalLeakAnalyzer::checkCoplanarOverlaps() {
     }
 }
 
-void PortalLeakAnalyzer::checkCornerGaps() {
-    for (int layer = 0; layer < m_map->gridBlocks.size(); ++layer) {
-        for (int y = 0; y < m_map->gridBlocks[layer].size() - 1; ++y) {
-            for (int x = 0; x < m_map->gridBlocks[layer][y].size() - 1; ++x) {
-                bool tl = isWallAt(layer, x, y);
-                bool tr = isWallAt(layer, x+1, y);
-                bool bl = isWallAt(layer, x, y+1);
-                bool br = isWallAt(layer, x+1, y+1);
-                
-                if ((tl && br && !tr && !bl) || (!tl && !br && tr && bl)) {
-                    PortalLeakWarning w;
-                    w.severity = PortalLeakWarning::WARNING;
-                    w.type = "Corner Miter Gap";
-                    w.layer = layer; w.x = x; w.y = y;
-                    w.description = "Diagonal wall intersection without corner post. Looking at the seam may leak visibility into the void.";
-                    m_warnings.push_back(w);
-                }
-            }
-        }
-    }
-}
-
-void PortalLeakAnalyzer::checkGroundModeMismatches() {
+void PortalLeakAnalyzer::checkWallHolesToVoid() {
     if (!m_map) return;
-    int layers = m_map->gridBlocks.size();
+    VisZoneManager zm;
+    zm.buildFromMap(m_map);
 
-    auto isWallPresent = [](int maptile, int rot, int side) -> bool {
+    int rows = m_map->header.maxY + 1;
+    int cols = m_map->header.maxX + 1;
+
+    auto isMaptileWallPresent = [](int maptile, int rot, int side) -> bool {
         if (maptile <= 0 || maptile == 6) return false;
         static const bool baseWalls[16][4] = {
-            {0, 0, 0, 0}, // 0: none
-            {1, 1, 1, 1}, // 1: 4 walls
-            {1, 0, 1, 1}, // 2: 3 walls (no East)
-            {1, 0, 0, 1}, // 3: 2 walls corner (North + West)
-            {1, 0, 1, 0}, // 4: 2 walls opposite (North + South)
-            {1, 0, 0, 0}, // 5: 1 wall (North)
-            {0, 0, 0, 0}, // 6: 0 walls (floor only)
-            {0, 0, 0, 0}, // 7: corner
-            {0, 0, 0, 0}, // 8: corner
-            {0, 0, 0, 0}, // 9: corner
-            {0, 0, 0, 0}, // 10: corner
-            {0, 0, 0, 0}, // 11: corner
-            {1, 0, 0, 0}, // 12: straight
-            {1, 0, 0, 0}, // 13: straight
-            {1, 0, 0, 0}, // 14: straight
-            {1, 0, 0, 1}  // 15: corner
+            {0, 0, 0, 0}, {1, 1, 1, 1}, {1, 0, 1, 1}, {1, 0, 0, 1},
+            {1, 0, 1, 0}, {1, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0},
+            {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0},
+            {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 1}
         };
         int unrotatedSide = (side - (rot & 3) + 4) % 4;
-        if (maptile >= 0 && maptile < 16) {
-            return baseWalls[maptile][unrotatedSide];
-        }
+        if (maptile >= 0 && maptile < 16) return baseWalls[maptile][unrotatedSide];
         return false;
     };
 
-    for (int layer = 0; layer < layers; ++layer) {
-        if (layer >= m_map->gridGround.size()) break;
-        int rows = m_map->gridBlocks[layer].size();
-        for (int y = 0; y < rows; ++y) {
-            int cols = m_map->gridBlocks[layer][y].size();
-            for (int x = 0; x < cols; ++x) {
-                int segA = m_map->gridBlocks[layer][y][x];
-                if (segA <= 0) continue;
-                int gA = m_map->gridGround[layer][y][x];
-                int tileA = (layer < m_map->gridTileType.size() && y < m_map->gridTileType[layer].size())
-                            ? m_map->gridTileType[layer][y][x] : 0;
-                int rotA = m_map->gridRotation[layer][y][x];
+    const int dx[4] = {0, 1, 0, -1};
+    const int dy[4] = {-1, 0, 1, 0};
+    const char* sideNames[4] = {"North", "East", "South", "West"};
 
-                // Check East neighbor (side 1)
-                if (x + 1 < cols) {
-                    int segB = m_map->gridBlocks[layer][y][x + 1];
-                    if (segB > 0) {
-                        int gB = m_map->gridGround[layer][y][x + 1];
-                        if ((gA <= 1 && gB >= 2) || (gA >= 2 && gB <= 1)) {
-                            int tileB = m_map->gridTileType[layer][y][x + 1];
-                            int rotB = m_map->gridRotation[layer][y][x + 1];
-                            bool wallA = isWallPresent(tileA, rotA, 1); // East wall of cell A
-                            bool wallB = isWallPresent(tileB, rotB, 3); // West wall of cell B
-                            if (!wallA && !wallB) {
-                                // Open passage between Interior and Exterior/Roof!
-                                PortalLeakWarning w;
-                                w.severity = PortalLeakWarning::WARNING;
-                                w.type = "Mismatched Ground Mode (Portal Blocker Risk)";
-                                w.layer = layer; w.x = x; w.y = y;
-                                w.description = QString("Open passage between (%1, %2) [%3] and East (%4, %5) [%6] mixes Interior (ground %7) and Exterior/Roof (ground %8). FPS Creator engine will leave outer walls visible, potentially sealing the portal.")
-                                                .arg(x).arg(y).arg(gA <= 1 ? "Interior" : "Roof/Exterior")
-                                                .arg(x + 1).arg(y).arg(gB <= 1 ? "Interior" : "Roof/Exterior")
-                                                .arg(gA).arg(gB);
-                                m_warnings.push_back(w);
+    for (const auto& z : zm.zones()) {
+        if (z.tiles.size() < 3) continue;
+
+        // Only check enclosed interior rooms (all tiles ground == 0)
+        bool allInterior = true;
+        for (const auto& pt : z.tiles) {
+            if (mapGround(z.floor, pt.x(), pt.y()) != 0) {
+                allInterior = false;
+                break;
+            }
+        }
+        if (!allInterior) continue;
+
+        for (const auto& pt : z.tiles) {
+            int tile = (z.floor < m_map->gridTileType.size() && pt.y() < m_map->gridTileType[z.floor].size() && pt.x() < m_map->gridTileType[z.floor][pt.y()].size())
+                       ? m_map->gridTileType[z.floor][pt.y()][pt.x()] : 0;
+            int rot = (z.floor < m_map->gridRotation.size() && pt.y() < m_map->gridRotation[z.floor].size() && pt.x() < m_map->gridRotation[z.floor][pt.y()].size())
+                      ? m_map->gridRotation[z.floor][pt.y()][pt.x()] : 0;
+
+            for (int s = 0; s < 4; ++s) {
+                if (!isMaptileWallPresent(tile, rot, s)) {
+                    int nx = pt.x() + dx[s];
+                    int ny = pt.y() + dy[s];
+                    bool isVoid = false;
+                    if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) {
+                        isVoid = true;
+                    } else if (m_map->gridBlocks[z.floor][ny][nx] <= 0) {
+                        isVoid = true;
+                    }
+
+                    if (isVoid) {
+                        bool hasDoor = false;
+                        for (const auto& p : zm.portals()) {
+                            if (p.floor == z.floor && (p.tileA == pt || p.tileB == pt)) {
+                                hasDoor = true;
+                                break;
                             }
                         }
-                    }
-                }
-
-                // Check South neighbor (side 2)
-                if (y + 1 < rows) {
-                    int segB = m_map->gridBlocks[layer][y + 1][x];
-                    if (segB > 0) {
-                        int gB = m_map->gridGround[layer][y + 1][x];
-                        if ((gA <= 1 && gB >= 2) || (gA >= 2 && gB <= 1)) {
-                            int tileB = m_map->gridTileType[layer][y + 1][x];
-                            int rotB = m_map->gridRotation[layer][y + 1][x];
-                            bool wallA = isWallPresent(tileA, rotA, 2); // South wall of cell A
-                            bool wallB = isWallPresent(tileB, rotB, 0); // North wall of cell B
-                            if (!wallA && !wallB) {
-                                // Open passage between Interior and Exterior/Roof!
-                                PortalLeakWarning w;
-                                w.severity = PortalLeakWarning::WARNING;
-                                w.type = "Mismatched Ground Mode (Portal Blocker Risk)";
-                                w.layer = layer; w.x = x; w.y = y;
-                                w.description = QString("Open passage between (%1, %2) [%3] and South (%4, %5) [%6] mixes Interior (ground %7) and Exterior/Roof (ground %8). FPS Creator engine will leave outer walls visible, potentially sealing the portal.")
-                                                .arg(x).arg(y).arg(gA <= 1 ? "Interior" : "Roof/Exterior")
-                                                .arg(x).arg(y + 1).arg(gB <= 1 ? "Interior" : "Roof/Exterior")
-                                                .arg(gA).arg(gB);
-                                m_warnings.push_back(w);
-                            }
+                        if (!hasDoor) {
+                            PortalLeakWarning w;
+                            w.severity = PortalLeakWarning::WARNING;
+                            w.type = "Missing Perimeter Wall (Void Leak)";
+                            w.layer = z.floor;
+                            w.x = pt.x();
+                            w.y = pt.y();
+                            w.description = QString("Open room edge at (%1, %2) [%3 edge] faces empty void without a wall or door. Camera may see universe void.")
+                                                .arg(pt.x()).arg(pt.y()).arg(sideNames[s]);
+                            m_warnings.push_back(w);
                         }
                     }
                 }

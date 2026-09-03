@@ -207,8 +207,8 @@ void MapCanvas::renderMap(QPainter& p) {
         drawGrid(p);
     }
 
-    // 2. Ghost lower floor (if enabled and currentFloor > 0)
-    if (m_showGhostLayer && m_currentFloor > 0) {
+    // 2. Ghost lower floor (if enabled, currentFloor > 0 and no isolated zone)
+    if (m_showGhostLayer && m_currentFloor > 0 && (!m_cullInactiveVisZones || m_activeVisZoneId < 0)) {
         drawSegments(p, m_currentFloor - 1, 0.22f);
     }
 
@@ -562,8 +562,13 @@ void MapCanvas::drawZonesAndLights(QPainter& p) {
         // Visibility Zone Isolation / Culling
         if (m_activeVisZoneId >= 0 && m_cullInactiveVisZones && m_visZoneManager) {
             bool inZone = m_visZoneManager->isEntityInZone(m_activeVisZoneId, i);
-            if (!inZone && m_visZoneDimOpacity <= 0.001f) {
-                continue;
+            if (!inZone) {
+                if (m_visZoneDimOpacity <= 0.001f) {
+                    continue;
+                }
+                p.setOpacity(m_visZoneDimOpacity);
+            } else {
+                p.setOpacity(1.0f);
             }
         }
 
@@ -1257,6 +1262,11 @@ void MapCanvas::setPortals(const std::vector<DBUPortal>& portals, const std::vec
 void MapCanvas::setActiveVisZone(int zoneId) {
     if (m_activeVisZoneId != zoneId) {
         m_activeVisZoneId = zoneId;
+        if (zoneId >= 0) {
+            m_cullInactiveVisZones = true;
+        } else {
+            m_cullInactiveVisZones = false;
+        }
         if (m_visZoneManager && zoneId >= 0) {
             const VisZone* z = m_visZoneManager->getZone(zoneId);
             if (z && z->floor != m_currentFloor) {
@@ -1455,8 +1465,13 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
 
             if (m_activeVisZoneId >= 0 && m_cullInactiveVisZones && m_visZoneManager) {
                 bool inZone = m_visZoneManager->isTileInZone(m_activeVisZoneId, m_currentFloor, x, y);
-                if (!inZone && m_visZoneDimOpacity <= 0.001f) {
-                    continue;
+                if (!inZone) {
+                    if (m_visZoneDimOpacity <= 0.001f) {
+                        continue;
+                    }
+                    p.setOpacity(m_visZoneDimOpacity);
+                } else {
+                    p.setOpacity(1.0f);
                 }
             }
 

@@ -69,6 +69,7 @@ add_executable(test_standalone
     src/AssetManager.cpp
     src/MemoryAnalyzer.cpp
     src/PortalLeakAnalyzer.cpp
+    src/PortalLeakDialog.cpp
     src/UniverseDBUParser.cpp
     src/VisZoneManager.cpp
 )
