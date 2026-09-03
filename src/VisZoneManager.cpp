@@ -3,8 +3,26 @@
 #include <queue>
 #include <QDebug>
 
-bool VisZoneManager::isMaptileWallPresent(int maptile, int rot, int side) const {
+bool VisZoneManager::isMaptileWallPresent(int l, int x, int y, int side) const {
+    if (!m_map) return false;
+    if (l < 0 || l >= static_cast<int>(m_map->gridBlocks.size())) return false;
+    if (y < 0 || y >= static_cast<int>(m_map->gridBlocks[l].size())) return false;
+    if (x < 0 || x >= static_cast<int>(m_map->gridBlocks[l][y].size())) return false;
+
+    int b = m_map->gridBlocks[l][y][x];
+    if (b <= 0) return false;
+    auto seg = m_map->segments.value(b);
+    if (!seg) return false;
+
+    // Structural roof slabs, platforms, stairs, and scenery have no interior room walls
+    if (seg->groundMode == 2 || seg->isPlatformOrGantry || seg->isStairs || seg->isScenery) return false;
+    if (seg->relPath.contains("ceiling", Qt::CaseInsensitive) || seg->name.contains("ceiling", Qt::CaseInsensitive)) return false;
+    if (seg->relPath.contains("roof", Qt::CaseInsensitive) || seg->name.contains("roof", Qt::CaseInsensitive)) return false;
+
+    int maptile = m_map->gridTileType[l][y][x];
+    int rot = m_map->gridRotation[l][y][x];
     if (maptile <= 0 || maptile == 6) return false;
+
     static const bool baseWalls[16][4] = {
         {0, 0, 0, 0}, // 0: none
         {1, 1, 1, 1}, // 1: 4 walls
@@ -24,8 +42,55 @@ bool VisZoneManager::isMaptileWallPresent(int maptile, int rot, int side) const 
         {1, 0, 0, 1}  // 15: corner
     };
     int unrotatedSide = (side - (rot & 3) + 4) % 4;
+    if (!seg->hasWall[unrotatedSide]) return false;
+
     if (maptile >= 0 && maptile < 16) {
         return baseWalls[maptile][unrotatedSide];
+    }
+    return false;
+}
+
+bool VisZoneManager::hasDoorwayOnEdge(int l, int x1, int y1, int x2, int y2, int sideFrom1) const {
+    if (!m_map) return false;
+    // Overlay punch check (doors, windows, cutouts)
+    if (l >= 0 && l < m_map->gridOverlays.size()) {
+        if (y1 >= 0 && y1 < m_map->gridOverlays[l].size() && x1 >= 0 && x1 < m_map->gridOverlays[l][y1].size()) {
+            int o1 = m_map->gridOverlays[l][y1][x1];
+            if (o1 > 0) {
+                auto it = m_map->segments.find(o1);
+                if (it != m_map->segments.end() && it.value()->hasPunch) {
+                    int rot1 = m_map->gridOverlayRotation[l][y1][x1] & 3;
+                    if (rot1 == sideFrom1) return true;
+                }
+            }
+        }
+        int sideFrom2 = (sideFrom1 + 2) % 4;
+        if (y2 >= 0 && y2 < m_map->gridOverlays[l].size() && x2 >= 0 && x2 < m_map->gridOverlays[l][y2].size()) {
+            int o2 = m_map->gridOverlays[l][y2][x2];
+            if (o2 > 0) {
+                auto it = m_map->segments.find(o2);
+                if (it != m_map->segments.end() && it.value()->hasPunch) {
+                    int rot2 = m_map->gridOverlayRotation[l][y2][x2] & 3;
+                    if (rot2 == sideFrom2) return true;
+                }
+            }
+        }
+    }
+
+    // Door entity check
+    float edgeMidX = (x1 + x2 + 1) * 50.0f;
+    float edgeMidY = (y1 + y2 + 1) * 50.0f;
+    for (const auto& e : m_map->placedEntities) {
+        if (e.floorLayer == l) {
+            bool isDoor = (e.profile && e.profile->category == EntityCategory::Door) ||
+                          (e.profile && e.profile->name.contains("door", Qt::CaseInsensitive)) ||
+                          (e.instanceName.contains("door", Qt::CaseInsensitive));
+            if (isDoor) {
+                float ey = -e.z;
+                float dist = std::hypot(e.x - edgeMidX, ey - edgeMidY);
+                if (dist < 55.0f) return true;
+            }
+        }
     }
     return false;
 }
@@ -59,54 +124,10 @@ void VisZoneManager::partitionRooms() {
     int rows = m_map->gridBlocks[0].size();
     int cols = m_map->gridBlocks[0][0].size();
 
-    auto hasDoorwayOnEdge = [&](int l, int x1, int y1, int x2, int y2, int sideFrom1) -> bool {
-        // Overlay punch check
-        if (l < m_map->gridOverlays.size()) {
-            int o1 = m_map->gridOverlays[l][y1][x1];
-            if (o1 > 0) {
-                auto it = m_map->segments.find(o1);
-                if (it != m_map->segments.end() && it.value()->hasPunch) {
-                    int rot1 = m_map->gridOverlayRotation[l][y1][x1] & 3;
-                    if (rot1 == sideFrom1) return true;
-                }
-            }
-            int sideFrom2 = (sideFrom1 + 2) % 4;
-            int o2 = m_map->gridOverlays[l][y2][x2];
-            if (o2 > 0) {
-                auto it = m_map->segments.find(o2);
-                if (it != m_map->segments.end() && it.value()->hasPunch) {
-                    int rot2 = m_map->gridOverlayRotation[l][y2][x2] & 3;
-                    if (rot2 == sideFrom2) return true;
-                }
-            }
-        }
-
-        // Door entity check
-        float edgeMidX = (x1 + x2 + 1) * 50.0f;
-        float edgeMidY = (y1 + y2 + 1) * 50.0f;
-        for (const auto& e : m_map->placedEntities) {
-            if (e.floorLayer == l) {
-                bool isDoor = (e.profile && e.profile->category == EntityCategory::Door) ||
-                              (e.profile && e.profile->name.contains("door", Qt::CaseInsensitive)) ||
-                              (e.instanceName.contains("door", Qt::CaseInsensitive));
-                if (isDoor) {
-                    float ey = -e.z;
-                    float dist = std::hypot(e.x - edgeMidX, ey - edgeMidY);
-                    if (dist < 55.0f) return true;
-                }
-            }
-        }
-        return false;
-    };
-
     auto canPass = [&](int l, int x1, int y1, int x2, int y2, int sideFrom1) -> bool {
         int sideFrom2 = (sideFrom1 + 2) % 4;
-        int t1 = m_map->gridTileType[l][y1][x1];
-        int r1 = m_map->gridRotation[l][y1][x1];
-        int t2 = m_map->gridTileType[l][y2][x2];
-        int r2 = m_map->gridRotation[l][y2][x2];
-        if (isMaptileWallPresent(t1, r1, sideFrom1)) return false;
-        if (isMaptileWallPresent(t2, r2, sideFrom2)) return false;
+        if (isMaptileWallPresent(l, x1, y1, sideFrom1)) return false;
+        if (isMaptileWallPresent(l, x2, y2, sideFrom2)) return false;
         if (hasDoorwayOnEdge(l, x1, y1, x2, y2, sideFrom1)) return false; // Doorway is a PORTAL, separate zones!
         return true;
     };
@@ -116,7 +137,17 @@ void VisZoneManager::partitionRooms() {
     for (int l = 0; l < layers; ++l) {
         for (int y = 0; y < rows; ++y) {
             for (int x = 0; x < cols; ++x) {
-                if (m_map->gridBlocks[l][y][x] <= 0 || m_tileZoneMap[l][y][x] >= 0) continue;
+                int b = m_map->gridBlocks[l][y][x];
+                if (b <= 0 || m_tileZoneMap[l][y][x] >= 0) continue;
+
+                auto seg = m_map->segments.value(b);
+                if (!seg) continue;
+                bool isCeilingOrScenery = (seg->groundMode == 2) || seg->isScenery ||
+                                          seg->relPath.contains("ceiling", Qt::CaseInsensitive) ||
+                                          seg->name.contains("ceiling", Qt::CaseInsensitive) ||
+                                          seg->relPath.contains("roof", Qt::CaseInsensitive) ||
+                                          seg->name.contains("roof", Qt::CaseInsensitive);
+                if (isCeilingOrScenery) continue;
 
                 int currentZoneId = nextZoneId++;
                 VisZone zone;
@@ -147,10 +178,16 @@ void VisZoneManager::partitionRooms() {
                     for (int d = 0; d < 4; ++d) {
                         int nx = pt.x() + dx[d], ny = pt.y() + dy[d];
                         if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
-                            if (m_map->gridBlocks[l][ny][nx] > 0 && m_tileZoneMap[l][ny][nx] < 0) {
-                                if (canPass(l, pt.x(), pt.y(), nx, ny, d)) {
-                                    m_tileZoneMap[l][ny][nx] = currentZoneId;
-                                    q.push_back({nx, ny});
+                            int nb = m_map->gridBlocks[l][ny][nx];
+                            if (nb > 0 && m_tileZoneMap[l][ny][nx] < 0) {
+                                auto nseg = m_map->segments.value(nb);
+                                if (nseg && nseg->groundMode != 2 && !nseg->isScenery &&
+                                    !nseg->relPath.contains("ceiling", Qt::CaseInsensitive) &&
+                                    !nseg->relPath.contains("roof", Qt::CaseInsensitive)) {
+                                    if (canPass(l, pt.x(), pt.y(), nx, ny, d)) {
+                                        m_tileZoneMap[l][ny][nx] = currentZoneId;
+                                        q.push_back({nx, ny});
+                                    }
                                 }
                             }
                         }
@@ -171,10 +208,24 @@ void VisZoneManager::buildPortals() {
     int rows = m_map->gridBlocks[0].size();
     int cols = m_map->gridBlocks[0][0].size();
 
-    auto addPortal = [&](int l, int x1, int y1, int x2, int y2, bool isHorizontal) {
+    auto addPortal = [&](int l, int x1, int y1, int x2, int y2, int sideFrom1, bool isHorizontal) {
         int z1 = m_tileZoneMap[l][y1][x1];
         int z2 = m_tileZoneMap[l][y2][x2];
         if (z1 >= 0 && z2 >= 0 && z1 != z2) {
+            // A portal between two adjacent zones can ONLY exist if:
+            // 1. There is an actual doorway / window / cutout on this edge, OR
+            // 2. There is NO solid wall between them (open archway / open passage connecting two rooms)
+            bool doorway = hasDoorwayOnEdge(l, x1, y1, x2, y2, sideFrom1);
+            int sideFrom2 = (sideFrom1 + 2) % 4;
+            bool wall1 = isMaptileWallPresent(l, x1, y1, sideFrom1);
+            bool wall2 = isMaptileWallPresent(l, x2, y2, sideFrom2);
+            bool solidWall = (wall1 || wall2);
+
+            // If there is a solid wall and NO doorway/punch, this wall OCCLUDES visibility; it is NOT a portal!
+            if (solidWall && !doorway) {
+                return;
+            }
+
             // Check if portal already exists between these two tiles
             for (const auto& existing : m_portals) {
                 if (existing.floor == l &&
@@ -217,14 +268,14 @@ void VisZoneManager::buildPortals() {
             for (int x = 0; x < cols; ++x) {
                 if (m_tileZoneMap[l][y][x] < 0) continue;
 
-                // Check East edge
+                // Check East edge (sideFrom1 = 1)
                 if (x + 1 < cols && m_tileZoneMap[l][y][x + 1] >= 0) {
-                    addPortal(l, x, y, x + 1, y, false);
+                    addPortal(l, x, y, x + 1, y, 1, false);
                 }
 
-                // Check South edge
+                // Check South edge (sideFrom1 = 2)
                 if (y + 1 < rows && m_tileZoneMap[l][y + 1][x] >= 0) {
-                    addPortal(l, x, y, x, y + 1, true);
+                    addPortal(l, x, y, x, y + 1, 2, true);
                 }
             }
         }

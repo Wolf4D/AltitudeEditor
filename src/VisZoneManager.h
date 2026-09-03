@@ -62,5 +62,6 @@ private:
     void partitionRooms();
     void associateEntities();
     void buildPortals();
-    bool isMaptileWallPresent(int maptile, int rot, int side) const;
+    bool isMaptileWallPresent(int l, int x, int y, int side) const;
+    bool hasDoorwayOnEdge(int l, int x1, int y1, int x2, int y2, int sideFrom1) const;
 };
