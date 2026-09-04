@@ -681,16 +681,16 @@ void MapCanvas::drawZonesAndLights(QPainter& p) {
             float radScreen = lRange * m_zoom;
             QRadialGradient grad(entScreen, radScreen);
             QColor lColor = ent.effectiveLightColor();
-            lColor.setAlpha(70);
+            lColor.setAlpha(91);
             grad.setColorAt(0.0f, lColor);
-            lColor.setAlpha(20);
+            lColor.setAlpha(26);
             grad.setColorAt(0.5f, lColor);
             lColor.setAlpha(0);
             grad.setColorAt(1.0f, lColor);
 
             p.setBrush(grad);
             QColor ringColor = ent.effectiveLightColor();
-            ringColor.setAlpha(110);
+            ringColor.setAlpha(77);
             p.setPen(QPen(ringColor, 1.0f));
             p.drawEllipse(entScreen, radScreen, radScreen);
         }
