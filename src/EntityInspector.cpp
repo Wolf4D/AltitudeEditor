@@ -29,7 +29,7 @@ protected:
 }
 
 EntityInspector::EntityInspector(QWidget* parent)
-    : QDockWidget(QStringLiteral("Entity Properties Inspector"), parent)
+    : QDockWidget(tr("Entity Properties Inspector"), parent)
 {
     setObjectName("EntityInspector");
     setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
@@ -41,13 +41,13 @@ EntityInspector::EntityInspector(QWidget* parent)
     layout->setContentsMargins(6, 6, 6, 6);
     layout->setSpacing(6);
 
-    m_headerLabel = new QLabel(QStringLiteral("Select an entity on map or list to edit properties"), container);
+    m_headerLabel = new QLabel(tr("Select an entity on map or list to edit properties"), container);
     m_headerLabel->setWordWrap(true);
     m_headerLabel->setStyleSheet("font-weight: bold; color: #a0c0ff; padding: 4px;");
     layout->addWidget(m_headerLabel);
 
     m_tree = new QTreeWidget(container);
-    m_tree->setHeaderLabels({QStringLiteral("Property"), QStringLiteral("Value")});
+    m_tree->setHeaderLabels({tr("Property"), tr("Value")});
     m_tree->header()->setSectionResizeMode(0, QHeaderView::Interactive);
     m_tree->header()->resizeSection(0, 140);
     m_tree->header()->setSectionResizeMode(1, QHeaderView::Stretch);
@@ -63,8 +63,27 @@ void EntityInspector::clear() {
     m_spinY = nullptr;
     m_spinZ = nullptr;
     m_map.reset();
-    m_headerLabel->setText(QStringLiteral("Select an entity on map or list to edit properties"));
+    m_headerLabel->setText(tr("Select an entity on map or list to edit properties"));
     m_tree->clear();
+}
+
+void EntityInspector::changeEvent(QEvent* event) {
+    if (event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
+    QDockWidget::changeEvent(event);
+}
+
+void EntityInspector::retranslateUi() {
+    setWindowTitle(tr("Entity Properties Inspector"));
+    if (m_tree) {
+        m_tree->setHeaderLabels({tr("Property"), tr("Value")});
+    }
+    if (m_currentIndex < 0 || !m_map) {
+        m_headerLabel->setText(tr("Select an entity on map or list to edit properties"));
+    } else {
+        setEntity(m_map, m_currentIndex);
+    }
 }
 
 void EntityInspector::refreshValues() {
@@ -120,24 +139,24 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
     // -------------------------------------------------------------
     // Group 1: General & Identity
     // -------------------------------------------------------------
-    QTreeWidgetItem* grpGeneral = new QTreeWidgetItem(m_tree, {QStringLiteral("General & Identity")});
+    QTreeWidgetItem* grpGeneral = new QTreeWidgetItem(m_tree, {tr("General & Identity")});
     grpGeneral->setExpanded(true);
-    addProperty(grpGeneral, QStringLiteral("Instance Index"), QString::number(index));
+    addProperty(grpGeneral, tr("Instance Index"), QString::number(index));
 
     QLineEdit* editName = new QLineEdit(ent.instanceName);
-    editName->setPlaceholderText(prof ? prof->name : QStringLiteral("Entity Name"));
+    editName->setPlaceholderText(prof ? prof->name : tr("Entity Name"));
     connect(editName, &QLineEdit::textChanged, this, [this](const QString& text) {
         if (m_isPopulating || !m_map || m_currentIndex < 0) return;
         m_map->placedEntities[m_currentIndex].instanceName = text;
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpGeneral, QStringLiteral("Name"), editName, QStringLiteral("Instance name of entity"));
+    addWidgetProperty(grpGeneral, tr("Name"), editName, tr("Instance name of entity"));
 
-    addProperty(grpGeneral, QStringLiteral("Category"), prof ? entityCategoryToString(prof->category) : "N/A");
+    addProperty(grpGeneral, tr("Category"), prof ? entityCategoryToString(prof->category) : tr("N/A"));
 
     QComboBox* comboObj = new QComboBox();
-    comboObj->addItems({QStringLiteral("0 - None"), QStringLiteral("1 - Primary Objective"), QStringLiteral("2 - Secondary Objective")});
+    comboObj->addItems({tr("0 - None"), tr("1 - Primary Objective"), tr("2 - Secondary Objective")});
     comboObj->setCurrentIndex(qBound(0, ent.isObjective, 2));
     connect(comboObj, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) {
         if (m_isPopulating || !m_map || m_currentIndex < 0) return;
@@ -145,12 +164,12 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpGeneral, QStringLiteral("Objective Goal"), comboObj);
+    addWidgetProperty(grpGeneral, tr("Objective Goal"), comboObj);
 
     // -------------------------------------------------------------
     // Group 2: Transform & Placement
     // -------------------------------------------------------------
-    QTreeWidgetItem* grpTransform = new QTreeWidgetItem(m_tree, {QStringLiteral("Transform & Placement")});
+    QTreeWidgetItem* grpTransform = new QTreeWidgetItem(m_tree, {tr("Transform & Placement")});
     grpTransform->setExpanded(true);
 
     // Pos X
@@ -165,7 +184,7 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpTransform, QStringLiteral("Position X"), m_spinX);
+    addWidgetProperty(grpTransform, tr("Position X"), m_spinX);
 
     // Pos Y (Height)
     m_spinY = new QDoubleSpinBox();
@@ -180,7 +199,7 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpTransform, QStringLiteral("Position Y (Height)"), m_spinY);
+    addWidgetProperty(grpTransform, tr("Position Y (Height)"), m_spinY);
 
     // Pos Z (Depth)
     m_spinZ = new QDoubleSpinBox();
@@ -194,7 +213,7 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpTransform, QStringLiteral("Position Z (Depth)"), m_spinZ);
+    addWidgetProperty(grpTransform, tr("Position Z (Depth)"), m_spinZ);
 
     // Rotation Y (Yaw)
     QDoubleSpinBox* spinRotY = new QDoubleSpinBox();
@@ -208,7 +227,7 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpTransform, QStringLiteral("Rotation Yaw (Y°)"), spinRotY);
+    addWidgetProperty(grpTransform, tr("Rotation Yaw (Y°)"), spinRotY);
 
     // Rotation X (Pitch)
     QDoubleSpinBox* spinRotX = new QDoubleSpinBox();
@@ -222,7 +241,7 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpTransform, QStringLiteral("Rotation Pitch (X°)"), spinRotX);
+    addWidgetProperty(grpTransform, tr("Rotation Pitch (X°)"), spinRotX);
 
     // Rotation Z (Roll)
     QDoubleSpinBox* spinRotZ = new QDoubleSpinBox();
@@ -236,11 +255,11 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpTransform, QStringLiteral("Rotation Roll (Z°)"), spinRotZ);
+    addWidgetProperty(grpTransform, tr("Rotation Roll (Z°)"), spinRotZ);
 
     // Static Flag
     QComboBox* comboStatic = new QComboBox();
-    comboStatic->addItems({QStringLiteral("0 - Dynamic (Active AI/Physics)"), QStringLiteral("1 - Static (Optimized Pre-baked)")});
+    comboStatic->addItems({tr("0 - Dynamic (Active AI/Physics)"), tr("1 - Static (Optimized Pre-baked)")});
     comboStatic->setCurrentIndex(ent.staticFlag != 0 ? 1 : 0);
     connect(comboStatic, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) {
         if (m_isPopulating || !m_map || m_currentIndex < 0) return;
@@ -248,12 +267,12 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpTransform, QStringLiteral("Static Flag"), comboStatic);
+    addWidgetProperty(grpTransform, tr("Static Flag"), comboStatic);
 
     // -------------------------------------------------------------
     // Group 3: Gameplay Stats & Behavior
     // -------------------------------------------------------------
-    QTreeWidgetItem* grpStats = new QTreeWidgetItem(m_tree, {QStringLiteral("Gameplay Stats")});
+    QTreeWidgetItem* grpStats = new QTreeWidgetItem(m_tree, {tr("Gameplay Stats")});
     grpStats->setExpanded(true);
 
     QSpinBox* spinHealth = new QSpinBox();
@@ -267,7 +286,7 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpStats, QStringLiteral("Health / Strength"), spinHealth);
+    addWidgetProperty(grpStats, tr("Health / Strength"), spinHealth);
 
     QSpinBox* spinLives = new QSpinBox();
     spinLives->setRange(0, 100);
@@ -278,7 +297,7 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpStats, QStringLiteral("Lives"), spinLives);
+    addWidgetProperty(grpStats, tr("Lives"), spinLives);
 
     QSpinBox* spinSpeed = new QSpinBox();
     spinSpeed->setRange(0, 1000);
@@ -290,7 +309,7 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpStats, QStringLiteral("Speed"), spinSpeed);
+    addWidgetProperty(grpStats, tr("Speed"), spinSpeed);
 
     QSpinBox* spinQty = new QSpinBox();
     spinQty->setRange(0, 10000);
@@ -301,10 +320,10 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpStats, QStringLiteral("Quantity / Ammo"), spinQty);
+    addWidgetProperty(grpStats, tr("Quantity / Ammo"), spinQty);
 
     QComboBox* comboImmobile = new QComboBox();
-    comboImmobile->addItems({QStringLiteral("0 - Mobile"), QStringLiteral("1 - Immobile")});
+    comboImmobile->addItems({tr("0 - Mobile"), tr("1 - Immobile")});
     comboImmobile->setCurrentIndex(ent.isImmobile != 0 ? 1 : 0);
     connect(comboImmobile, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) {
         if (m_isPopulating || !m_map || m_currentIndex < 0) return;
@@ -312,12 +331,12 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpStats, QStringLiteral("Is Immobile"), comboImmobile);
+    addWidgetProperty(grpStats, tr("Is Immobile"), comboImmobile);
 
     // -------------------------------------------------------------
     // Group 4: FPI Scripts & Triggers
     // -------------------------------------------------------------
-    QTreeWidgetItem* grpScripts = new QTreeWidgetItem(m_tree, {QStringLiteral("FPI Scripts & Triggers")});
+    QTreeWidgetItem* grpScripts = new QTreeWidgetItem(m_tree, {tr("FPI Scripts & Triggers")});
     grpScripts->setExpanded(true);
 
     auto makeScriptWidget = [this](const QString& scriptVal, auto setter) -> QWidget* {
@@ -338,7 +357,7 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
             emit entityModified(m_currentIndex);
         });
         connect(btn, &QPushButton::clicked, this, [this, le]() {
-            QString path = QFileDialog::getOpenFileName(this, QStringLiteral("Select FPI Script"), QStringLiteral("C:/Program Files (x86)/The Game Creators/FPS Creator/Files/scriptbank"), QStringLiteral("FPI Scripts (*.fpi);;All Files (*.*)"));
+            QString path = QFileDialog::getOpenFileName(this, tr("Select FPI Script"), QStringLiteral("C:/Program Files (x86)/The Game Creators/FPS Creator/Files/scriptbank"), tr("FPI Scripts (*.fpi);;All Files (*.*)"));
             if (!path.isEmpty()) {
                 QFileInfo fi(path);
                 le->setText(fi.fileName());
@@ -347,16 +366,16 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         return w;
     };
 
-    addWidgetProperty(grpScripts, QStringLiteral("AI Main (Behavior)"), makeScriptWidget(ent.aiMain, [this](const QString& s) {
+    addWidgetProperty(grpScripts, tr("AI Main (Behavior)"), makeScriptWidget(ent.aiMain, [this](const QString& s) {
         m_map->placedEntities[m_currentIndex].aiMain = s;
     }));
-    addWidgetProperty(grpScripts, QStringLiteral("AI Init (Spawn)"), makeScriptWidget(ent.aiInit, [this](const QString& s) {
+    addWidgetProperty(grpScripts, tr("AI Init (Spawn)"), makeScriptWidget(ent.aiInit, [this](const QString& s) {
         m_map->placedEntities[m_currentIndex].aiInit = s;
     }));
-    addWidgetProperty(grpScripts, QStringLiteral("AI Shoot"), makeScriptWidget(ent.aiShoot, [this](const QString& s) {
+    addWidgetProperty(grpScripts, tr("AI Shoot"), makeScriptWidget(ent.aiShoot, [this](const QString& s) {
         m_map->placedEntities[m_currentIndex].aiShoot = s;
     }));
-    addWidgetProperty(grpScripts, QStringLiteral("AI Destroy (Death)"), makeScriptWidget(ent.aiDestroy, [this](const QString& s) {
+    addWidgetProperty(grpScripts, tr("AI Destroy (Death)"), makeScriptWidget(ent.aiDestroy, [this](const QString& s) {
         m_map->placedEntities[m_currentIndex].aiDestroy = s;
     }));
 
@@ -367,7 +386,7 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpScripts, QStringLiteral("Required Key"), editKey);
+    addWidgetProperty(grpScripts, tr("Required Key"), editKey);
 
     QLineEdit* editIfUsed = new QLineEdit(ent.ifUsed);
     connect(editIfUsed, &QLineEdit::textChanged, this, [this](const QString& text) {
@@ -376,12 +395,12 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpScripts, QStringLiteral("If Used Trigger"), editIfUsed);
+    addWidgetProperty(grpScripts, tr("If Used Trigger"), editIfUsed);
 
     // -------------------------------------------------------------
     // Group 5: Lighting & Zones
     // -------------------------------------------------------------
-    QTreeWidgetItem* grpSpecial = new QTreeWidgetItem(m_tree, {QStringLiteral("Lighting & Zones")});
+    QTreeWidgetItem* grpSpecial = new QTreeWidgetItem(m_tree, {tr("Lighting & Zones")});
     grpSpecial->setExpanded(true);
 
     QDoubleSpinBox* spinLRange = new QDoubleSpinBox();
@@ -394,7 +413,7 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpSpecial, QStringLiteral("Light Range"), spinLRange);
+    addWidgetProperty(grpSpecial, tr("Light Range"), spinLRange);
 
     QPushButton* btnCol = new QPushButton();
     btnCol->setFixedHeight(22);
@@ -415,7 +434,7 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         if (!cur.isValid() || (cur.red() == 0 && cur.green() == 0 && cur.blue() == 0)) {
             cur = QColor(255, 255, 255);
         }
-        QColor chosen = QColorDialog::getColor(cur, this, QStringLiteral("Select Light Color"));
+        QColor chosen = QColorDialog::getColor(cur, this, tr("Select Light Color"));
         if (chosen.isValid()) {
             m_map->placedEntities[m_currentIndex].lightColor = chosen;
             if (m_map->placedEntities[m_currentIndex].lightRange <= 0) {
@@ -429,7 +448,7 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
             emit entityModified(m_currentIndex);
         }
     });
-    addWidgetProperty(grpSpecial, QStringLiteral("Light Color"), btnCol);
+    addWidgetProperty(grpSpecial, tr("Light Color"), btnCol);
 
     // Zone Bounding Volume
     QSpinBox* spinZ1 = new QSpinBox(); spinZ1->setRange(-50000, 50000); spinZ1->setValue(ent.trigX1);
@@ -439,7 +458,7 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpSpecial, QStringLiteral("Zone Area X1"), spinZ1);
+    addWidgetProperty(grpSpecial, tr("Zone Area X1"), spinZ1);
 
     QSpinBox* spinZ2 = new QSpinBox(); spinZ2->setRange(-50000, 50000); spinZ2->setValue(ent.trigX2);
     connect(spinZ2, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int val) {
@@ -448,18 +467,18 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpSpecial, QStringLiteral("Zone Area X2"), spinZ2);
+    addWidgetProperty(grpSpecial, tr("Zone Area X2"), spinZ2);
 
     // -------------------------------------------------------------
     // Group 6: Physics & Collision
     // -------------------------------------------------------------
-    QTreeWidgetItem* grpPhysics = new QTreeWidgetItem(m_tree, {QStringLiteral("Physics & Collision")});
+    QTreeWidgetItem* grpPhysics = new QTreeWidgetItem(m_tree, {tr("Physics & Collision")});
     grpPhysics->setExpanded(false);
 
     QComboBox* comboPhys = new QComboBox();
     comboPhys->addItems({
-        QStringLiteral("0 - No (Physics Off / Scripted)"),
-        QStringLiteral("1 - Yes (ODE Dynamic Rigid Body)")
+        tr("0 - No (Physics Off / Scripted)"),
+        tr("1 - Yes (ODE Dynamic Rigid Body)")
     });
     comboPhys->setCurrentIndex(ent.physics == 1 ? 1 : 0);
     connect(comboPhys, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) {
@@ -468,7 +487,7 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpPhysics, QStringLiteral("Physics On?"), comboPhys);
+    addWidgetProperty(grpPhysics, tr("Physics On?"), comboPhys);
 
     QSpinBox* spinWeight = new QSpinBox();
     spinWeight->setRange(0, 100000);
@@ -479,10 +498,10 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpPhysics, QStringLiteral("Physics Weight"), spinWeight);
+    addWidgetProperty(grpPhysics, tr("Physics Weight"), spinWeight);
 
     QComboBox* comboExpl = new QComboBox();
-    comboExpl->addItems({QStringLiteral("0 - No"), QStringLiteral("1 - Explodable (Destructible)")});
+    comboExpl->addItems({tr("0 - No"), tr("1 - Explodable (Destructible)")});
     comboExpl->setCurrentIndex(ent.explodable != 0 ? 1 : 0);
     connect(comboExpl, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) {
         if (m_isPopulating || !m_map || m_currentIndex < 0) return;
@@ -490,30 +509,30 @@ void EntityInspector::setEntity(std::shared_ptr<FPSCMap> map, int index) {
         m_map->isModified = true;
         emit entityModified(m_currentIndex);
     });
-    addWidgetProperty(grpPhysics, QStringLiteral("Explodable"), comboExpl);
+    addWidgetProperty(grpPhysics, tr("Explodable"), comboExpl);
 
     // -------------------------------------------------------------
     // Group 7: Assets & Resource Info (Read-only)
     // -------------------------------------------------------------
     if (prof) {
-        QTreeWidgetItem* grpAssets = new QTreeWidgetItem(m_tree, {QStringLiteral("Assets & Memory Footprint")});
+        QTreeWidgetItem* grpAssets = new QTreeWidgetItem(m_tree, {tr("Assets & Memory Footprint")});
         grpAssets->setExpanded(false);
-        addProperty(grpAssets, QStringLiteral("FPE Profile"), prof->relPath);
+        addProperty(grpAssets, tr("FPE Profile"), prof->relPath);
         if (!prof->modelPath.isEmpty()) {
-            addProperty(grpAssets, QStringLiteral("3D Mesh (.X)"), QString("%1 (%2 KB)")
+            addProperty(grpAssets, tr("3D Mesh (.X)"), QString("%1 (%2 KB)")
                 .arg(prof->modelPath)
                 .arg(prof->meshSizeBytes / 1024.0, 0, 'f', 1));
         }
         if (!prof->texturePath.isEmpty()) {
-            addProperty(grpAssets, QStringLiteral("Diffuse Texture"), QString("%1 [%2x%3] (%4 MB in RAM)")
+            addProperty(grpAssets, tr("Diffuse Texture"), QString("%1 [%2x%3] (%4 MB in RAM)")
                 .arg(prof->texturePath)
                 .arg(prof->texWidth).arg(prof->texHeight)
                 .arg(prof->diffuseSizeBytes / (1024.0 * 1024.0), 0, 'f', 2));
         }
         if (prof->audioSizeBytes > 0) {
-            addProperty(grpAssets, QStringLiteral("Audio Buffers"), QString("%1 KB").arg(prof->audioSizeBytes / 1024.0, 0, 'f', 1));
+            addProperty(grpAssets, tr("Audio Buffers"), QString("%1 KB").arg(prof->audioSizeBytes / 1024.0, 0, 'f', 1));
         }
-        addProperty(grpAssets, QStringLiteral("Est. RAM / Type"), QString("%1 MB").arg(prof->estimatedRAMBytes / (1024.0 * 1024.0), 0, 'f', 2));
+        addProperty(grpAssets, tr("Est. RAM / Type"), QString("%1 MB").arg(prof->estimatedRAMBytes / (1024.0 * 1024.0), 0, 'f', 2));
     }
 
     m_isPopulating = false;

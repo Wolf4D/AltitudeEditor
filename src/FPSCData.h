@@ -6,6 +6,7 @@
 #include <QColor>
 #include <QMap>
 #include <QPixmap>
+#include <QCoreApplication>
 #include <memory>
 #include <cmath>
 
@@ -24,16 +25,16 @@ enum class EntityCategory {
 
 inline QString entityCategoryToString(EntityCategory cat) {
     switch (cat) {
-        case EntityCategory::Character:   return QStringLiteral("Character");
-        case EntityCategory::Weapon:      return QStringLiteral("Weapon");
-        case EntityCategory::Ammo:        return QStringLiteral("Ammo");
-        case EntityCategory::Door:        return QStringLiteral("Door / Obstacle");
-        case EntityCategory::Light:       return QStringLiteral("Light Source");
-        case EntityCategory::Zone:        return QStringLiteral("Trigger / Zone");
-        case EntityCategory::Item:        return QStringLiteral("Item / Pickup");
-        case EntityCategory::Scenery:     return QStringLiteral("Scenery / Prop");
-        case EntityCategory::PlayerStart: return QStringLiteral("Player Start");
-        default:                          return QStringLiteral("Other");
+        case EntityCategory::Character:   return QCoreApplication::translate("EntityCategory", "Character");
+        case EntityCategory::Weapon:      return QCoreApplication::translate("EntityCategory", "Weapon");
+        case EntityCategory::Ammo:        return QCoreApplication::translate("EntityCategory", "Ammo");
+        case EntityCategory::Door:        return QCoreApplication::translate("EntityCategory", "Door / Obstacle");
+        case EntityCategory::Light:       return QCoreApplication::translate("EntityCategory", "Light Source");
+        case EntityCategory::Zone:        return QCoreApplication::translate("EntityCategory", "Trigger / Zone");
+        case EntityCategory::Item:        return QCoreApplication::translate("EntityCategory", "Item / Pickup");
+        case EntityCategory::Scenery:     return QCoreApplication::translate("EntityCategory", "Scenery / Prop");
+        case EntityCategory::PlayerStart: return QCoreApplication::translate("EntityCategory", "Player Start");
+        default:                          return QCoreApplication::translate("EntityCategory", "Other");
     }
 }
 

@@ -3,4 +3,9 @@
         <file>app.png</file>
         <file>app.ico</file>
     </qresource>
+    <qresource prefix="/translations">
+        <file alias="altitude_editor_ru.qm">../translations/altitude_editor_ru.qm</file>
+        <file alias="altitude_editor_en.qm">../translations/altitude_editor_en.qm</file>
+        <file alias="qt_ru.qm">../translations/qt_ru.qm</file>
+    </qresource>
 </RCC>

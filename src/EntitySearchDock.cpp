@@ -24,7 +24,7 @@ private:
 }
 
 EntitySearchDock::EntitySearchDock(QWidget* parent)
-    : QDockWidget(QStringLiteral("Entity Search & Palette"), parent)
+    : QDockWidget(tr("Entity Search & Palette"), parent)
 {
     setObjectName("EntitySearchDock");
     setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
@@ -39,11 +39,11 @@ EntitySearchDock::EntitySearchDock(QWidget* parent)
     searchLayout->setSpacing(4);
 
     m_searchEdit = new QLineEdit(container);
-    m_searchEdit->setPlaceholderText(QStringLiteral("Search entity name or script..."));
+    m_searchEdit->setPlaceholderText(tr("Search entity name or script..."));
     m_searchEdit->setClearButtonEnabled(true);
     searchLayout->addWidget(m_searchEdit, 1);
 
-    m_searchBtn = new QPushButton(QStringLiteral("🔍 Search"), container);
+    m_searchBtn = new QPushButton(tr("🔍 Search"), container);
     m_searchBtn->setCursor(Qt::PointingHandCursor);
     m_searchBtn->setStyleSheet(QStringLiteral("QPushButton { padding: 3px 8px; font-weight: bold; }"));
     searchLayout->addWidget(m_searchBtn);
@@ -51,38 +51,38 @@ EntitySearchDock::EntitySearchDock(QWidget* parent)
 
     // Category filter combo
     m_categoryCombo = new QComboBox(container);
-    m_categoryCombo->addItem(QStringLiteral("All Categories"), -1);
-    m_categoryCombo->addItem(QStringLiteral("Player Start"), static_cast<int>(EntityCategory::PlayerStart));
-    m_categoryCombo->addItem(QStringLiteral("Characters / AI"), static_cast<int>(EntityCategory::Character));
-    m_categoryCombo->addItem(QStringLiteral("Weapons"), static_cast<int>(EntityCategory::Weapon));
-    m_categoryCombo->addItem(QStringLiteral("Ammo"), static_cast<int>(EntityCategory::Ammo));
-    m_categoryCombo->addItem(QStringLiteral("Light Sources"), static_cast<int>(EntityCategory::Light));
-    m_categoryCombo->addItem(QStringLiteral("Trigger Zones"), static_cast<int>(EntityCategory::Zone));
-    m_categoryCombo->addItem(QStringLiteral("Doors & Obstacles"), static_cast<int>(EntityCategory::Door));
-    m_categoryCombo->addItem(QStringLiteral("Items & Pickups"), static_cast<int>(EntityCategory::Item));
-    m_categoryCombo->addItem(QStringLiteral("Scenery & Props"), static_cast<int>(EntityCategory::Scenery));
+    m_categoryCombo->addItem(tr("All Categories"), -1);
+    m_categoryCombo->addItem(tr("Player Start"), static_cast<int>(EntityCategory::PlayerStart));
+    m_categoryCombo->addItem(tr("Characters / AI"), static_cast<int>(EntityCategory::Character));
+    m_categoryCombo->addItem(tr("Weapons"), static_cast<int>(EntityCategory::Weapon));
+    m_categoryCombo->addItem(tr("Ammo"), static_cast<int>(EntityCategory::Ammo));
+    m_categoryCombo->addItem(tr("Light Sources"), static_cast<int>(EntityCategory::Light));
+    m_categoryCombo->addItem(tr("Trigger Zones"), static_cast<int>(EntityCategory::Zone));
+    m_categoryCombo->addItem(tr("Doors & Obstacles"), static_cast<int>(EntityCategory::Door));
+    m_categoryCombo->addItem(tr("Items & Pickups"), static_cast<int>(EntityCategory::Item));
+    m_categoryCombo->addItem(tr("Scenery & Props"), static_cast<int>(EntityCategory::Scenery));
     layout->addWidget(m_categoryCombo);
 
     // Trait / Property Filter combo
     m_traitCombo = new QComboBox(container);
-    m_traitCombo->addItem(QStringLiteral("All Types & Properties"), 0);
-    m_traitCombo->addItem(QStringLiteral("Characters / AI (Enemies & NPCs)"), 1);
-    m_traitCombo->addItem(QStringLiteral("Light Sources (Color/Range)"), 2);
-    m_traitCombo->addItem(QStringLiteral("Trigger Zones (Areas)"), 3);
-    m_traitCombo->addItem(QStringLiteral("Dynamic Physics (ODE)"), 4);
-    m_traitCombo->addItem(QStringLiteral("Static (Pre-baked)"), 5);
-    m_traitCombo->addItem(QStringLiteral("With Custom AI Scripts"), 6);
+    m_traitCombo->addItem(tr("All Types & Properties"), 0);
+    m_traitCombo->addItem(tr("Characters / AI (Enemies & NPCs)"), 1);
+    m_traitCombo->addItem(tr("Light Sources (Color/Range)"), 2);
+    m_traitCombo->addItem(tr("Trigger Zones (Areas)"), 3);
+    m_traitCombo->addItem(tr("Dynamic Physics (ODE)"), 4);
+    m_traitCombo->addItem(tr("Static (Pre-baked)"), 5);
+    m_traitCombo->addItem(tr("With Custom AI Scripts"), 6);
     layout->addWidget(m_traitCombo);
 
     // Current floor toggle
-    m_currentFloorOnlyCheck = new QCheckBox(QStringLiteral("Show current floor only"), container);
+    m_currentFloorOnlyCheck = new QCheckBox(tr("Show current floor only"), container);
     m_currentFloorOnlyCheck->setChecked(false);
     layout->addWidget(m_currentFloorOnlyCheck);
 
     // Entity table
     m_table = new QTableWidget(container);
     m_table->setColumnCount(4);
-    m_table->setHorizontalHeaderLabels({QStringLiteral("Icon"), QStringLiteral("Name"), QStringLiteral("Category"), QStringLiteral("Floor")});
+    m_table->setHorizontalHeaderLabels({tr("Icon"), tr("Name"), tr("Category"), tr("Floor")});
     m_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     m_table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     m_table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
@@ -98,13 +98,13 @@ EntitySearchDock::EntitySearchDock(QWidget* parent)
 
     // Bottom action row: count label and Delete button
     QHBoxLayout* bottomLayout = new QHBoxLayout();
-    m_countLabel = new QLabel(QStringLiteral("0 entities found"), container);
+    m_countLabel = new QLabel(tr("0 entities found"), container);
     m_countLabel->setStyleSheet("color: #888899; font-size: 11px;");
     bottomLayout->addWidget(m_countLabel, 1);
 
-    m_deleteBtn = new QPushButton(QStringLiteral("🗑️ Delete"), container);
+    m_deleteBtn = new QPushButton(tr("🗑️ Delete"), container);
     m_deleteBtn->setEnabled(false);
-    m_deleteBtn->setToolTip(QStringLiteral("Delete the selected entity from map (Del)"));
+    m_deleteBtn->setToolTip(tr("Delete the selected entity from map (Del)"));
     m_deleteBtn->setCursor(Qt::PointingHandCursor);
     m_deleteBtn->setStyleSheet(QStringLiteral(
         "QPushButton { background-color: #382428; color: #ff8899; border: 1px solid #773344; padding: 3px 10px; border-radius: 3px; font-weight: bold; } "
@@ -214,10 +214,10 @@ void EntitySearchDock::showTableContextMenu(const QPoint& pos) {
     int entIdx = idItem->data(Qt::UserRole).toInt();
 
     QMenu menu(this);
-    QAction* actInspect = menu.addAction(QStringLiteral("Inspect Properties"));
-    QAction* actFocus = menu.addAction(QStringLiteral("Focus on Canvas (Double-Click)"));
+    QAction* actInspect = menu.addAction(tr("Inspect Properties"));
+    QAction* actFocus = menu.addAction(tr("Focus on Canvas (Double-Click)"));
     menu.addSeparator();
-    QAction* actDelete = menu.addAction(QStringLiteral("🗑️ Delete Entity (Del)"));
+    QAction* actDelete = menu.addAction(tr("🗑️ Delete Entity (Del)"));
 
     QAction* chosen = menu.exec(m_table->viewport()->mapToGlobal(pos));
     if (chosen == actInspect) {
@@ -240,11 +240,75 @@ bool EntitySearchDock::eventFilter(QObject* watched, QEvent* event) {
     return QDockWidget::eventFilter(watched, event);
 }
 
+void EntitySearchDock::changeEvent(QEvent* event) {
+    if (event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
+    QDockWidget::changeEvent(event);
+}
+
+void EntitySearchDock::retranslateUi() {
+    setWindowTitle(tr("Entity Search & Palette"));
+    if (m_searchEdit) m_searchEdit->setPlaceholderText(tr("Search entity name or script..."));
+    if (m_searchBtn) m_searchBtn->setText(tr("🔍 Search"));
+
+    if (m_categoryCombo) {
+        int curCat = m_categoryCombo->currentData().toInt();
+        m_categoryCombo->blockSignals(true);
+        m_categoryCombo->clear();
+        m_categoryCombo->addItem(tr("All Categories"), -1);
+        m_categoryCombo->addItem(tr("Player Start"), static_cast<int>(EntityCategory::PlayerStart));
+        m_categoryCombo->addItem(tr("Characters / AI"), static_cast<int>(EntityCategory::Character));
+        m_categoryCombo->addItem(tr("Weapons"), static_cast<int>(EntityCategory::Weapon));
+        m_categoryCombo->addItem(tr("Ammo"), static_cast<int>(EntityCategory::Ammo));
+        m_categoryCombo->addItem(tr("Light Sources"), static_cast<int>(EntityCategory::Light));
+        m_categoryCombo->addItem(tr("Trigger Zones"), static_cast<int>(EntityCategory::Zone));
+        m_categoryCombo->addItem(tr("Doors & Obstacles"), static_cast<int>(EntityCategory::Door));
+        m_categoryCombo->addItem(tr("Items & Pickups"), static_cast<int>(EntityCategory::Item));
+        m_categoryCombo->addItem(tr("Scenery & Props"), static_cast<int>(EntityCategory::Scenery));
+        for (int i = 0; i < m_categoryCombo->count(); ++i) {
+            if (m_categoryCombo->itemData(i).toInt() == curCat) {
+                m_categoryCombo->setCurrentIndex(i);
+                break;
+            }
+        }
+        m_categoryCombo->blockSignals(false);
+    }
+
+    if (m_traitCombo) {
+        int curTrait = m_traitCombo->currentIndex();
+        m_traitCombo->blockSignals(true);
+        m_traitCombo->clear();
+        m_traitCombo->addItem(tr("All Types & Properties"), 0);
+        m_traitCombo->addItem(tr("Characters / AI (Enemies & NPCs)"), 1);
+        m_traitCombo->addItem(tr("Light Sources (Color/Range)"), 2);
+        m_traitCombo->addItem(tr("Trigger Zones (Areas)"), 3);
+        m_traitCombo->addItem(tr("Dynamic Physics (ODE)"), 4);
+        m_traitCombo->addItem(tr("Static (Pre-baked)"), 5);
+        m_traitCombo->addItem(tr("With Custom AI Scripts"), 6);
+        m_traitCombo->setCurrentIndex(curTrait >= 0 ? curTrait : 0);
+        m_traitCombo->blockSignals(false);
+    }
+
+    if (m_currentFloorOnlyCheck) m_currentFloorOnlyCheck->setText(tr("Show current floor only"));
+
+    if (m_table) {
+        m_table->setHorizontalHeaderLabels({tr("Icon"), tr("Name"), tr("Category"), tr("Floor")});
+    }
+
+    if (m_deleteBtn) {
+        m_deleteBtn->setText(tr("🗑️ Delete"));
+        m_deleteBtn->setToolTip(tr("Delete the selected entity from map (Del)"));
+    }
+
+    rebuildTable();
+}
+
 void EntitySearchDock::rebuildTable() {
     m_table->setSortingEnabled(false);
     m_table->setRowCount(0);
     if (!m_map) {
-        m_countLabel->setText(QStringLiteral("0 entities found"));
+        m_countLabel->setText(tr("0 entities found"));
         m_deleteBtn->setEnabled(false);
         return;
     }
@@ -342,10 +406,10 @@ void EntitySearchDock::rebuildTable() {
 
         // Column 1: Name
         QTableWidgetItem* nameItem = new QTableWidgetItem(name);
-        nameItem->setToolTip(QString("Instance #%1\nProfile: %2\nScript: %3")
+        nameItem->setToolTip(tr("Instance #%1\nProfile: %2\nScript: %3")
             .arg(i)
-            .arg(ent.profile ? ent.profile->relPath : "N/A")
-            .arg(script.isEmpty() ? "None" : script));
+            .arg(ent.profile ? ent.profile->relPath : tr("N/A"))
+            .arg(script.isEmpty() ? tr("None") : script));
         m_table->setItem(row, 1, nameItem);
 
         // Column 2: Category
@@ -363,7 +427,7 @@ void EntitySearchDock::rebuildTable() {
 
     m_table->setSortingEnabled(true);
 
-    m_countLabel->setText(QString("%1 entities found (out of %2 total)")
+    m_countLabel->setText(tr("%1 entities found (out of %2 total)")
         .arg(matchedCount)
         .arg(m_map->placedEntities.size()));
 }

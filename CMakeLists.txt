@@ -28,6 +28,7 @@ set(SOURCES
     src/UniverseDBUParser.cpp
     src/VisZoneManager.cpp
     src/VisZoneDock.cpp
+    src/LanguageManager.cpp
     src/resources.qrc
 )
 
@@ -52,6 +53,7 @@ set(HEADERS
     src/UniverseDBUParser.h
     src/VisZoneManager.h
     src/VisZoneDock.h
+    src/LanguageManager.h
     src/miniz_deflate.h
 )
 

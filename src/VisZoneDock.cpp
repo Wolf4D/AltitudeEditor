@@ -169,20 +169,20 @@ VisZoneDock::VisZoneDock(QWidget* parent)
     mainLayout->setSpacing(8);
 
     // 1. Zone Selection Group
-    QGroupBox* grpSelection = new QGroupBox(QStringLiteral("Zone Selection"), central);
-    QVBoxLayout* selLayout = new QVBoxLayout(grpSelection);
+    m_grpSelection = new QGroupBox(tr("Zone Selection"), central);
+    QVBoxLayout* selLayout = new QVBoxLayout(m_grpSelection);
     selLayout->setSpacing(6);
 
-    m_chkCurrentFloorOnly = new QCheckBox(QStringLiteral("Filter to Current Floor"), grpSelection);
+    m_chkCurrentFloorOnly = new QCheckBox(tr("Filter to Current Floor"), m_grpSelection);
     m_chkCurrentFloorOnly->setChecked(true);
     selLayout->addWidget(m_chkCurrentFloorOnly);
 
     QHBoxLayout* colorRow = new QHBoxLayout();
     colorRow->setSpacing(6);
-    m_chkColorAll = new QCheckBox(QStringLiteral("🎨 Покрасить все зоны"), grpSelection);
-    m_chkColorAll->setToolTip(QStringLiteral("Отображать цветовую карту всех виз-зон на этаже одновременно (Ctrl+Shift+C)"));
-    m_btnRecolor = new QPushButton(QStringLiteral("🎲 Палитра"), grpSelection);
-    m_btnRecolor->setToolTip(QStringLiteral("Перегенерировать случайную палитру цветов для всех зон"));
+    m_chkColorAll = new QCheckBox(tr("🎨 Color All Zones"), m_grpSelection);
+    m_chkColorAll->setToolTip(tr("Display color map of all vis zones on the current floor simultaneously (Ctrl+Shift+C)"));
+    m_btnRecolor = new QPushButton(tr("🎲 Palette"), m_grpSelection);
+    m_btnRecolor->setToolTip(tr("Regenerate random color palette for all zones"));
     m_btnRecolor->setFixedWidth(90);
     colorRow->addWidget(m_chkColorAll, 1);
     colorRow->addWidget(m_btnRecolor, 0);
@@ -204,76 +204,77 @@ VisZoneDock::VisZoneDock(QWidget* parent)
         }
     });
 
-    m_zoneCombo = new QComboBox(grpSelection);
+    m_zoneCombo = new QComboBox(m_grpSelection);
     selLayout->addWidget(m_zoneCombo);
 
     QHBoxLayout* navLayout = new QHBoxLayout();
-    m_btnPrev = new QPushButton(QStringLiteral("< Prev Zone"), grpSelection);
-    m_btnNext = new QPushButton(QStringLiteral("Next Zone >"), grpSelection);
+    m_btnPrev = new QPushButton(tr("< Prev Zone"), m_grpSelection);
+    m_btnNext = new QPushButton(tr("Next Zone >"), m_grpSelection);
     navLayout->addWidget(m_btnPrev);
     navLayout->addWidget(m_btnNext);
     selLayout->addLayout(navLayout);
 
-    QPushButton* btnReset = new QPushButton(QStringLiteral("Show All Zones (Normal View)"), grpSelection);
-    btnReset->setObjectName("btnResetZones");
-    btnReset->setToolTip(QStringLiteral("Reset map display to show all zones and segments"));
-    selLayout->addWidget(btnReset);
-    connect(btnReset, &QPushButton::clicked, this, &VisZoneDock::resetToNormalView);
+    m_btnReset = new QPushButton(tr("Show All Zones (Normal View)"), m_grpSelection);
+    m_btnReset->setObjectName("btnResetZones");
+    m_btnReset->setToolTip(tr("Reset map display to show all zones and segments"));
+    selLayout->addWidget(m_btnReset);
+    connect(m_btnReset, &QPushButton::clicked, this, &VisZoneDock::resetToNormalView);
 
-    mainLayout->addWidget(grpSelection);
+    mainLayout->addWidget(m_grpSelection);
 
     // 2. Isolation / Culling Controls Group
-    QGroupBox* grpIsolation = new QGroupBox(QStringLiteral("Visibility Culling Mode"), central);
-    QVBoxLayout* isoLayout = new QVBoxLayout(grpIsolation);
+    m_grpIsolation = new QGroupBox(tr("Visibility Culling Mode"), central);
+    QVBoxLayout* isoLayout = new QVBoxLayout(m_grpIsolation);
     isoLayout->setSpacing(6);
 
-    m_chkIsolate = new QCheckBox(QStringLiteral("Isolate Active Zone"), grpIsolation);
+    m_chkIsolate = new QCheckBox(tr("Isolate Active Zone"), m_grpIsolation);
     m_chkIsolate->setChecked(true);
     isoLayout->addWidget(m_chkIsolate);
 
     QHBoxLayout* radioLayout = new QHBoxLayout();
-    m_radioHide = new QRadioButton(QStringLiteral("Hide Outside"), grpIsolation);
+    m_radioHide = new QRadioButton(tr("Hide Outside"), m_grpIsolation);
     m_radioHide->setChecked(true);
-    m_radioDim = new QRadioButton(QStringLiteral("Dim Outside (Ghost)"), grpIsolation);
+    m_radioDim = new QRadioButton(tr("Dim Outside (Ghost)"), m_grpIsolation);
     radioLayout->addWidget(m_radioHide);
     radioLayout->addWidget(m_radioDim);
     isoLayout->addLayout(radioLayout);
 
     QHBoxLayout* dimLayout = new QHBoxLayout();
-    dimLayout->addWidget(new QLabel(QStringLiteral("Dim:"), grpIsolation));
-    m_sliderDim = new QSlider(Qt::Horizontal, grpIsolation);
+    m_lblDim = new QLabel(tr("Dim:"), m_grpIsolation);
+    dimLayout->addWidget(m_lblDim);
+    m_sliderDim = new QSlider(Qt::Horizontal, m_grpIsolation);
     m_sliderDim->setRange(5, 50);
     m_sliderDim->setValue(15);
     m_sliderDim->setEnabled(false);
     dimLayout->addWidget(m_sliderDim);
     isoLayout->addLayout(dimLayout);
 
-    mainLayout->addWidget(grpIsolation);
+    mainLayout->addWidget(m_grpIsolation);
 
     // 3. Active Zone Info
-    QGroupBox* grpDetails = new QGroupBox(QStringLiteral("Active Zone Details"), central);
-    QVBoxLayout* detLayout = new QVBoxLayout(grpDetails);
+    m_grpDetails = new QGroupBox(tr("Active Zone Details"), central);
+    QVBoxLayout* detLayout = new QVBoxLayout(m_grpDetails);
     detLayout->setSpacing(4);
 
-    m_lblStats = new QLabel(QStringLiteral("All zones visible. No single zone isolated."), grpDetails);
+    m_lblStats = new QLabel(tr("All zones visible. No single zone isolated."), m_grpDetails);
     m_lblStats->setWordWrap(true);
     m_lblStats->setStyleSheet(QStringLiteral("background-color: #1a1012; border: 1px solid #4a2026; border-radius: 4px; padding: 6px; color: #ff8a80; font-weight: bold;"));
     detLayout->addWidget(m_lblStats);
 
-    QLabel* lblPortals = new QLabel(QStringLiteral("Connected Portals (double-click to jump):"), grpDetails);
-    lblPortals->setStyleSheet(QStringLiteral("color: #d8a0a6; font-weight: bold; font-size: 11px;"));
-    detLayout->addWidget(lblPortals);
-    m_listPortals = new QListWidget(grpDetails);
+    m_lblPortalsHeader = new QLabel(tr("Connected Portals (double-click to jump):"), m_grpDetails);
+    m_lblPortalsHeader->setStyleSheet(QStringLiteral("color: #d8a0a6; font-weight: bold; font-size: 11px;"));
+    detLayout->addWidget(m_lblPortalsHeader);
+    m_listPortals = new QListWidget(m_grpDetails);
     m_listPortals->setMaximumHeight(90);
     detLayout->addWidget(m_listPortals);
 
-    QLabel* lblEntities = new QLabel(QStringLiteral("Contained Entities (click to inspect):"), grpDetails);
-    lblEntities->setStyleSheet(QStringLiteral("color: #d8a0a6; font-weight: bold; font-size: 11px;"));
-    detLayout->addWidget(lblEntities);
-    m_listEntities = new QListWidget(grpDetails);
+    m_lblEntitiesHeader = new QLabel(tr("Contained Entities (click to inspect):"), m_grpDetails);
+    m_lblEntitiesHeader->setStyleSheet(QStringLiteral("color: #d8a0a6; font-weight: bold; font-size: 11px;"));
+    detLayout->addWidget(m_lblEntitiesHeader);
+    m_listEntities = new QListWidget(m_grpDetails);
     detLayout->addWidget(m_listEntities);
 
-    mainLayout->addWidget(grpDetails, 1);
+    mainLayout->addWidget(m_grpDetails, 1);
 
     setWidget(central);
 
@@ -325,7 +326,7 @@ void VisZoneDock::populateZoneCombo() {
     m_updatingCombo = true;
     m_zoneCombo->clear();
 
-    m_zoneCombo->addItem(QStringLiteral("All Zones (Normal View)"), -1);
+    m_zoneCombo->addItem(tr("All Zones (Normal View)"), -1);
 
     if (!m_mgr) {
         m_updatingCombo = false;
@@ -341,10 +342,10 @@ void VisZoneDock::populateZoneCombo() {
         if (floorOnly && !z.hasFloor(m_currentFloor)) continue;
 
         QString floorStr = (z.minFloor == z.maxFloor)
-                           ? QString("Floor %1").arg(z.floor)
-                           : QString("Floors %1..%2").arg(z.minFloor).arg(z.maxFloor);
+                           ? tr("Floor %1").arg(z.floor)
+                           : tr("Floors %1..%2").arg(z.minFloor).arg(z.maxFloor);
 
-        QString label = QString("Zone %1 (%2: %3 tiles, %4 entities, %5 portals)")
+        QString label = tr("Zone %1 (%2: %3 tiles, %4 entities, %5 portals)")
                         .arg(z.id + 1)
                         .arg(floorStr)
                         .arg(z.tiles.size())
@@ -445,23 +446,23 @@ void VisZoneDock::updateActiveZoneDetails() {
     m_listEntities->clear();
 
     if (!m_mgr || m_activeZoneId < 0) {
-        m_lblStats->setText(QStringLiteral("All zones visible. No single zone isolated."));
+        m_lblStats->setText(tr("All zones visible. No single zone isolated."));
         return;
     }
 
     const VisZone* z = m_mgr->getZone(m_activeZoneId);
     if (!z) {
-        m_lblStats->setText(QStringLiteral("Zone not found."));
+        m_lblStats->setText(tr("Zone not found."));
         return;
     }
 
     QString floorStr = (z->minFloor == z->maxFloor)
-                       ? QString("Floor %1").arg(z->floor)
-                       : QString("Floors %1..%2").arg(z->minFloor).arg(z->maxFloor);
+                       ? tr("Floor %1").arg(z->floor)
+                       : tr("Floors %1..%2").arg(z->minFloor).arg(z->maxFloor);
 
-    m_lblStats->setText(QString("<b>Zone %1</b> on %2<br>"
-                                "Tiles: %3 (%4 m²)<br>"
-                                "Grid Bounds: (%5, %6) to (%7, %8)")
+    m_lblStats->setText(tr("<b>Zone %1</b> on %2<br>"
+                           "Tiles: %3 (%4 m²)<br>"
+                           "Grid Bounds: (%5, %6) to (%7, %8)")
                         .arg(z->id + 1)
                         .arg(floorStr)
                         .arg(z->tiles.size())
@@ -477,7 +478,7 @@ void VisZoneDock::updateActiveZoneDetails() {
         if (!p) continue;
         int otherZone = (p->zoneA == m_activeZoneId) ? p->zoneB : p->zoneA;
         QListWidgetItem* item = new QListWidgetItem(
-            QString("Portal #%1 ? Zone %2 (at tile %3, %4)")
+            tr("Portal #%1 ➔ Zone %2 (at tile %3, %4)")
                 .arg(p->id + 1)
                 .arg(otherZone + 1)
                 .arg(p->tileA.x())
@@ -488,7 +489,7 @@ void VisZoneDock::updateActiveZoneDetails() {
     }
 
     if (z->portalIndices.empty()) {
-        QListWidgetItem* item = new QListWidgetItem(QStringLiteral("(No direct doorway portals)"));
+        QListWidgetItem* item = new QListWidgetItem(tr("(No direct doorway portals)"));
         item->setFlags(Qt::NoItemFlags);
         m_listPortals->addItem(item);
     }
@@ -500,10 +501,10 @@ void VisZoneDock::updateActiveZoneDetails() {
                 const auto& ent = m_map->placedEntities[eIdx];
                 QString name = ent.instanceName;
                 if (name.isEmpty() && ent.profile) name = ent.profile->name;
-                if (name.isEmpty()) name = QString("Entity #%1").arg(eIdx);
+                if (name.isEmpty()) name = tr("Entity #%1").arg(eIdx);
 
                 QListWidgetItem* item = new QListWidgetItem(
-                    QString("%1 [Floor %2 at (%3, %4)]")
+                    tr("%1 [Floor %2 at (%3, %4)]")
                         .arg(name)
                         .arg(ent.floorLayer)
                         .arg(static_cast<int>(ent.x / 100.0f))
@@ -516,7 +517,7 @@ void VisZoneDock::updateActiveZoneDetails() {
     }
 
     if (z->entityIndices.empty()) {
-        QListWidgetItem* item = new QListWidgetItem(QStringLiteral("(No entities inside this zone)"));
+        QListWidgetItem* item = new QListWidgetItem(tr("(No entities inside this zone)"));
         item->setFlags(Qt::NoItemFlags);
         m_listEntities->addItem(item);
     }
@@ -558,6 +559,46 @@ void VisZoneDock::resetToNormalView() {
 void VisZoneDock::closeEvent(QCloseEvent* event) {
     resetToNormalView();
     QDockWidget::closeEvent(event);
+}
+
+void VisZoneDock::changeEvent(QEvent* event) {
+    if (event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
+    QDockWidget::changeEvent(event);
+}
+
+void VisZoneDock::retranslateUi() {
+    setWindowTitle(tr("Visibility Zones & Portals (PVS)"));
+    if (m_grpSelection) m_grpSelection->setTitle(tr("Zone Selection"));
+    if (m_chkCurrentFloorOnly) m_chkCurrentFloorOnly->setText(tr("Filter to Current Floor"));
+    if (m_chkColorAll) {
+        m_chkColorAll->setText(tr("🎨 Color All Zones"));
+        m_chkColorAll->setToolTip(tr("Display color map of all vis zones on the current floor simultaneously (Ctrl+Shift+C)"));
+    }
+    if (m_btnRecolor) {
+        m_btnRecolor->setText(tr("🎲 Palette"));
+        m_btnRecolor->setToolTip(tr("Regenerate random color palette for all zones"));
+    }
+    if (m_btnPrev) m_btnPrev->setText(tr("< Prev Zone"));
+    if (m_btnNext) m_btnNext->setText(tr("Next Zone >"));
+    if (m_btnReset) {
+        m_btnReset->setText(tr("Show All Zones (Normal View)"));
+        m_btnReset->setToolTip(tr("Reset map display to show all zones and segments"));
+    }
+
+    if (m_grpIsolation) m_grpIsolation->setTitle(tr("Visibility Culling Mode"));
+    if (m_chkIsolate) m_chkIsolate->setText(tr("Isolate Active Zone"));
+    if (m_radioHide) m_radioHide->setText(tr("Hide Outside"));
+    if (m_radioDim) m_radioDim->setText(tr("Dim Outside (Ghost)"));
+    if (m_lblDim) m_lblDim->setText(tr("Dim:"));
+
+    if (m_grpDetails) m_grpDetails->setTitle(tr("Active Zone Details"));
+    if (m_lblPortalsHeader) m_lblPortalsHeader->setText(tr("Connected Portals (double-click to jump):"));
+    if (m_lblEntitiesHeader) m_lblEntitiesHeader->setText(tr("Contained Entities (click to inspect):"));
+
+    populateZoneCombo();
+    updateActiveZoneDetails();
 }
 
 void VisZoneDock::setColorAllZones(bool enabled) {

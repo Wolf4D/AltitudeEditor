@@ -2,6 +2,7 @@
 #include "AssetManager.h"
 #include "VisZoneManager.h"
 #include "FPMReader.h"
+#include <QCoreApplication>
 #include <QFile>
 #include <QFileInfo>
 #include <QDateTime>
@@ -17,7 +18,7 @@ PortalLeakAnalyzer::PortalLeakAnalyzer(std::shared_ptr<FPSCMap> map)
 DBUValidationResult PortalLeakAnalyzer::validateCompiledUniverse() const {
     DBUValidationResult res;
     if (!m_map) {
-        res.message = QStringLiteral("Карта не загружена.");
+        res.message = QCoreApplication::translate("PortalLeakAnalyzer", "Map is not loaded.");
         return res;
     }
 
@@ -25,7 +26,7 @@ DBUValidationResult PortalLeakAnalyzer::validateCompiledUniverse() const {
     QFileInfo dbuInfo(dbuPath);
     if (!dbuInfo.exists()) {
         res.fileExists = false;
-        res.message = QStringLiteral("Файл universe.dbu не найден. Запустите Test Game (F9) в FPS Creator.");
+        res.message = QCoreApplication::translate("PortalLeakAnalyzer", "universe.dbu file not found. Run Test Game (F9) in FPS Creator.");
         return res;
     }
     res.fileExists = true;
@@ -69,13 +70,13 @@ DBUValidationResult PortalLeakAnalyzer::validateCompiledUniverse() const {
             res.matchesCurrentMap = match;
             if (match) {
                 if (res.isOutdated) {
-                    res.message = QString("⚠ universe.dbu устарел (карта сохранена: %1, сборка: %2). Нажмите Test Game (F9).")
+                    res.message = QCoreApplication::translate("PortalLeakAnalyzer", "⚠ universe.dbu is outdated (map saved: %1, build: %2). Run Test Game (F9).")
                                   .arg(res.mapTime.toString("HH:mm:ss")).arg(res.dbuTime.toString("HH:mm:ss"));
                 } else {
-                    res.message = QString("✓ universe.dbu актуален (собран %1 для этой карты)").arg(res.dbuTime.toString("HH:mm:ss"));
+                    res.message = QCoreApplication::translate("PortalLeakAnalyzer", "✓ universe.dbu is up to date (built %1 for this map)").arg(res.dbuTime.toString("HH:mm:ss"));
                 }
             } else {
-                res.message = QString("⚠ universe.dbu от ДРУГОЙ карты (собран %1). Для этой карты запустите Test Game (F9) в FPS Creator.")
+                res.message = QCoreApplication::translate("PortalLeakAnalyzer", "⚠ universe.dbu is from ANOTHER map (built %1). Run Test Game (F9) for this map.")
                               .arg(res.dbuTime.toString("HH:mm:ss"));
             }
             return res;
@@ -85,9 +86,9 @@ DBUValidationResult PortalLeakAnalyzer::validateCompiledUniverse() const {
     // Fallback if temp.fpm is absent
     res.matchesCurrentMap = !res.isOutdated;
     if (res.isOutdated) {
-        res.message = QStringLiteral("⚠ universe.dbu устарел. Запустите Test Game (F9) в FPS Creator.");
+        res.message = QCoreApplication::translate("PortalLeakAnalyzer", "⚠ universe.dbu is outdated. Run Test Game (F9) in FPS Creator.");
     } else {
-        res.message = QString("✓ universe.dbu найден (%1)").arg(res.dbuTime.toString("HH:mm:ss"));
+        res.message = QCoreApplication::translate("PortalLeakAnalyzer", "✓ universe.dbu found (%1)").arg(res.dbuTime.toString("HH:mm:ss"));
     }
     return res;
 }

@@ -157,6 +157,17 @@ MainWindow::MainWindow(QWidget* parent)
     m_visZoneDock->setMinimumWidth(330);
     addDockWidget(Qt::RightDockWidgetArea, m_visZoneDock);
 
+    // Status bar setup
+    m_statusMapName = new QLabel(QStringLiteral("No map loaded"), this);
+    m_statusFloor = new QLabel(QStringLiteral("Floor: 0"), this);
+    m_statusCoords = new QLabel(QStringLiteral("Tile: (0, 0)"), this);
+    m_statusMemory = new QLabel(QStringLiteral("RAM: 0 MB"), this);
+
+    statusBar()->addWidget(m_statusMapName, 2);
+    statusBar()->addWidget(m_statusFloor, 1);
+    statusBar()->addWidget(m_statusCoords, 2);
+    statusBar()->addPermanentWidget(m_statusMemory, 1);
+
     createMenusAndToolbars();
 
     // Signal / Slot Wiring
@@ -177,91 +188,78 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_visZoneDock, &VisZoneDock::colorAllZonesToggled, m_canvas, &MapCanvas::setColorAllVisZones);
     connect(m_visZoneDock, &VisZoneDock::entitySelected, this, &MainWindow::onEntitySelected);
     connect(m_canvas, &MapCanvas::visZoneSelected, m_visZoneDock, &VisZoneDock::onExternalZoneSelected);
-
-    // Status bar setup
-    m_statusMapName = new QLabel(QStringLiteral("No map loaded"), this);
-    m_statusFloor = new QLabel(QStringLiteral("Floor: 0"), this);
-    m_statusCoords = new QLabel(QStringLiteral("Tile: (0, 0)"), this);
-    m_statusMemory = new QLabel(QStringLiteral("RAM: 0 MB"), this);
-
-    statusBar()->addWidget(m_statusMapName, 2);
-    statusBar()->addWidget(m_statusFloor, 1);
-    statusBar()->addWidget(m_statusCoords, 2);
-    statusBar()->addPermanentWidget(m_statusMemory, 1);
 }
 
 void MainWindow::createMenusAndToolbars() {
     // -------------------------------------------------------------
     // Menu Bar
     // -------------------------------------------------------------
-    QMenu* fileMenu = menuBar()->addMenu(QStringLiteral("&File"));
-    QAction* actOpen = fileMenu->addAction(QStringLiteral("&Open Map (.FPM)..."), this, &MainWindow::onOpenMap, QKeySequence::Open);
-    m_actSave = fileMenu->addAction(QStringLiteral("&Save Map"), this, &MainWindow::onSaveMap, QKeySequence::Save);
-    m_actSaveAs = fileMenu->addAction(QStringLiteral("Save Map &As..."), this, &MainWindow::onSaveMapAs, QKeySequence::SaveAs);
-    QAction* actReload = fileMenu->addAction(QStringLiteral("&Reload Map"), this, &MainWindow::onReloadMap, QKeySequence::Refresh);
+    m_fileMenu = menuBar()->addMenu(QString());
+    m_actOpen = m_fileMenu->addAction(QString(), this, &MainWindow::onOpenMap, QKeySequence::Open);
+    m_actSave = m_fileMenu->addAction(QString(), this, &MainWindow::onSaveMap, QKeySequence::Save);
+    m_actSaveAs = m_fileMenu->addAction(QString(), this, &MainWindow::onSaveMapAs, QKeySequence::SaveAs);
+    m_actReload = m_fileMenu->addAction(QString(), this, &MainWindow::onReloadMap, QKeySequence::Refresh);
 
-    m_recentMapsMenu = fileMenu->addMenu(QStringLiteral("&Recent Maps"));
+    m_recentMapsMenu = m_fileMenu->addMenu(QString());
     populateRecentMapsMenu();
 
-    fileMenu->addSeparator();
-    fileMenu->addAction(QStringLiteral("&Configure FPS Creator Path..."), this, &MainWindow::onConfigureEnginePath);
-    fileMenu->addSeparator();
-    fileMenu->addAction(QStringLiteral("E&xit"), this, &MainWindow::close, QKeySequence::Quit);
+    m_fileMenu->addSeparator();
+    m_actConfigEngine = m_fileMenu->addAction(QString(), this, &MainWindow::onConfigureEnginePath);
+    m_fileMenu->addSeparator();
+    m_actExit = m_fileMenu->addAction(QString(), this, &MainWindow::close, QKeySequence::Quit);
 
-    QMenu* viewMenu = menuBar()->addMenu(QStringLiteral("&View"));
-    QAction* actZoomIn = viewMenu->addAction(QStringLiteral("Zoom &In"), m_canvas, &MapCanvas::zoomIn, QKeySequence::ZoomIn);
-    QAction* actZoomOut = viewMenu->addAction(QStringLiteral("Zoom &Out"), m_canvas, &MapCanvas::zoomOut, QKeySequence::ZoomOut);
-    QAction* actZoomReset = viewMenu->addAction(QStringLiteral("Reset Zoom (100%)"), m_canvas, &MapCanvas::zoomReset, Qt::Key_0);
-    QAction* actZoomFit = viewMenu->addAction(QStringLiteral("Fit View"), m_canvas, &MapCanvas::zoomFit, Qt::Key_Home);
+    m_viewMenu = menuBar()->addMenu(QString());
+    m_actZoomIn = m_viewMenu->addAction(QString(), m_canvas, &MapCanvas::zoomIn, QKeySequence::ZoomIn);
+    m_actZoomOut = m_viewMenu->addAction(QString(), m_canvas, &MapCanvas::zoomOut, QKeySequence::ZoomOut);
+    m_actZoomReset = m_viewMenu->addAction(QString(), m_canvas, &MapCanvas::zoomReset, Qt::Key_0);
+    m_actZoomFit = m_viewMenu->addAction(QString(), m_canvas, &MapCanvas::zoomFit, Qt::Key_Home);
 
-    viewMenu->addSeparator();
-    m_actWallTex = viewMenu->addAction(QStringLiteral("&Wall Textures"));
+    m_viewMenu->addSeparator();
+    m_actWallTex = m_viewMenu->addAction(QString());
     m_actWallTex->setCheckable(true);
     m_actWallTex->setChecked(true);
     connect(m_actWallTex, &QAction::toggled, m_canvas, &MapCanvas::setShowWallTextures);
 
-    m_actFloorTex = viewMenu->addAction(QStringLiteral("&Floor Textures"));
+    m_actFloorTex = m_viewMenu->addAction(QString());
     m_actFloorTex->setCheckable(true);
     m_actFloorTex->setChecked(true);
     connect(m_actFloorTex, &QAction::toggled, m_canvas, &MapCanvas::setShowFloorTextures);
 
-    m_actGrid = viewMenu->addAction(QStringLiteral("&Grid Lines"));
+    m_actGrid = m_viewMenu->addAction(QString());
     m_actGrid->setCheckable(true);
     m_actGrid->setChecked(true);
     connect(m_actGrid, &QAction::toggled, m_canvas, &MapCanvas::setShowGrid);
 
-    m_actEntities = viewMenu->addAction(QStringLiteral("&Entities"));
+    m_actEntities = m_viewMenu->addAction(QString());
     m_actEntities->setCheckable(true);
     m_actEntities->setChecked(true);
     connect(m_actEntities, &QAction::toggled, m_canvas, &MapCanvas::setShowEntities);
 
-    m_actLights = viewMenu->addAction(QStringLiteral("Light &Halos"));
+    m_actLights = m_viewMenu->addAction(QString());
     m_actLights->setCheckable(true);
     m_actLights->setChecked(true);
     connect(m_actLights, &QAction::toggled, m_canvas, &MapCanvas::setShowLights);
 
-    m_actZones = viewMenu->addAction(QStringLiteral("Trigger &Zones"));
+    m_actZones = m_viewMenu->addAction(QString());
     m_actZones->setCheckable(true);
     m_actZones->setChecked(true);
     connect(m_actZones, &QAction::toggled, m_canvas, &MapCanvas::setShowZones);
 
-    m_actWaypoints = viewMenu->addAction(QStringLiteral("&Waypoints"));
+    m_actWaypoints = m_viewMenu->addAction(QString());
     m_actWaypoints->setCheckable(true);
     m_actWaypoints->setChecked(true);
     connect(m_actWaypoints, &QAction::toggled, m_canvas, &MapCanvas::setShowWaypoints);
 
-    m_actGhostLayer = viewMenu->addAction(QStringLiteral("&Ghost Lower Floor"));
+    m_actGhostLayer = m_viewMenu->addAction(QString());
     m_actGhostLayer->setIcon(makeGhostFloorIcon());
     m_actGhostLayer->setCheckable(true);
     m_actGhostLayer->setChecked(true);
-    m_actGhostLayer->setToolTip(QStringLiteral("Show Ghost Lower Floor (toggle semi-transparent rendering of the floor below)"));
     connect(m_actGhostLayer, &QAction::toggled, m_canvas, &MapCanvas::setShowGhostLayer);
 
-    m_actShowPortals = viewMenu->addAction(QStringLiteral("&Portals"));
+    m_actShowPortals = m_viewMenu->addAction(QString());
     m_actShowPortals->setIcon(makePortalIcon());
     m_actShowPortals->setCheckable(true);
     m_actShowPortals->setChecked(false);
-    m_actShowPortals->setToolTip(QStringLiteral("Toggle Portals & VisZones display"));
     connect(m_actShowPortals, &QAction::toggled, this, [this](bool checked) {
         if (checked && m_canvas) {
             PortalLeakAnalyzer analyzer(m_currentMap);
@@ -271,61 +269,83 @@ void MainWindow::createMenusAndToolbars() {
         m_canvas->setShowPortals(checked);
     });
 
-    viewMenu->addSeparator();
-    viewMenu->addAction(m_searchDock->toggleViewAction());
-    viewMenu->addAction(m_inspectorDock->toggleViewAction());
-    viewMenu->addAction(m_visZoneDock->toggleViewAction());
+    m_viewMenu->addSeparator();
+    m_viewMenu->addAction(m_searchDock->toggleViewAction());
+    m_viewMenu->addAction(m_inspectorDock->toggleViewAction());
+    m_viewMenu->addAction(m_visZoneDock->toggleViewAction());
 
-    QMenu* portalsMenu = menuBar()->addMenu(QStringLiteral("&Portals"));
-    portalsMenu->addAction(QStringLiteral("👁 &Visibility Zones & Portals Panel (PVS)..."), this, [this]() {
+    m_portalsMenu = menuBar()->addMenu(QString());
+    m_actPvsPanel = m_portalsMenu->addAction(QString(), this, [this]() {
         m_visZoneDock->show();
         m_visZoneDock->raise();
         m_visZoneDock->activateWindow();
     }, QKeySequence(Qt::CTRL + Qt::Key_P));
-    portalsMenu->addAction(QStringLiteral("🔄 &Show All Zones (Normal View)"), m_visZoneDock, &VisZoneDock::resetToNormalView, QKeySequence(Qt::Key_Escape));
-    portalsMenu->addSeparator();
+    m_actResetView = m_portalsMenu->addAction(QString(), m_visZoneDock, &VisZoneDock::resetToNormalView, QKeySequence(Qt::Key_Escape));
+    m_portalsMenu->addSeparator();
 
-    m_actColorAllZones = portalsMenu->addAction(makeColorZonesIcon(), QStringLiteral("Color Zones"));
+    m_actColorAllZones = m_portalsMenu->addAction(makeColorZonesIcon(), QString());
     m_actColorAllZones->setCheckable(true);
     m_actColorAllZones->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_C));
-    m_actColorAllZones->setToolTip(QStringLiteral("Color all visibility zones with unique colors overlay (Ctrl+Shift+C)"));
     connect(m_actColorAllZones, &QAction::toggled, m_canvas, &MapCanvas::setColorAllVisZones);
     connect(m_actColorAllZones, &QAction::toggled, m_visZoneDock, &VisZoneDock::setColorAllZones);
     connect(m_visZoneDock, &VisZoneDock::colorAllZonesToggled, m_actColorAllZones, &QAction::setChecked);
-    viewMenu->addAction(m_actColorAllZones);
+    m_viewMenu->addAction(m_actColorAllZones);
 
-    portalsMenu->addSeparator();
-    portalsMenu->addAction(m_actShowPortals);
-    portalsMenu->addAction(QStringLiteral("&Leak Detector..."), this, &MainWindow::onOpenPortalLeakDetector);
+    m_portalsMenu->addSeparator();
+    m_portalsMenu->addAction(m_actShowPortals);
+    m_actLeakDetector = m_portalsMenu->addAction(QString(), this, &MainWindow::onOpenPortalLeakDetector);
 
-    QMenu* toolsMenu = menuBar()->addMenu(QStringLiteral("&Tools"));
-    toolsMenu->addAction(QStringLiteral("&Memory Analyzer..."), this, &MainWindow::onOpenMemoryAnalyzer, QKeySequence(Qt::CTRL + Qt::Key_M));
-    toolsMenu->addAction(QStringLiteral("&Leak Detector..."), this, &MainWindow::onOpenPortalLeakDetector);
-    toolsMenu->addAction(QStringLiteral("&Visibility Zones & Portals Panel (PVS)..."), this, [this]() {
-        m_visZoneDock->show();
-        m_visZoneDock->raise();
-        m_visZoneDock->activateWindow();
+    m_toolsMenu = menuBar()->addMenu(QString());
+    m_actMemoryAnalyzer = m_toolsMenu->addAction(QString(), this, &MainWindow::onOpenMemoryAnalyzer, QKeySequence(Qt::CTRL + Qt::Key_M));
+    m_toolsMenu->addAction(m_actLeakDetector);
+    m_toolsMenu->addAction(m_actPvsPanel);
+
+    // Language Menu
+    m_languageMenu = menuBar()->addMenu(QString());
+    QActionGroup* langGroup = new QActionGroup(this);
+    langGroup->setExclusive(true);
+
+    m_actLangAuto = m_languageMenu->addAction(QString());
+    m_actLangAuto->setCheckable(true);
+    langGroup->addAction(m_actLangAuto);
+
+    m_actLangEn = m_languageMenu->addAction(QStringLiteral("English"));
+    m_actLangEn->setCheckable(true);
+    langGroup->addAction(m_actLangEn);
+
+    m_actLangRu = m_languageMenu->addAction(QStringLiteral("Русский"));
+    m_actLangRu->setCheckable(true);
+    langGroup->addAction(m_actLangRu);
+
+    connect(m_actLangAuto, &QAction::triggered, this, []() {
+        LanguageManager::instance().setLanguage(LanguageManager::Language::Auto);
+    });
+    connect(m_actLangEn, &QAction::triggered, this, []() {
+        LanguageManager::instance().setLanguage(LanguageManager::Language::English);
+    });
+    connect(m_actLangRu, &QAction::triggered, this, []() {
+        LanguageManager::instance().setLanguage(LanguageManager::Language::Russian);
     });
 
-    QMenu* helpMenu = menuBar()->addMenu(QStringLiteral("&Help"));
-    helpMenu->addAction(QString("&About %1...").arg(VersionInfo::AppName), this, [this]() {
-        QMessageBox::about(this, QString("About %1").arg(VersionInfo::shortTitle()),
-            QStringLiteral("<h3>%1 v%2 - %3</h3>"
-                           "<p style='font-size: 13px;'>"
-                           "<b>Version:</b> %2<br>"
-                           "<b>Developer:</b> %4<br>"
-                           "<b>Studio:</b> %5</p>"
-                           "<hr>"
-                           "<p>A professional tool for editing, visualizing, and analyzing <b>FPS Creator</b> maps (.FPM).</p>"
-                           "<ul>"
-                           "<li><b>Doom-Style Segment Wall & Floor Rendering:</b> Visualizes segment walls, custom floors, ceilings, and gantry walkways.</li>"
-                           "<li><b>Multi-Overlay Engine Architecture:</b> Accurate overlay placement for doorways, CSG punch-outs, and corridors.</li>"
-                           "<li><b>Floor-by-Floor Navigation:</b> Full layer switching (0..20) via toolbar, shortcuts (PageUp/PageDown), and mouse wheel.</li>"
-                           "<li><b>Entity Browser & Inspector:</b> Inspect, filter, search, and edit placed map entities.</li>"
-                           "<li><b>PVS Visibility Zones & Portals:</b> Complete room topology, portal leak detection, and culling visualization.</li>"
-                           "<li><b>Memory Footprint Analyzer:</b> Measures memory weight in MB for 3D meshes, textures, and audio buffers with 32-bit limit warnings.</li>"
-                           "</ul>"
-                           "<p>Built with <b>Qt 5.15.2 (MinGW 32-bit)</b>.</p>")
+    m_helpMenu = menuBar()->addMenu(QString());
+    m_actAbout = m_helpMenu->addAction(QString(), this, [this]() {
+        QMessageBox::about(this, tr("About %1").arg(VersionInfo::shortTitle()),
+            tr("<h3>%1 v%2 - %3</h3>"
+               "<p style='font-size: 13px;'>"
+               "<b>Version:</b> %2<br>"
+               "<b>Developer:</b> %4<br>"
+               "<b>Studio:</b> %5</p>"
+               "<hr>"
+               "<p>A professional tool for editing, visualizing, and analyzing <b>FPS Creator</b> maps (.FPM).</p>"
+               "<ul>"
+               "<li><b>Doom-Style Segment Wall & Floor Rendering:</b> Visualizes segment walls, custom floors, ceilings, and gantry walkways.</li>"
+               "<li><b>Multi-Overlay Engine Architecture:</b> Accurate overlay placement for doorways, CSG punch-outs, and corridors.</li>"
+               "<li><b>Floor-by-Floor Navigation:</b> Full layer switching (0..20) via toolbar, shortcuts (PageUp/PageDown), and mouse wheel.</li>"
+               "<li><b>Entity Browser & Inspector:</b> Inspect, filter, search, and edit placed map entities.</li>"
+               "<li><b>PVS Visibility Zones & Portals:</b> Complete room topology, portal leak detection, and culling visualization.</li>"
+               "<li><b>Memory Footprint Analyzer:</b> Measures memory weight in MB for 3D meshes, textures, and audio buffers with 32-bit limit warnings.</li>"
+               "</ul>"
+               "<p>Built with <b>Qt 5.15.2 (MinGW 32-bit)</b>.</p>")
             .arg(VersionInfo::AppName)
             .arg(VersionInfo::Version)
             .arg(VersionInfo::AppSubtitle)
@@ -341,13 +361,12 @@ void MainWindow::createMenusAndToolbars() {
     mainBar->setMovable(false);
     mainBar->setIconSize(QSize(18, 18));
 
-    mainBar->addAction(actReload);
+    mainBar->addAction(m_actReload);
     mainBar->addSeparator();
 
     // Floor Navigation Controls
     m_actFloorDown = mainBar->addAction(QStringLiteral("▼"), m_canvas, &MapCanvas::floorDown);
     m_actFloorDown->setShortcuts({QKeySequence(Qt::Key_PageDown), QKeySequence(Qt::Key_Minus), QKeySequence(Qt::Key_Underscore)});
-    m_actFloorDown->setToolTip(QStringLiteral("Go one floor down (PageDown / -)"));
 
     m_floorCombo = new QComboBox(this);
     m_floorCombo->setMinimumWidth(230);
@@ -357,7 +376,6 @@ void MainWindow::createMenusAndToolbars() {
 
     m_actFloorUp = mainBar->addAction(QStringLiteral("▲"), m_canvas, &MapCanvas::floorUp);
     m_actFloorUp->setShortcuts({QKeySequence(Qt::Key_PageUp), QKeySequence(Qt::Key_Plus), QKeySequence(Qt::Key_Equal)});
-    m_actFloorUp->setToolTip(QStringLiteral("Go one floor up (PageUp / +)"));
     mainBar->addSeparator();
 
     // View Toggles (Grouped together)
@@ -380,19 +398,17 @@ void MainWindow::createMenusAndToolbars() {
     mainBar->addSeparator();
 
     // Fit in View
-    mainBar->addAction(actZoomFit);
+    mainBar->addAction(m_actZoomFit);
     mainBar->addSeparator();
 
     // Analysis Tools
-    QAction* actLaunchMem = mainBar->addAction(makeMemoryIcon(), QStringLiteral("Memory"), this, &MainWindow::onOpenMemoryAnalyzer);
-    actLaunchMem->setToolTip(QStringLiteral("Measure level RAM weight in Megabytes and inspect memory budget"));
-    QToolButton* btnMem = qobject_cast<QToolButton*>(mainBar->widgetForAction(actLaunchMem));
+    m_actLaunchMem = mainBar->addAction(makeMemoryIcon(), QString(), this, &MainWindow::onOpenMemoryAnalyzer);
+    QToolButton* btnMem = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actLaunchMem));
     if (btnMem) {
         btnMem->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     }
 
-    QAction* actLaunchLeaks = mainBar->addAction(QStringLiteral("🔍 Leak Detector"), this, &MainWindow::onOpenPortalLeakDetector);
-    actLaunchLeaks->setToolTip(QStringLiteral("Scan compiled universe.dbu and map geometry for occlusion leaks"));
+    m_actLaunchLeaks = mainBar->addAction(QString(), this, &MainWindow::onOpenPortalLeakDetector);
 
     // Expanding spacer to push VisZones button to the far right
     QWidget* rightSpacer = new QWidget(this);
@@ -400,17 +416,112 @@ void MainWindow::createMenusAndToolbars() {
     mainBar->addWidget(rightSpacer);
 
     // Visibility Zones Toggle Button (Pinned to the right, directly above the right dock!)
-    QAction* actToggleVisZone = mainBar->addAction(QStringLiteral("👁 VisZones"), this, [this]() {});
-    actToggleVisZone->setCheckable(true);
-    actToggleVisZone->setChecked(true);
-    actToggleVisZone->setToolTip(QStringLiteral("Toggle Visibility Zones & Portals (PVS) right dock panel"));
-    connect(actToggleVisZone, &QAction::toggled, this, [this](bool checked) {
+    m_actToggleVisZone = mainBar->addAction(QString(), this, [this]() {});
+    m_actToggleVisZone->setCheckable(true);
+    m_actToggleVisZone->setChecked(true);
+    connect(m_actToggleVisZone, &QAction::toggled, this, [this](bool checked) {
         m_visZoneDock->setVisible(checked);
         if (checked) {
             m_visZoneDock->raise();
         }
     });
-    connect(m_visZoneDock, &QDockWidget::visibilityChanged, actToggleVisZone, &QAction::setChecked);
+    connect(m_visZoneDock, &QDockWidget::visibilityChanged, m_actToggleVisZone, &QAction::setChecked);
+
+    retranslateUi();
+}
+
+void MainWindow::changeEvent(QEvent* event) {
+    if (event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
+    QMainWindow::changeEvent(event);
+}
+
+void MainWindow::retranslateUi() {
+    // Menus
+    if (m_fileMenu) m_fileMenu->setTitle(tr("&File"));
+    if (m_viewMenu) m_viewMenu->setTitle(tr("&View"));
+    if (m_portalsMenu) m_portalsMenu->setTitle(tr("&Portals"));
+    if (m_toolsMenu) m_toolsMenu->setTitle(tr("&Tools"));
+    if (m_languageMenu) m_languageMenu->setTitle(tr("&Language"));
+    if (m_helpMenu) m_helpMenu->setTitle(tr("&Help"));
+    if (m_recentMapsMenu) m_recentMapsMenu->setTitle(tr("&Recent Maps"));
+
+    // File Actions
+    if (m_actOpen) m_actOpen->setText(tr("&Open Map (.FPM)..."));
+    if (m_actSave) m_actSave->setText(tr("&Save Map"));
+    if (m_actSaveAs) m_actSaveAs->setText(tr("Save Map &As..."));
+    if (m_actReload) m_actReload->setText(tr("&Reload Map"));
+    if (m_actConfigEngine) m_actConfigEngine->setText(tr("&Configure FPS Creator Path..."));
+    if (m_actExit) m_actExit->setText(tr("E&xit"));
+
+    // View Actions
+    if (m_actZoomIn) m_actZoomIn->setText(tr("Zoom &In"));
+    if (m_actZoomOut) m_actZoomOut->setText(tr("Zoom &Out"));
+    if (m_actZoomReset) m_actZoomReset->setText(tr("Reset Zoom (100%)"));
+    if (m_actZoomFit) {
+        m_actZoomFit->setText(tr("Fit View"));
+        m_actZoomFit->setToolTip(tr("Fit whole map in view (Home)"));
+    }
+    if (m_actWallTex) m_actWallTex->setText(tr("&Wall Textures"));
+    if (m_actFloorTex) m_actFloorTex->setText(tr("&Floor Textures"));
+    if (m_actGrid) m_actGrid->setText(tr("&Grid Lines"));
+    if (m_actEntities) m_actEntities->setText(tr("&Entities"));
+    if (m_actLights) m_actLights->setText(tr("Light &Halos"));
+    if (m_actZones) m_actZones->setText(tr("Trigger &Zones"));
+    if (m_actWaypoints) m_actWaypoints->setText(tr("&Waypoints"));
+    if (m_actGhostLayer) {
+        m_actGhostLayer->setText(tr("&Ghost Lower Floor"));
+        m_actGhostLayer->setToolTip(tr("Show Ghost Lower Floor (toggle semi-transparent rendering of the floor below)"));
+    }
+    if (m_actShowPortals) {
+        m_actShowPortals->setText(tr("&Portals"));
+        m_actShowPortals->setToolTip(tr("Toggle Portals & VisZones display"));
+    }
+    if (m_actColorAllZones) {
+        m_actColorAllZones->setText(tr("Vis Zones"));
+        m_actColorAllZones->setToolTip(tr("Color all visibility zones with unique colors overlay (Ctrl+Shift+C)"));
+    }
+
+    // Portals & Tools Actions
+    if (m_actPvsPanel) m_actPvsPanel->setText(tr("👁 &Visibility Zones & Portals Panel (PVS)..."));
+    if (m_actResetView) m_actResetView->setText(tr("🔄 &Show All Zones (Normal View)"));
+    if (m_actLeakDetector) m_actLeakDetector->setText(tr("&Leak Detector..."));
+    if (m_actMemoryAnalyzer) m_actMemoryAnalyzer->setText(tr("&Memory Analyzer..."));
+    if (m_actAbout) m_actAbout->setText(tr("&About %1...").arg(VersionInfo::AppName));
+
+    // Toolbar Buttons
+    if (m_actFloorDown) m_actFloorDown->setToolTip(tr("Go one floor down (PageDown / -)"));
+    if (m_actFloorUp) m_actFloorUp->setToolTip(tr("Go one floor up (PageUp / +)"));
+    if (m_actLaunchMem) {
+        m_actLaunchMem->setText(tr("Memory"));
+        m_actLaunchMem->setToolTip(tr("Measure level RAM weight in Megabytes and inspect memory budget (Ctrl+M)"));
+    }
+    if (m_actLaunchLeaks) {
+        m_actLaunchLeaks->setText(tr("🔍 Leak Detector"));
+        m_actLaunchLeaks->setToolTip(tr("Scan compiled universe.dbu and map geometry for occlusion leaks"));
+    }
+    if (m_actToggleVisZone) {
+        m_actToggleVisZone->setText(tr("👁 VisZones"));
+        m_actToggleVisZone->setToolTip(tr("Toggle Visibility Zones & Portals (PVS) right dock panel"));
+    }
+
+    // Language action checks
+    if (m_actLangAuto) m_actLangAuto->setText(tr("System Default"));
+
+    auto curLang = LanguageManager::instance().currentLanguage();
+    if (m_actLangAuto) m_actLangAuto->setChecked(curLang == LanguageManager::Language::Auto);
+    if (m_actLangEn) m_actLangEn->setChecked(curLang == LanguageManager::Language::English);
+    if (m_actLangRu) m_actLangRu->setChecked(curLang == LanguageManager::Language::Russian);
+
+    // Dock titles
+    if (m_searchDock) m_searchDock->setWindowTitle(tr("Entity Search & Palette"));
+    if (m_inspectorDock) m_inspectorDock->setWindowTitle(tr("Entity Properties Inspector"));
+    if (m_visZoneDock) m_visZoneDock->setWindowTitle(tr("Visibility Zones & Portals (PVS)"));
+
+    updateWindowTitle();
+    updateFloorControls();
+    updateStatusBar();
 }
 
 void MainWindow::updateWindowTitle() {
@@ -428,8 +539,8 @@ bool MainWindow::maybeSave() {
 
     auto res = QMessageBox::question(
         this,
-        QStringLiteral("Unsaved Changes"),
-        QString("The map '%1' has unsaved modifications.\nDo you want to save your changes?")
+        tr("Unsaved Changes"),
+        tr("The map '%1' has unsaved modifications.\nDo you want to save your changes?")
             .arg(QFileInfo(m_currentMap->filePath).fileName()),
         QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel
     );
@@ -469,9 +580,9 @@ void MainWindow::onSaveMap() {
     bool ok = FPMWriter::saveMap(m_currentMap, m_currentMap->filePath, m_currentMap->password);
     if (ok) {
         updateWindowTitle();
-        statusBar()->showMessage(QString("Saved %1").arg(m_currentMap->filePath), 4000);
+        statusBar()->showMessage(tr("Saved %1").arg(m_currentMap->filePath), 4000);
     } else {
-        QMessageBox::critical(this, QStringLiteral("Save Error"), QString("Failed to save map to:\n%1").arg(m_currentMap->filePath));
+        QMessageBox::critical(this, tr("Save Error"), tr("Failed to save map to:\n%1").arg(m_currentMap->filePath));
     }
 }
 
@@ -483,18 +594,18 @@ void MainWindow::onSaveMapAs() {
     }
     QString savePath = QFileDialog::getSaveFileName(
         this,
-        QStringLiteral("Save FPS Creator Map As"),
+        tr("Save FPS Creator Map As"),
         curPath,
-        QStringLiteral("FPS Creator Project Map (*.fpm);;All Files (*.*)")
+        tr("FPS Creator Project Map (*.fpm);;All Files (*.*)")
     );
     if (savePath.isEmpty()) return;
 
     bool ok = FPMWriter::saveMap(m_currentMap, savePath, m_currentMap->password);
     if (ok) {
         updateWindowTitle();
-        statusBar()->showMessage(QString("Saved as %1").arg(savePath), 4000);
+        statusBar()->showMessage(tr("Saved as %1").arg(savePath), 4000);
     } else {
-        QMessageBox::critical(this, QStringLiteral("Save Error"), QString("Failed to save map to:\n%1").arg(savePath));
+        QMessageBox::critical(this, tr("Save Error"), tr("Failed to save map to:\n%1").arg(savePath));
     }
 }
 
@@ -514,7 +625,7 @@ void MainWindow::deleteEntity(int index) {
     QString entName = m_currentMap->placedEntities[index].instanceName;
     if (entName.isEmpty() && m_currentMap->placedEntities[index].profile)
         entName = m_currentMap->placedEntities[index].profile->name;
-    if (entName.isEmpty()) entName = QString("Entity #%1").arg(index);
+    if (entName.isEmpty()) entName = tr("Entity #%1").arg(index);
 
     m_currentMap->placedEntities.erase(m_currentMap->placedEntities.begin() + index);
     m_currentMap->isModified = true;
@@ -529,7 +640,7 @@ void MainWindow::deleteEntity(int index) {
     updateStatusBar();
     updateWindowTitle();
 
-    statusBar()->showMessage(QString("Deleted %1").arg(entName), 4000);
+    m_statusCoords->setText(tr("Deleted %1").arg(entName));
 }
 
 void MainWindow::populateRecentMapsMenu() {
@@ -547,7 +658,7 @@ void MainWindow::populateRecentMapsMenu() {
     settings.setValue(QStringLiteral("recentMaps"), valid);
 
     if (valid.isEmpty()) {
-        QAction* emptyAct = m_recentMapsMenu->addAction(QStringLiteral("No Recent Maps"));
+        QAction* emptyAct = m_recentMapsMenu->addAction(tr("No Recent Maps"));
         emptyAct->setEnabled(false);
         return;
     }
@@ -566,7 +677,7 @@ void MainWindow::populateRecentMapsMenu() {
     }
 
     m_recentMapsMenu->addSeparator();
-    m_recentMapsMenu->addAction(QStringLiteral("Clear Recent Maps"), this, [this]() {
+    m_recentMapsMenu->addAction(tr("Clear Recent Maps"), this, [this]() {
         QSettings settings(QStringLiteral("TGC"), QStringLiteral("FPSCMapViewer"));
         settings.remove(QStringLiteral("recentMaps"));
         populateRecentMapsMenu();
@@ -578,7 +689,7 @@ void MainWindow::loadMapFile(const QString& filePath) {
     timer.start();
 
     QProgressDialog progress(
-        QString("Loading %1...").arg(QFileInfo(filePath).fileName()),
+        tr("Loading %1...").arg(QFileInfo(filePath).fileName()),
         QString(), 0, 100, this
     );
     progress.setWindowModality(Qt::WindowModal);
@@ -602,25 +713,25 @@ void MainWindow::loadMapFile(const QString& filePath) {
     auto map = FPMReader::loadMap(filePath, "mypassword", progressCb);
     if (!map) {
         progress.close();
-        QMessageBox::critical(this, QStringLiteral("Error"), QString("Failed to load FPM map file:\n%1").arg(filePath));
+        QMessageBox::critical(this, tr("Error"), tr("Failed to load FPM map file:\n%1").arg(filePath));
         return;
     }
 
     m_currentMap = map;
 
     progress.setValue(55);
-    progress.setLabelText(QStringLiteral("Analyzing map memory footprint..."));
+    progress.setLabelText(tr("Analyzing map memory footprint..."));
     QCoreApplication::processEvents();
     m_cachedMemoryReport = MemoryAnalyzer::analyze(m_currentMap);
     m_memoryReportValid = true;
 
     progress.setValue(70);
-    progress.setLabelText(QStringLiteral("Building visibility zones & portals..."));
+    progress.setLabelText(tr("Building visibility zones & portals..."));
     QCoreApplication::processEvents();
     m_canvas->setMap(m_currentMap);
 
     progress.setValue(85);
-    progress.setLabelText(QStringLiteral("Populating entity list..."));
+    progress.setLabelText(tr("Populating entity list..."));
     QCoreApplication::processEvents();
     m_searchDock->setCurrentFloor(m_canvas->currentFloor());
     m_searchDock->setMap(m_currentMap);
@@ -638,7 +749,7 @@ void MainWindow::loadMapFile(const QString& filePath) {
     }
 
     progress.setValue(95);
-    progress.setLabelText(QStringLiteral("Rendering map canvas..."));
+    progress.setLabelText(tr("Rendering map canvas..."));
     QCoreApplication::processEvents();
     m_canvas->repaint();
 
@@ -659,11 +770,11 @@ void MainWindow::loadMapFile(const QString& filePath) {
     updateWindowTitle();
     updateFloorControls();
     updateStatusBar();
-    statusBar()->showMessage(QString("Loaded \"%1\" (%2 entities, %3 segments) in %4 ms")
+    m_statusMapName->setText(tr("Loaded \"%1\" (%2 entities, %3 segments) in %4 ms")
         .arg(map->mapName)
         .arg(map->placedEntities.size())
         .arg(map->segmentsBank.size())
-        .arg(timer.elapsed()), 6000);
+        .arg(timer.elapsed()));
 }
 
 void MainWindow::onOpenRecentMap(const QString& filePath) {
@@ -675,7 +786,7 @@ void MainWindow::onOpenRecentMap(const QString& filePath) {
 void MainWindow::onOpenMap() {
     if (!maybeSave()) return;
     QString startDir = AssetManager::instance().engineRoot() + "/Files/mapbank";
-    QString file = QFileDialog::getOpenFileName(this, QStringLiteral("Open FPS Creator Map"), startDir, QStringLiteral("FPS Creator Project Map (*.fpm);;All Files (*.*)"));
+    QString file = QFileDialog::getOpenFileName(this, tr("Open FPS Creator Map"), startDir, tr("FPS Creator Project Map (*.fpm);;All Files (*.*)"));
     if (!file.isEmpty()) {
         loadMapFile(file);
     }
@@ -690,7 +801,7 @@ void MainWindow::onReloadMap() {
 
 void MainWindow::onConfigureEnginePath() {
     QString current = AssetManager::instance().engineRoot();
-    QString chosen = QFileDialog::getExistingDirectory(this, QStringLiteral("Select FPS Creator Installation Directory"), current);
+    QString chosen = QFileDialog::getExistingDirectory(this, tr("Select FPS Creator Installation Directory"), current);
     if (!chosen.isEmpty()) {
         AssetManager::instance().setEngineRoot(chosen);
         populateRecentMapsMenu();
@@ -702,7 +813,7 @@ void MainWindow::onConfigureEnginePath() {
 
 void MainWindow::onOpenMemoryAnalyzer() {
     if (!m_currentMap) {
-        QMessageBox::information(this, QStringLiteral("No Map Loaded"), QStringLiteral("Please open an FPS Creator map (.FPM) first."));
+        QMessageBox::information(this, tr("No Map Loaded"), tr("Please open an FPS Creator map (.FPM) first."));
         return;
     }
 
@@ -719,6 +830,7 @@ void MainWindow::onOpenMemoryAnalyzer() {
 }
 
 void MainWindow::updateFloorControls() {
+    if (!m_floorCombo) return;
     if (!m_currentMap) return;
 
     m_isUpdatingFloorUI = true;
@@ -747,9 +859,9 @@ void MainWindow::updateFloorControls() {
     }
 
     for (int l = 0; l <= layerMax; ++l) {
-        QString label = QString("Floor %1 (Y: %2..%3)").arg(l).arg(l * 100).arg((l + 1) * 100);
+        QString label = tr("Floor %1 (Y: %2..%3)").arg(l).arg(l * 100).arg((l + 1) * 100);
         if (entCounts[l] > 0 || segCounts[l] > 0) {
-            label += QString(" — %1 ents, %2 segs").arg(entCounts[l]).arg(segCounts[l]);
+            label += tr(" — %1 ents, %2 segs").arg(entCounts[l]).arg(segCounts[l]);
         }
         m_floorCombo->addItem(label, l);
     }
@@ -814,35 +926,37 @@ void MainWindow::onZoomChanged(float) {
 }
 
 void MainWindow::updateStatusBar() {
+    if (!m_statusMapName || !m_statusFloor || !m_statusMemory) return;
+
     if (!m_currentMap) {
-        m_statusMapName->setText(QStringLiteral("No map loaded"));
-        m_statusFloor->setText(QStringLiteral("Floor: 0"));
-        m_statusMemory->setText(QStringLiteral("RAM: 0 MB"));
+        m_statusMapName->setText(tr("No map loaded"));
+        m_statusFloor->setText(tr("Floor: 0"));
+        m_statusMemory->setText(tr("RAM: 0 MB"));
         return;
     }
 
-    m_statusMapName->setText(QString("Map: %1 (%2 entities, %3 segments)")
+    m_statusMapName->setText(tr("Map: %1 (%2 entities, %3 segments)")
         .arg(m_currentMap->mapName)
         .arg(m_currentMap->placedEntities.size())
         .arg(m_currentMap->segmentsBank.size()));
 
-    m_statusFloor->setText(QString("Floor: %1 / %2 (Height: %3 units)")
+    m_statusFloor->setText(tr("Floor: %1 / %2 (Height: %3 units)")
         .arg(m_canvas->currentFloor())
         .arg(m_currentMap->header.layerMax)
         .arg(m_canvas->currentFloor() * 100));
 
     if (m_memoryReportValid) {
-        m_statusMemory->setText(QString("Level RAM: %1 MB (%2%)")
+        m_statusMemory->setText(tr("Level RAM: %1 MB (%2%)")
             .arg(m_cachedMemoryReport.totalEstimatedRamBytes / (1024.0 * 1024.0), 0, 'f', 1)
             .arg(m_cachedMemoryReport.engineLimitPercent, 0, 'f', 1));
     } else {
-        m_statusMemory->setText(QStringLiteral("Level RAM: --"));
+        m_statusMemory->setText(tr("Level RAM: --"));
     }
 }
 
 void MainWindow::onOpenPortalLeakDetector() {
     if (!m_currentMap) {
-        QMessageBox::warning(this, "Error", "Please open a map first.");
+        QMessageBox::warning(this, tr("Error"), tr("Please open a map first."));
         return;
     }
     if (!m_portalLeakDialog) {

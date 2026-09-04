@@ -16,8 +16,8 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, QWidget
     : QDialog(parent)
     , m_map(map)
 {
-    QString mapName = m_map ? m_map->mapName : QStringLiteral("No Map");
-    setWindowTitle(QString("%1 Memory Footprint Analyzer — %2").arg(VersionInfo::shortTitle(), mapName));
+    QString mapName = m_map ? m_map->mapName : tr("No Map");
+    setWindowTitle(tr("%1 Memory Footprint Analyzer — %2").arg(VersionInfo::shortTitle(), mapName));
     resize(1060, 720);
     setMinimumSize(850, 520);
 
@@ -31,37 +31,38 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, QWidget
     QHBoxLayout* cardsLayout = new QHBoxLayout();
     cardsLayout->setSpacing(8);
 
-    cardsLayout->addWidget(createCard(QStringLiteral("TOTAL LEVEL RAM"), m_cardTotalVal, "#3498db"));
-    cardsLayout->addWidget(createCard(QStringLiteral("SEGMENTS (ROOMS)"), m_cardSegVal, "#e67e22"));
-    cardsLayout->addWidget(createCard(QStringLiteral("ENTITIES (PROPS)"), m_cardEntVal, "#9b59b6"));
-    cardsLayout->addWidget(createCard(QStringLiteral("UNIVERSE & LIGHTMAPS"), m_cardUniVal, "#1abc9c"));
-    cardsLayout->addWidget(createCard(QStringLiteral("ENGINE & D3D BASE"), m_cardEngineVal, "#f1c40f"));
+    cardsLayout->addWidget(createCard(tr("TOTAL LEVEL RAM"), m_cardTotalVal, m_cardTotalTitle, "#3498db"));
+    cardsLayout->addWidget(createCard(tr("SEGMENTS (ROOMS)"), m_cardSegVal, m_cardSegTitle, "#e67e22"));
+    cardsLayout->addWidget(createCard(tr("ENTITIES (PROPS)"), m_cardEntVal, m_cardEntTitle, "#9b59b6"));
+    cardsLayout->addWidget(createCard(tr("UNIVERSE & LIGHTMAPS"), m_cardUniVal, m_cardUniTitle, "#1abc9c"));
+    cardsLayout->addWidget(createCard(tr("ENGINE & D3D BASE"), m_cardEngineVal, m_cardEngineTitle, "#f1c40f"));
     mainLayout->addLayout(cardsLayout);
 
     // 2. Engine Memory Limit Progress Bar
-    QGroupBox* gaugeGroup = new QGroupBox(QStringLiteral("DirectX 9 / 32-bit Process Memory Budget (Limit: ~1850 MB)"), this);
-    QVBoxLayout* gaugeLayout = new QVBoxLayout(gaugeGroup);
+    m_gaugeGroup = new QGroupBox(tr("DirectX 9 / 32-bit Process Memory Budget (Limit: ~1850 MB)"), this);
+    QVBoxLayout* gaugeLayout = new QVBoxLayout(m_gaugeGroup);
     gaugeLayout->setContentsMargins(10, 8, 10, 8);
     gaugeLayout->setSpacing(4);
 
-    m_limitLabel = new QLabel(gaugeGroup);
+    m_limitLabel = new QLabel(m_gaugeGroup);
     m_limitLabel->setStyleSheet("font-weight: bold; font-size: 12px;");
     gaugeLayout->addWidget(m_limitLabel);
 
-    m_limitProgress = new QProgressBar(gaugeGroup);
+    m_limitProgress = new QProgressBar(m_gaugeGroup);
     m_limitProgress->setRange(0, 1850);
     m_limitProgress->setTextVisible(true);
     m_limitProgress->setFixedHeight(22);
     gaugeLayout->addWidget(m_limitProgress);
 
-    mainLayout->addWidget(gaugeGroup);
+    mainLayout->addWidget(m_gaugeGroup);
 
     // 3. Search & Filter
     QHBoxLayout* searchLayout = new QHBoxLayout();
     m_searchEdit = new QLineEdit(this);
-    m_searchEdit->setPlaceholderText(QStringLiteral("Filter table by name, category, or texture path..."));
+    m_searchEdit->setPlaceholderText(tr("Filter table by name, category, or texture path..."));
     m_searchEdit->setClearButtonEnabled(true);
-    searchLayout->addWidget(new QLabel(QStringLiteral("Search:"), this));
+    m_searchLabel = new QLabel(tr("Search:"), this);
+    searchLayout->addWidget(m_searchLabel);
     searchLayout->addWidget(m_searchEdit, 1);
     mainLayout->addLayout(searchLayout);
 
@@ -72,16 +73,16 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, QWidget
     m_entityTable = new QTableWidget(this);
     m_entityTable->setColumnCount(10);
     m_entityTable->setHorizontalHeaderLabels({
-        QStringLiteral("Icon"),
-        QStringLiteral("Entity Profile"),
-        QStringLiteral("Category"),
-        QStringLiteral("Placed"),
-        QStringLiteral("Model (.X)"),
-        QStringLiteral("Texture RAM"),
-        QStringLiteral("Audio"),
-        QStringLiteral("RAM / Inst"),
-        QStringLiteral("Total RAM"),
-        QStringLiteral("Alerts / Advice")
+        tr("Icon"),
+        tr("Entity Profile"),
+        tr("Category"),
+        tr("Placed"),
+        tr("Model (.X)"),
+        tr("Texture RAM"),
+        tr("Audio"),
+        tr("RAM / Inst"),
+        tr("Total RAM"),
+        tr("Alerts / Advice")
     });
     m_entityTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     m_entityTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
@@ -97,21 +98,21 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, QWidget
     m_entityTable->setAlternatingRowColors(true);
     m_entityTable->verticalHeader()->setVisible(false);
     m_entityTable->setIconSize(QSize(28, 28));
-    m_tabWidget->addTab(m_entityTable, QStringLiteral("Entities"));
+    m_tabWidget->addTab(m_entityTable, tr("Entities"));
 
     // Tab 2: Segments Table
     m_segmentTable = new QTableWidget(this);
     m_segmentTable->setColumnCount(9);
     m_segmentTable->setHorizontalHeaderLabels({
-        QStringLiteral("Icon"),
-        QStringLiteral("Segment Name"),
-        QStringLiteral("Parts"),
-        QStringLiteral("Placed Blocks"),
-        QStringLiteral("Mesh RAM"),
-        QStringLiteral("Diffuse RAM"),
-        QStringLiteral("Normal/Spec RAM"),
-        QStringLiteral("Total RAM"),
-        QStringLiteral("Alerts")
+        tr("Icon"),
+        tr("Segment Name"),
+        tr("Parts"),
+        tr("Placed Blocks"),
+        tr("Mesh RAM"),
+        tr("Diffuse RAM"),
+        tr("Normal/Spec RAM"),
+        tr("Total RAM"),
+        tr("Alerts")
     });
     m_segmentTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     m_segmentTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
@@ -126,16 +127,16 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, QWidget
     m_segmentTable->setAlternatingRowColors(true);
     m_segmentTable->verticalHeader()->setVisible(false);
     m_segmentTable->setIconSize(QSize(28, 28));
-    m_tabWidget->addTab(m_segmentTable, QStringLiteral("Segments (Architecture)"));
+    m_tabWidget->addTab(m_segmentTable, tr("Segments (Architecture)"));
 
     // Tab 3: Universe & Engine Breakdown Table
     m_engineTable = new QTableWidget(this);
     m_engineTable->setColumnCount(4);
     m_engineTable->setHorizontalHeaderLabels({
-        QStringLiteral("Component"),
-        QStringLiteral("Type / Format"),
-        QStringLiteral("Estimated RAM"),
-        QStringLiteral("Description")
+        tr("Component"),
+        tr("Type / Format"),
+        tr("Estimated RAM"),
+        tr("Description")
     });
     m_engineTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     m_engineTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
@@ -144,49 +145,115 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, QWidget
     m_engineTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_engineTable->setAlternatingRowColors(true);
     m_engineTable->verticalHeader()->setVisible(false);
-    m_tabWidget->addTab(m_engineTable, QStringLiteral("Universe & Engine Breakdown"));
+    m_tabWidget->addTab(m_engineTable, tr("Universe & Engine Breakdown"));
 
     // Tab 4: Optimization Recommendations
-    QWidget* tipsTab = new QWidget(this);
-    QVBoxLayout* tipsLayout = new QVBoxLayout(tipsTab);
-    m_tipsEdit = new QTextEdit(tipsTab);
+    m_tipsTab = new QWidget(this);
+    QVBoxLayout* tipsLayout = new QVBoxLayout(m_tipsTab);
+    m_tipsEdit = new QTextEdit(m_tipsTab);
     m_tipsEdit->setReadOnly(true);
     m_tipsEdit->setStyleSheet("background: #1e222d; color: #f1c40f; border: 1px solid #3d4455; font-size: 12px; font-family: monospace;");
     tipsLayout->addWidget(m_tipsEdit);
-    m_tabWidget->addTab(tipsTab, QStringLiteral("Optimization Tips"));
+    m_tabWidget->addTab(m_tipsTab, tr("Optimization Tips"));
 
     mainLayout->addWidget(m_tabWidget, 1);
 
     // 5. Action Buttons
     QHBoxLayout* btnLayout = new QHBoxLayout();
-    m_copyBtn = new QPushButton(QStringLiteral("Copy Full Report to Clipboard"), this);
-    m_exportBtn = new QPushButton(QStringLiteral("Export CSV Report..."), this);
-    QPushButton* closeBtn = new QPushButton(QStringLiteral("Close"), this);
-    closeBtn->setDefault(true);
+    m_copyBtn = new QPushButton(tr("Copy Full Report to Clipboard"), this);
+    m_exportBtn = new QPushButton(tr("Export CSV Report..."), this);
+    m_closeBtn = new QPushButton(tr("Close"), this);
+    m_closeBtn->setDefault(true);
 
     btnLayout->addWidget(m_copyBtn);
     btnLayout->addWidget(m_exportBtn);
     btnLayout->addStretch();
-    btnLayout->addWidget(closeBtn);
+    btnLayout->addWidget(m_closeBtn);
     mainLayout->addLayout(btnLayout);
 
     connect(m_searchEdit, &QLineEdit::textChanged, this, &MemoryAnalyzerDialog::onSearchChanged);
     connect(m_copyBtn, &QPushButton::clicked, this, &MemoryAnalyzerDialog::onCopyReport);
     connect(m_exportBtn, &QPushButton::clicked, this, &MemoryAnalyzerDialog::onExportCSV);
-    connect(closeBtn, &QPushButton::clicked, this, &QDialog::accept);
+    connect(m_closeBtn, &QPushButton::clicked, this, &QDialog::accept);
+
+    populateUI();
+}
+
+void MemoryAnalyzerDialog::changeEvent(QEvent* event) {
+    if (event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
+    QDialog::changeEvent(event);
+}
+
+void MemoryAnalyzerDialog::retranslateUi() {
+    QString mapName = m_map ? m_map->mapName : tr("No Map");
+    setWindowTitle(tr("%1 Memory Footprint Analyzer — %2").arg(VersionInfo::shortTitle(), mapName));
+
+    if (m_cardTotalTitle) m_cardTotalTitle->setText(tr("TOTAL LEVEL RAM"));
+    if (m_cardSegTitle) m_cardSegTitle->setText(tr("SEGMENTS (ROOMS)"));
+    if (m_cardEntTitle) m_cardEntTitle->setText(tr("ENTITIES (PROPS)"));
+    if (m_cardUniTitle) m_cardUniTitle->setText(tr("UNIVERSE & LIGHTMAPS"));
+    if (m_cardEngineTitle) m_cardEngineTitle->setText(tr("ENGINE & D3D BASE"));
+
+    if (m_gaugeGroup) m_gaugeGroup->setTitle(tr("DirectX 9 / 32-bit Process Memory Budget (Limit: ~1850 MB)"));
+    if (m_searchLabel) m_searchLabel->setText(tr("Search:"));
+    if (m_searchEdit) m_searchEdit->setPlaceholderText(tr("Filter table by name, category, or texture path..."));
+
+    if (m_entityTable) {
+        m_entityTable->setHorizontalHeaderLabels({
+            tr("Icon"),
+            tr("Entity Profile"),
+            tr("Category"),
+            tr("Placed"),
+            tr("Model (.X)"),
+            tr("Texture RAM"),
+            tr("Audio"),
+            tr("RAM / Inst"),
+            tr("Total RAM"),
+            tr("Alerts / Advice")
+        });
+    }
+
+    if (m_segmentTable) {
+        m_segmentTable->setHorizontalHeaderLabels({
+            tr("Icon"),
+            tr("Segment Name"),
+            tr("Parts"),
+            tr("Placed Blocks"),
+            tr("Mesh RAM"),
+            tr("Diffuse RAM"),
+            tr("Normal/Spec RAM"),
+            tr("Total RAM"),
+            tr("Alerts")
+        });
+    }
+
+    if (m_engineTable) {
+        m_engineTable->setHorizontalHeaderLabels({
+            tr("Component"),
+            tr("Type / Format"),
+            tr("Estimated RAM"),
+            tr("Description")
+        });
+    }
+
+    if (m_copyBtn) m_copyBtn->setText(tr("Copy Full Report to Clipboard"));
+    if (m_exportBtn) m_exportBtn->setText(tr("Export CSV Report..."));
+    if (m_closeBtn) m_closeBtn->setText(tr("Close"));
 
     populateUI();
 }
 
 void MemoryAnalyzerDialog::setMap(std::shared_ptr<FPSCMap> map) {
     m_map = map;
-    QString mapName = m_map ? m_map->mapName : QStringLiteral("No Map");
-    setWindowTitle(QString("%1 Memory Footprint Analyzer — %2").arg(VersionInfo::shortTitle(), mapName));
+    QString mapName = m_map ? m_map->mapName : tr("No Map");
+    setWindowTitle(tr("%1 Memory Footprint Analyzer — %2").arg(VersionInfo::shortTitle(), mapName));
     m_report = MemoryAnalyzer::analyze(m_map);
     populateUI();
 }
 
-QWidget* MemoryAnalyzerDialog::createCard(const QString& title, QLabel*& outValueLabel, const QString& color) {
+QWidget* MemoryAnalyzerDialog::createCard(const QString& title, QLabel*& outValueLabel, QLabel*& outTitleLabel, const QString& color) {
     QWidget* card = new QWidget(this);
     card->setStyleSheet("background: #1f2430; border: 1px solid #353b4b; border-radius: 6px; padding: 6px;");
     QVBoxLayout* lay = new QVBoxLayout(card);
@@ -220,7 +287,7 @@ void MemoryAnalyzerDialog::populateUI() {
     if (m_cardEngineVal) m_cardEngineVal->setText(QString("%1 MB").arg(engineMb, 0, 'f', 1));
 
     if (m_limitLabel) {
-        m_limitLabel->setText(QString("Level RAM Usage: %1 MB / 1850 MB (%2%) — Status: %3")
+        m_limitLabel->setText(tr("Level RAM Usage: %1 MB / 1850 MB (%2%) — Status: %3")
             .arg(totalMb, 0, 'f', 1)
             .arg(m_report.engineLimitPercent, 0, 'f', 1)
             .arg(m_report.riskLevel));
@@ -233,12 +300,12 @@ void MemoryAnalyzerDialog::populateUI() {
         m_limitProgress->setValue(clampedVal);
 
         if (totalMb > limitMb) {
-            m_limitProgress->setFormat(QString("%1 MB / %2 MB (%3%) — OVER BUDGET!")
+            m_limitProgress->setFormat(tr("%1 MB / %2 MB (%3%) — OVER BUDGET!")
                 .arg(totalMb, 0, 'f', 1)
                 .arg(limitMb)
                 .arg(m_report.engineLimitPercent, 0, 'f', 1));
         } else {
-            m_limitProgress->setFormat(QString("%1 MB / %2 MB (%3%)")
+            m_limitProgress->setFormat(tr("%1 MB / %2 MB (%3%)")
                 .arg(totalMb, 0, 'f', 1)
                 .arg(limitMb)
                 .arg(m_report.engineLimitPercent, 0, 'f', 1));
@@ -255,8 +322,8 @@ void MemoryAnalyzerDialog::populateUI() {
     }
 
     // Update tab titles with counts
-    m_tabWidget->setTabText(0, QString("Entities (%1 types, %2 placed)").arg(m_report.uniqueEntityTypesCount).arg(m_report.totalPlacedEntities));
-    m_tabWidget->setTabText(1, QString("Segments (%1 types, %2 blocks)").arg(m_report.uniqueSegmentTypesCount).arg(m_report.totalPlacedSegmentBlocks));
+    m_tabWidget->setTabText(0, tr("Entities (%1 types, %2 placed)").arg(m_report.uniqueEntityTypesCount).arg(m_report.totalPlacedEntities));
+    m_tabWidget->setTabText(1, tr("Segments (%1 types, %2 blocks)").arg(m_report.uniqueSegmentTypesCount).arg(m_report.totalPlacedSegmentBlocks));
 
     QString filter = m_searchEdit ? m_searchEdit->text().trimmed().toLower() : QString();
 

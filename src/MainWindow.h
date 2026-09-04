@@ -17,6 +17,7 @@
 #include "VisZoneManager.h"
 #include "PortalLeakDialog.h"
 #include "MemoryAnalyzerDialog.h"
+#include "LanguageManager.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -94,6 +95,41 @@ private:
     QAction* m_actShowPortals = nullptr;
     QAction* m_actColorAllZones = nullptr;
 
+    // File Menu Actions
+    QAction* m_actOpen = nullptr;
+    QAction* m_actReload = nullptr;
+    QAction* m_actConfigEngine = nullptr;
+    QAction* m_actExit = nullptr;
+
+    // View Menu Actions
+    QAction* m_actZoomIn = nullptr;
+    QAction* m_actZoomOut = nullptr;
+    QAction* m_actZoomReset = nullptr;
+    QAction* m_actZoomFit = nullptr;
+
+    // Portals & Tools Actions
+    QAction* m_actPvsPanel = nullptr;
+    QAction* m_actResetView = nullptr;
+    QAction* m_actLeakDetector = nullptr;
+    QAction* m_actMemoryAnalyzer = nullptr;
+    QAction* m_actLaunchMem = nullptr;
+    QAction* m_actLaunchLeaks = nullptr;
+    QAction* m_actAbout = nullptr;
+
+    // Language Menu Actions
+    QMenu* m_languageMenu = nullptr;
+    QAction* m_actLangAuto = nullptr;
+    QAction* m_actLangEn = nullptr;
+    QAction* m_actLangRu = nullptr;
+
+    // Menus
+    QMenu* m_fileMenu = nullptr;
+    QMenu* m_viewMenu = nullptr;
+    QMenu* m_portalsMenu = nullptr;
+    QMenu* m_toolsMenu = nullptr;
+    QMenu* m_helpMenu = nullptr;
+    QAction* m_actToggleVisZone = nullptr;
+
     // Status Bar Labels
     QLabel* m_statusMapName = nullptr;
     QLabel* m_statusFloor = nullptr;
@@ -103,6 +139,12 @@ private:
     QMenu* m_recentMapsMenu = nullptr;
     bool m_isUpdatingFloorUI = false;
     bool m_firstShow = true;
+
+protected:
+    void changeEvent(QEvent* event) override;
+
+private:
+    void retranslateUi();
 };
 
 #endif // MAINWINDOW_H

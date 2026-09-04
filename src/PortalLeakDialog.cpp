@@ -12,22 +12,22 @@
 PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, QWidget* parent)
     : QDialog(parent), m_map(map)
 {
-    QString mapName = m_map ? m_map->mapName : QStringLiteral("No Map");
-    setWindowTitle(QString("%1 — Детектор утечек порталов и разрывов CSG — %2").arg(VersionInfo::shortTitle(), mapName));
+    QString mapName = m_map ? m_map->mapName : tr("No Map");
+    setWindowTitle(tr("%1 — Portal & CSG Leak Detector — %2").arg(VersionInfo::shortTitle(), mapName));
     resize(900, 500);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setSpacing(8);
 
     // 1. Group Box with toggles for the two methods
-    QGroupBox* grpMethods = new QGroupBox(QStringLiteral("Методы проверки геометрии и утечек (Detection Methods)"), this);
-    QVBoxLayout* methodsLayout = new QVBoxLayout(grpMethods);
+    m_grpMethods = new QGroupBox(tr("Geometry & Leak Detection Methods"), this);
+    QVBoxLayout* methodsLayout = new QVBoxLayout(m_grpMethods);
     methodsLayout->setSpacing(6);
 
     // Method 1: Compiled BSP Universe
     QHBoxLayout* rowBsp = new QHBoxLayout();
-    m_chkCompiledBsp = new QCheckBox(QStringLiteral("1. Физический анализ скомпилированного BSP (universe.dbu)"), grpMethods);
-    m_chkCompiledBsp->setToolTip(QStringLiteral("Проверяет реальные физические щели, несомкнутые многогранники CSG и сквозные порталы в пустоту из скомпилированного universe.dbu (после запуска Test Game в FPS Creator)."));
+    m_chkCompiledBsp = new QCheckBox(tr("1. Physical Compiled BSP Analysis (universe.dbu)"), m_grpMethods);
+    m_chkCompiledBsp->setToolTip(tr("Detects physical gaps, unclosed CSG polyhedra, and see-through portals into the void from compiled universe.dbu (after Test Game in FPS Creator)."));
     rowBsp->addWidget(m_chkCompiledBsp);
 
     PortalLeakAnalyzer initAnalyzer(m_map);
@@ -35,7 +35,7 @@ PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, QWidget* parent
 
     m_chkCompiledBsp->setChecked(val.matchesCurrentMap);
 
-    m_lblDbuStatus = new QLabel(grpMethods);
+    m_lblDbuStatus = new QLabel(m_grpMethods);
     m_lblDbuStatus->setText(val.message);
     if (!val.fileExists) {
         m_lblDbuStatus->setStyleSheet(QStringLiteral("color: #ff9100; font-size: 11px;"));
@@ -51,22 +51,22 @@ PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, QWidget* parent
     methodsLayout->addLayout(rowBsp);
 
     // Method 2: Static Map Analysis
-    m_chkStaticMap = new QCheckBox(QStringLiteral("2. Статический сеточный / топологический анализ (.FPM / .FPS)"), grpMethods);
+    m_chkStaticMap = new QCheckBox(tr("2. Static Grid / Topological Analysis (.FPM / .FPS)"), m_grpMethods);
     m_chkStaticMap->setChecked(true);
-    m_chkStaticMap->setToolTip(QStringLiteral("Проверяет незакрытые потолочные плиты, внешние пробоины в стенах периметра комнат и наложения CSG до компиляции карты."));
+    m_chkStaticMap->setToolTip(tr("Checks for unclosed ceiling tiles, outer wall breaches in room perimeters, and CSG overlaps before map compilation."));
     methodsLayout->addWidget(m_chkStaticMap);
 
-    layout->addWidget(grpMethods);
+    layout->addWidget(m_grpMethods);
 
     // 2. Control bar (Run button + stats label)
     QHBoxLayout* ctrlLayout = new QHBoxLayout();
-    m_btnRun = new QPushButton(QStringLiteral("🔍 Запустить анализ (Run Analysis)"), this);
+    m_btnRun = new QPushButton(tr("🔍 Run Analysis"), this);
     m_btnRun->setStyleSheet(QStringLiteral("QPushButton { font-weight: bold; background-color: #253342; color: #4dc4ff; border: 1px solid #36506c; border-radius: 4px; padding: 7px 16px; }"
                                            "QPushButton:hover { background-color: #314357; color: #80d5ff; }"
                                            "QPushButton:disabled { background-color: #1c242d; color: #5a6e82; }"));
     ctrlLayout->addWidget(m_btnRun);
 
-    m_lblStats = new QLabel(QStringLiteral("Выберите методы и нажмите «Запустить анализ»."), this);
+    m_lblStats = new QLabel(tr("Select detection methods and click \"Run Analysis\"."), this);
     m_lblStats->setStyleSheet(QStringLiteral("color: #9ab0c8; font-size: 12px; margin-left: 10px;"));
     ctrlLayout->addWidget(m_lblStats);
     ctrlLayout->addStretch();
@@ -76,10 +76,10 @@ PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, QWidget* parent
     m_table = new QTableWidget(this);
     m_table->setColumnCount(4);
     m_table->setHorizontalHeaderLabels({
-        QStringLiteral("Серьёзность"),
-        QStringLiteral("Тип утечки"),
-        QStringLiteral("Координаты"),
-        QStringLiteral("Описание проблемы")
+        tr("Severity"),
+        tr("Leak Type"),
+        tr("Coordinates"),
+        tr("Issue Description")
     });
     m_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     m_table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
@@ -100,6 +100,44 @@ PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, QWidget* parent
     runAnalysis();
 }
 
+void PortalLeakDialog::changeEvent(QEvent* event) {
+    if (event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
+    QDialog::changeEvent(event);
+}
+
+void PortalLeakDialog::retranslateUi() {
+    QString mapName = m_map ? m_map->mapName : tr("No Map");
+    setWindowTitle(tr("%1 — Portal & CSG Leak Detector — %2").arg(VersionInfo::shortTitle(), mapName));
+
+    if (m_grpMethods) m_grpMethods->setTitle(tr("Geometry & Leak Detection Methods"));
+    if (m_chkCompiledBsp) {
+        m_chkCompiledBsp->setText(tr("1. Physical Compiled BSP Analysis (universe.dbu)"));
+        m_chkCompiledBsp->setToolTip(tr("Detects physical gaps, unclosed CSG polyhedra, and see-through portals into the void from compiled universe.dbu (after Test Game in FPS Creator)."));
+    }
+    if (m_chkStaticMap) {
+        m_chkStaticMap->setText(tr("2. Static Grid / Topological Analysis (.FPM / .FPS)"));
+        m_chkStaticMap->setToolTip(tr("Checks for unclosed ceiling tiles, outer wall breaches in room perimeters, and CSG overlaps before map compilation."));
+    }
+    if (m_btnRun) m_btnRun->setText(tr("🔍 Run Analysis"));
+
+    if (m_table) {
+        m_table->setHorizontalHeaderLabels({
+            tr("Severity"),
+            tr("Leak Type"),
+            tr("Coordinates"),
+            tr("Issue Description")
+        });
+    }
+
+    PortalLeakAnalyzer analyzer(m_map);
+    auto val = analyzer.validateCompiledUniverse();
+    if (m_lblDbuStatus) m_lblDbuStatus->setText(val.message);
+
+    onMethodToggled();
+}
+
 void PortalLeakDialog::onMethodToggled() {
     bool anyEnabled = m_chkCompiledBsp->isChecked() || m_chkStaticMap->isChecked();
     m_btnRun->setEnabled(anyEnabled);
@@ -108,13 +146,13 @@ void PortalLeakDialog::onMethodToggled() {
     } else {
         m_table->setRowCount(0);
         m_currentWarnings.clear();
-        m_lblStats->setText(QStringLiteral("Включите хотя бы один метод проверки для анализа."));
+        m_lblStats->setText(tr("Enable at least one detection method to run analysis."));
     }
 }
 
 void PortalLeakDialog::runAnalysis() {
     if (!m_map) {
-        QMessageBox::warning(this, QStringLiteral("Ошибка"), QStringLiteral("Карта не загружена."));
+        QMessageBox::warning(this, tr("Error"), tr("Map is not loaded."));
         return;
     }
 
@@ -140,12 +178,12 @@ void PortalLeakDialog::runAnalysis() {
             staticCount++;
         }
         
-        QTableWidgetItem* sevItem = new QTableWidgetItem(w.severity == PortalLeakWarning::ERROR ? QStringLiteral("ERROR") : QStringLiteral("WARNING"));
+        QTableWidgetItem* sevItem = new QTableWidgetItem(w.severity == PortalLeakWarning::ERROR ? tr("ERROR") : tr("WARNING"));
         sevItem->setForeground(w.severity == PortalLeakWarning::ERROR ? QColor(255, 75, 75) : QColor(255, 200, 50));
         sevItem->setTextAlignment(Qt::AlignCenter);
         
         QTableWidgetItem* typeItem = new QTableWidgetItem(w.type);
-        QTableWidgetItem* locItem = new QTableWidgetItem(QString("Layer %1 (%2, %3)").arg(w.layer).arg(w.x).arg(w.y));
+        QTableWidgetItem* locItem = new QTableWidgetItem(tr("Layer %1 (%2, %3)").arg(w.layer).arg(w.x).arg(w.y));
         locItem->setTextAlignment(Qt::AlignCenter);
         QTableWidgetItem* descItem = new QTableWidgetItem(w.description);
 
@@ -155,7 +193,7 @@ void PortalLeakDialog::runAnalysis() {
         m_table->setItem(i, 3, descItem);
     }
     
-    m_lblStats->setText(QString("Найдено проблем: <b>%1</b> (Физических BSP: %2, Статических сеточных: %3). Двойной клик переносит камеру к ячейке.")
+    m_lblStats->setText(tr("Found issues: <b>%1</b> (Physical BSP: %2, Static Grid: %3). Double-click jumps camera to tile.")
                         .arg(m_currentWarnings.size()).arg(bspCount).arg(staticCount));
 }
 
@@ -168,8 +206,8 @@ void PortalLeakDialog::onCellDoubleClicked(int row, int /*column*/) {
 
 void PortalLeakDialog::setMap(std::shared_ptr<FPSCMap> map) {
     m_map = map;
-    QString mapName = m_map ? m_map->mapName : QStringLiteral("No Map");
-    setWindowTitle(QString("%1 — Детектор утечек порталов и разрывов CSG — %2").arg(VersionInfo::shortTitle(), mapName));
+    QString mapName = m_map ? m_map->mapName : tr("No Map");
+    setWindowTitle(tr("%1 — Portal & CSG Leak Detector — %2").arg(VersionInfo::shortTitle(), mapName));
 
     PortalLeakAnalyzer analyzer(m_map);
     auto val = analyzer.validateCompiledUniverse();

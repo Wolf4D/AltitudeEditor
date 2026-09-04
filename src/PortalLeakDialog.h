@@ -16,6 +16,9 @@ public:
 
     void setMap(std::shared_ptr<FPSCMap> map);
 
+protected:
+    void changeEvent(QEvent* event) override;
+
 signals:
     void cellSelected(int layer, int x, int y);
 
@@ -25,12 +28,15 @@ private slots:
     void onMethodToggled();
 
 private:
+    void retranslateUi();
+
     std::shared_ptr<FPSCMap> m_map;
-    QCheckBox* m_chkCompiledBsp;
-    QCheckBox* m_chkStaticMap;
-    QLabel* m_lblDbuStatus;
-    QLabel* m_lblStats;
-    QPushButton* m_btnRun;
-    QTableWidget* m_table;
+    class QGroupBox* m_grpMethods = nullptr;
+    QCheckBox* m_chkCompiledBsp = nullptr;
+    QCheckBox* m_chkStaticMap = nullptr;
+    QLabel* m_lblDbuStatus = nullptr;
+    QLabel* m_lblStats = nullptr;
+    QPushButton* m_btnRun = nullptr;
+    QTableWidget* m_table = nullptr;
     std::vector<PortalLeakWarning> m_currentWarnings;
 };

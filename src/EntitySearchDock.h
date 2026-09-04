@@ -31,6 +31,7 @@ signals:
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
+    void changeEvent(QEvent* event) override;
 
 private slots:
     void onFilterChanged();
@@ -40,6 +41,7 @@ private slots:
     void showTableContextMenu(const QPoint& pos);
 
 private:
+    void retranslateUi();
     std::shared_ptr<FPSCMap> m_map;
     int m_currentFloor = 0;
 

@@ -29,6 +29,7 @@ public slots:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
+    void changeEvent(QEvent* event) override;
 
 signals:
     void zoneSelected(int zoneId);
@@ -46,6 +47,7 @@ private slots:
     void onFloorFilterToggled(bool checked);
 
 private:
+    void retranslateUi();
     void populateZoneCombo();
     void updateActiveZoneDetails();
 
@@ -54,19 +56,27 @@ private:
     int m_currentFloor = 0;
     int m_activeZoneId = -1;
 
+    class QGroupBox* m_grpSelection = nullptr;
+    class QGroupBox* m_grpIsolation = nullptr;
+    class QGroupBox* m_grpDetails = nullptr;
+
     QCheckBox* m_chkCurrentFloorOnly = nullptr;
     QCheckBox* m_chkColorAll = nullptr;
     QPushButton* m_btnRecolor = nullptr;
     QComboBox* m_zoneCombo = nullptr;
     QPushButton* m_btnPrev = nullptr;
     QPushButton* m_btnNext = nullptr;
+    QPushButton* m_btnReset = nullptr;
 
     QCheckBox* m_chkIsolate = nullptr;
     QRadioButton* m_radioHide = nullptr;
     QRadioButton* m_radioDim = nullptr;
+    QLabel* m_lblDim = nullptr;
     QSlider* m_sliderDim = nullptr;
 
     QLabel* m_lblStats = nullptr;
+    QLabel* m_lblPortalsHeader = nullptr;
+    QLabel* m_lblEntitiesHeader = nullptr;
     QListWidget* m_listPortals = nullptr;
     QListWidget* m_listEntities = nullptr;
 

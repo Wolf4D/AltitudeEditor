@@ -20,7 +20,11 @@ public:
 signals:
     void entityModified(int index);
 
+protected:
+    void changeEvent(QEvent* event) override;
+
 private:
+    void retranslateUi();
     void addProperty(QTreeWidgetItem* parent, const QString& name, const QString& value, const QString& tip = QString());
     void addWidgetProperty(QTreeWidgetItem* parent, const QString& name, QWidget* widget, const QString& tip = QString());
 

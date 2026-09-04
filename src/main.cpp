@@ -3,6 +3,7 @@
 #include "FPMReader.h"
 #include "MemoryAnalyzer.h"
 #include "Version.h"
+#include "LanguageManager.h"
 #include <QApplication>
 #include <QStyleFactory>
 #include <QPalette>
@@ -18,6 +19,9 @@ int main(int argc, char* argv[]) {
     app.setApplicationVersion(VersionInfo::Version);
     app.setOrganizationName(VersionInfo::Studio);
     app.setWindowIcon(QIcon(":/app.png"));
+
+    // Initialize localization (loads system language on first launch or saved preference)
+    LanguageManager::instance().init();
 
     // Apply Deep Dark Fusion Theme
     app.setStyle(QStyleFactory::create("Fusion"));
