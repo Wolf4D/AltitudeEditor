@@ -361,6 +361,9 @@ void MainWindow::createMenusAndToolbars() {
         m_visZoneDock->show();
         m_visZoneDock->raise();
         m_visZoneDock->activateWindow();
+        if (m_actColorAllZones && !m_actColorAllZones->isChecked()) {
+            m_actColorAllZones->setChecked(true);
+        }
     }, QKeySequence(Qt::CTRL + Qt::Key_P));
     m_actResetView = m_portalsMenu->addAction(QString(), m_visZoneDock, &VisZoneDock::resetToNormalView, QKeySequence(Qt::Key_Escape));
     m_portalsMenu->addSeparator();
@@ -527,9 +530,19 @@ void MainWindow::createMenusAndToolbars() {
         m_visZoneDock->setVisible(checked);
         if (checked) {
             m_visZoneDock->raise();
+            if (m_actColorAllZones && !m_actColorAllZones->isChecked()) {
+                m_actColorAllZones->setChecked(true);
+            }
         }
     });
-    connect(m_visZoneDock, &QDockWidget::visibilityChanged, m_actToggleVisZone, &QAction::setChecked);
+    connect(m_visZoneDock, &QDockWidget::visibilityChanged, this, [this](bool visible) {
+        m_actToggleVisZone->setChecked(visible);
+        if (visible) {
+            if (m_actColorAllZones && !m_actColorAllZones->isChecked()) {
+                m_actColorAllZones->setChecked(true);
+            }
+        }
+    });
 
     retranslateUi();
 }
