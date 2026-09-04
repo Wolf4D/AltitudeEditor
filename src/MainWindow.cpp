@@ -488,12 +488,12 @@ void MainWindow::createMenusAndToolbars() {
     mainBar->addAction(m_actShowPortals);
     QToolButton* btnPortals = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actShowPortals));
     if (btnPortals) {
-        btnPortals->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+        btnPortals->setToolButtonStyle(Qt::ToolButtonIconOnly);
     }
     mainBar->addAction(m_actColorAllZones);
     QToolButton* btnColorZones = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actColorAllZones));
     if (btnColorZones) {
-        btnColorZones->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+        btnColorZones->setToolButtonStyle(Qt::ToolButtonIconOnly);
     }
     m_actZoomFit->setIcon(makeZoomFitIcon());
     mainBar->addAction(m_actZoomFit);
