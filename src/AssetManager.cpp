@@ -2,7 +2,39 @@
 #include <QFile>
 #include <QDirIterator>
 #include <QDebug>
+#include <QImageReader>
+#include <QMutexLocker>
 #include <cstring>
+
+#pragma pack(push, 1)
+struct DDS_PIXELFORMAT {
+    uint32_t dwSize;
+    uint32_t dwFlags;
+    uint32_t dwFourCC;
+    uint32_t dwRGBBitCount;
+    uint32_t dwRBitMask;
+    uint32_t dwGBitMask;
+    uint32_t dwBBitMask;
+    uint32_t dwABitMask;
+};
+
+struct DDS_HEADER {
+    uint32_t dwSize;
+    uint32_t dwFlags;
+    uint32_t dwHeight;
+    uint32_t dwWidth;
+    uint32_t dwPitchOrLinearSize;
+    uint32_t dwDepth;
+    uint32_t dwMipMapCount;
+    uint32_t dwReserved1[11];
+    DDS_PIXELFORMAT ddspf;
+    uint32_t dwCaps;
+    uint32_t dwCaps2;
+    uint32_t dwCaps3;
+    uint32_t dwCaps4;
+    uint32_t dwReserved2;
+};
+#pragma pack(pop)
 
 AssetManager& AssetManager::instance() {
     static AssetManager inst;
@@ -17,14 +49,23 @@ AssetManager::AssetManager() {
 }
 
 void AssetManager::setEngineRoot(const QString& path) {
+    QMutexLocker locker(&m_mutex);
     m_engineRoot = QDir::cleanPath(path);
     clearCache();
 }
 
+QString AssetManager::engineRoot() const {
+    QMutexLocker locker(&m_mutex);
+    return m_engineRoot;
+}
+
 void AssetManager::clearCache() {
+    QMutexLocker locker(&m_mutex);
     m_textureCache.clear();
     m_iconCache.clear();
     m_resolvedPathCache.clear();
+    m_fileSizeCache.clear();
+    m_textureMetricsCache.clear();
 }
 
 QString AssetManager::resolvePath(const QString& relPath) const {
@@ -33,6 +74,8 @@ QString AssetManager::resolvePath(const QString& relPath) const {
     QString clean = relPath;
     clean.replace('\\', '/');
     while (clean.startsWith('/')) clean.remove(0, 1);
+
+    QMutexLocker locker(&m_mutex);
 
     if (m_resolvedPathCache.contains(clean)) {
         return m_resolvedPathCache.value(clean);
@@ -96,9 +139,27 @@ QString AssetManager::resolvePath(const QString& relPath) const {
 }
 
 qint64 AssetManager::getFileSizeBytes(const QString& relPath) const {
-    QString resolved = resolvePath(relPath);
-    if (resolved.isEmpty()) return 0;
-    return QFileInfo(resolved).size();
+    if (relPath.trimmed().isEmpty()) return 0;
+
+    QString clean = relPath;
+    clean.replace('\\', '/');
+    while (clean.startsWith('/')) clean.remove(0, 1);
+
+    QMutexLocker locker(&m_mutex);
+
+    if (m_fileSizeCache.contains(clean)) {
+        return m_fileSizeCache.value(clean);
+    }
+
+    QString resolved = resolvePath(clean);
+    if (resolved.isEmpty()) {
+        const_cast<AssetManager*>(this)->m_fileSizeCache[clean] = 0;
+        return 0;
+    }
+
+    qint64 sz = QFileInfo(resolved).size();
+    const_cast<AssetManager*>(this)->m_fileSizeCache[clean] = sz;
+    return sz;
 }
 
 bool AssetManager::getTextureMetrics(const QString& relPath, int& outWidth, int& outHeight, qint64& outRamBytes, qint64& outDiskBytes) {
@@ -107,29 +168,103 @@ bool AssetManager::getTextureMetrics(const QString& relPath, int& outWidth, int&
     outRamBytes = 0;
     outDiskBytes = 0;
 
-    QString resolved = resolvePath(relPath);
-    if (resolved.isEmpty()) return false;
+    if (relPath.trimmed().isEmpty()) return false;
+
+    QString clean = relPath;
+    clean.replace('\\', '/');
+    while (clean.startsWith('/')) clean.remove(0, 1);
+
+    QMutexLocker locker(&m_mutex);
+
+    if (m_textureMetricsCache.contains(clean)) {
+        const auto& tm = m_textureMetricsCache.value(clean);
+        outWidth = tm.width;
+        outHeight = tm.height;
+        outRamBytes = tm.ramBytes;
+        outDiskBytes = tm.diskBytes;
+        return tm.valid;
+    }
+
+    QString resolved = resolvePath(clean);
+    if (resolved.isEmpty()) {
+        TextureMetrics tm;
+        tm.valid = false;
+        m_textureMetricsCache[clean] = tm;
+        return false;
+    }
 
     QFileInfo fi(resolved);
     outDiskBytes = fi.size();
     QString ext = fi.suffix().toLower();
 
-    QImage img;
+    int w = 0;
+    int h = 0;
+
     if (ext == "dds") {
-        img = loadDDS(resolved);
+        // Read DDS header (128 bytes) directly without full image decoding
+        QFile f(resolved);
+        if (f.open(QIODevice::ReadOnly)) {
+            char hdrBuf[128];
+            qint64 bytesRead = f.read(hdrBuf, 128);
+            if (bytesRead >= 128 && hdrBuf[0] == 'D' && hdrBuf[1] == 'D' && hdrBuf[2] == 'S' && hdrBuf[3] == ' ') {
+                const DDS_HEADER* hdr = reinterpret_cast<const DDS_HEADER*>(hdrBuf + 4);
+                if (hdr->dwWidth > 0 && hdr->dwHeight > 0 && hdr->dwWidth <= 8192 && hdr->dwHeight <= 8192) {
+                    w = static_cast<int>(hdr->dwWidth);
+                    h = static_cast<int>(hdr->dwHeight);
+                }
+            }
+        }
+        if (w <= 0 || h <= 0) {
+            QImage img = loadDDS(resolved);
+            if (!img.isNull()) {
+                w = img.width();
+                h = img.height();
+            }
+        }
     } else if (ext == "tga") {
-        img = loadTGA(resolved);
-        if (img.isNull()) img.load(resolved);
+        // Read TGA header (18 bytes) directly without full image decoding
+        QFile f(resolved);
+        if (f.open(QIODevice::ReadOnly)) {
+            unsigned char tgaHdr[18];
+            if (f.read(reinterpret_cast<char*>(tgaHdr), 18) >= 18) {
+                int tw = tgaHdr[12] | (tgaHdr[13] << 8);
+                int th = tgaHdr[14] | (tgaHdr[15] << 8);
+                if (tw > 0 && th > 0 && tw <= 8192 && th <= 8192) {
+                    w = tw;
+                    h = th;
+                }
+            }
+        }
+        if (w <= 0 || h <= 0) {
+            QImage img = loadTGA(resolved);
+            if (img.isNull()) img.load(resolved);
+            if (!img.isNull()) {
+                w = img.width();
+                h = img.height();
+            }
+        }
     } else {
-        img.load(resolved);
+        // For BMP, PNG, JPG: QImageReader reads only header without full pixel buffer
+        QImageReader reader(resolved);
+        QSize sz = reader.size();
+        if (sz.isValid() && sz.width() > 0 && sz.height() > 0) {
+            w = sz.width();
+            h = sz.height();
+        } else {
+            QImage img(resolved);
+            if (!img.isNull()) {
+                w = img.width();
+                h = img.height();
+            }
+        }
     }
 
-    if (img.isNull()) {
+    if (w <= 0 || h <= 0) {
         outWidth = 256;
         outHeight = 256;
     } else {
-        outWidth = img.width();
-        outHeight = img.height();
+        outWidth = w;
+        outHeight = h;
     }
 
     // Direct3D 9 Managed Pool allocation in DarkBasic Pro (FPSC-Game.exe):
@@ -139,6 +274,14 @@ bool AssetManager::getTextureMetrics(const QString& relPath, int& outWidth, int&
     qint64 rawPixels = static_cast<qint64>(outWidth) * outHeight * 4;
     qint64 withMips = static_cast<qint64>(rawPixels * 1.333333);
     outRamBytes = withMips * 2;
+
+    TextureMetrics tm;
+    tm.width = outWidth;
+    tm.height = outHeight;
+    tm.ramBytes = outRamBytes;
+    tm.diskBytes = outDiskBytes;
+    tm.valid = true;
+    m_textureMetricsCache[clean] = tm;
 
     return true;
 }
@@ -213,6 +356,8 @@ QPixmap AssetManager::loadTexture(const QString& relPath) {
     clean.replace('\\', '/');
     while (clean.startsWith('/')) clean.remove(0, 1);
 
+    QMutexLocker locker(&m_mutex);
+
     if (m_textureCache.contains(clean)) {
         return m_textureCache.value(clean);
     }
@@ -252,6 +397,8 @@ QPixmap AssetManager::loadIcon(const QString& relPath) {
     QString clean = relPath;
     clean.replace('\\', '/');
     while (clean.startsWith('/')) clean.remove(0, 1);
+
+    QMutexLocker locker(&m_mutex);
 
     if (m_iconCache.contains(clean)) {
         return m_iconCache.value(clean);
@@ -298,35 +445,6 @@ QPixmap AssetManager::loadIcon(const QString& relPath) {
 // -------------------------------------------------------------
 // Direct DDS Decoder (DXT1, DXT3, DXT5, BGRA8, RGBA8)
 // -------------------------------------------------------------
-#pragma pack(push, 1)
-struct DDS_PIXELFORMAT {
-    uint32_t dwSize;
-    uint32_t dwFlags;
-    uint32_t dwFourCC;
-    uint32_t dwRGBBitCount;
-    uint32_t dwRBitMask;
-    uint32_t dwGBitMask;
-    uint32_t dwBBitMask;
-    uint32_t dwABitMask;
-};
-
-struct DDS_HEADER {
-    uint32_t dwSize;
-    uint32_t dwFlags;
-    uint32_t dwHeight;
-    uint32_t dwWidth;
-    uint32_t dwPitchOrLinearSize;
-    uint32_t dwDepth;
-    uint32_t dwMipMapCount;
-    uint32_t dwReserved1[11];
-    DDS_PIXELFORMAT ddspf;
-    uint32_t dwCaps;
-    uint32_t dwCaps2;
-    uint32_t dwCaps3;
-    uint32_t dwCaps4;
-    uint32_t dwReserved2;
-};
-#pragma pack(pop)
 
 #define FOURCC_DXT1 0x31545844
 #define FOURCC_DXT3 0x33545844

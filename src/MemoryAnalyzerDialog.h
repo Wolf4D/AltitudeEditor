@@ -14,10 +14,12 @@
 class MemoryAnalyzerDialog : public QDialog {
     Q_OBJECT
 public:
-    explicit MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, QWidget* parent = nullptr);
+    explicit MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const MemoryReport* cachedReport = nullptr, QWidget* parent = nullptr);
     ~MemoryAnalyzerDialog() override = default;
 
-    void setMap(std::shared_ptr<FPSCMap> map);
+    void setMap(std::shared_ptr<FPSCMap> map, const MemoryReport* cachedReport = nullptr);
+    void setReport(const MemoryReport& report);
+    void showLoadingState();
 
 protected:
     void changeEvent(QEvent* event) override;
@@ -34,6 +36,7 @@ private:
 
     std::shared_ptr<FPSCMap> m_map;
     MemoryReport m_report;
+    bool m_isCalculating = false;
 
     QLabel* m_cardTotalVal = nullptr;
     QLabel* m_cardSegVal = nullptr;

@@ -1015,6 +1015,11 @@ Do you want to save your changes?</source>
         <translation>RAM уровня: --</translation>
     </message>
     <message>
+        <location filename="../src/MainWindow.cpp" line="1084" />
+        <source>Level RAM: calculating...</source>
+        <translation>RAM уровня: расчёт...</translation>
+    </message>
+    <message>
         <location filename="../src/MainWindow.cpp" line="1071" />
         <source>Please open a map first.</source>
         <translation>Пожалуйста, сначала откройте карту.</translation>
@@ -1276,6 +1281,26 @@ Do you want to save your changes?</source>
         <location filename="../src/MemoryAnalyzerDialog.cpp" line="326" />
         <source>Segments (%1 types, %2 blocks)</source>
         <translation>Сегменты (%1 типов, %2 блоков)</translation>
+    </message>
+    <message>
+        <source>Level RAM Usage: Calculating memory footprint...</source>
+        <translation>Использование RAM: расчёт потребления...</translation>
+    </message>
+    <message>
+        <source>Calculating memory footprint...</source>
+        <translation>Подсчёт потребления RAM...</translation>
+    </message>
+    <message>
+        <source>Entities (calculating...)</source>
+        <translation>Энтити (расчёт...)</translation>
+    </message>
+    <message>
+        <source>Segments (calculating...)</source>
+        <translation>Сегменты (расчёт...)</translation>
+    </message>
+    <message>
+        <source>Calculating level RAM memory footprint in background...</source>
+        <translation>Подсчёт потребления RAM уровня в фоновом режиме...</translation>
     </message>
 </context>
 <context>

@@ -12,7 +12,7 @@
 #include <QTextStream>
 #include <QFile>
 
-MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, QWidget* parent)
+MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const MemoryReport* cachedReport, QWidget* parent)
     : QDialog(parent)
     , m_map(map)
 {
@@ -21,7 +21,15 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, QWidget
     resize(1060, 720);
     setMinimumSize(850, 520);
 
-    m_report = MemoryAnalyzer::analyze(m_map);
+    if (cachedReport) {
+        m_report = *cachedReport;
+        m_isCalculating = false;
+    } else if (parent == nullptr) {
+        m_report = MemoryAnalyzer::analyze(m_map);
+        m_isCalculating = false;
+    } else {
+        m_isCalculating = true;
+    }
 
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
     mainLayout->setSpacing(10);
@@ -242,15 +250,64 @@ void MemoryAnalyzerDialog::retranslateUi() {
     if (m_exportBtn) m_exportBtn->setText(tr("Export CSV Report..."));
     if (m_closeBtn) m_closeBtn->setText(tr("Close"));
 
-    populateUI();
+    if (m_isCalculating) {
+        showLoadingState();
+    } else {
+        populateUI();
+    }
 }
 
-void MemoryAnalyzerDialog::setMap(std::shared_ptr<FPSCMap> map) {
+void MemoryAnalyzerDialog::setMap(std::shared_ptr<FPSCMap> map, const MemoryReport* cachedReport) {
     m_map = map;
     QString mapName = m_map ? m_map->mapName : tr("No Map");
     setWindowTitle(tr("%1 Memory Footprint Analyzer — %2").arg(VersionInfo::shortTitle(), mapName));
-    m_report = MemoryAnalyzer::analyze(m_map);
+    if (cachedReport) {
+        setReport(*cachedReport);
+    } else {
+        showLoadingState();
+    }
+}
+
+void MemoryAnalyzerDialog::setReport(const MemoryReport& report) {
+    m_report = report;
+    m_isCalculating = false;
     populateUI();
+}
+
+void MemoryAnalyzerDialog::showLoadingState() {
+    m_isCalculating = true;
+
+    if (m_cardTotalVal) m_cardTotalVal->setText(tr("..."));
+    if (m_cardSegVal) m_cardSegVal->setText(tr("..."));
+    if (m_cardEntVal) m_cardEntVal->setText(tr("..."));
+    if (m_cardUniVal) m_cardUniVal->setText(tr("..."));
+    if (m_cardEngineVal) m_cardEngineVal->setText(tr("..."));
+
+    if (m_limitLabel) {
+        m_limitLabel->setText(tr("Level RAM Usage: Calculating memory footprint..."));
+    }
+
+    if (m_limitProgress) {
+        m_limitProgress->setRange(0, 0);
+        m_limitProgress->setFormat(tr("Calculating memory footprint..."));
+        m_limitProgress->setStyleSheet(
+            "QProgressBar { border: 1px solid #4a5568; border-radius: 4px; text-align: center; background-color: #141720; color: #ffffff; font-size: 11px; font-weight: bold; height: 22px; }"
+            "QProgressBar::chunk { background-color: #3498db; border-radius: 3px; }"
+        );
+    }
+
+    if (m_tabWidget) {
+        m_tabWidget->setTabText(0, tr("Entities (calculating...)"));
+        m_tabWidget->setTabText(1, tr("Segments (calculating...)"));
+    }
+
+    if (m_entityTable) m_entityTable->setRowCount(0);
+    if (m_segmentTable) m_segmentTable->setRowCount(0);
+    if (m_engineTable) m_engineTable->setRowCount(0);
+
+    if (m_tipsEdit) {
+        m_tipsEdit->setPlainText(tr("Calculating level RAM memory footprint in background..."));
+    }
 }
 
 QWidget* MemoryAnalyzerDialog::createCard(const QString& title, QLabel*& outValueLabel, QLabel*& outTitleLabel, const QString& color) {

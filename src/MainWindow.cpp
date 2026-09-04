@@ -4,7 +4,10 @@
 #include "FPMWriter.h"
 #include "AssetManager.h"
 #include "MemoryAnalyzerDialog.h"
+#include "MemoryAnalyzer.h"
 #include "PortalLeakDialog.h"
+#include <QtConcurrent>
+#include <QFutureWatcher>
 #include <QMenuBar>
 #include <QToolBar>
 #include <QStatusBar>
@@ -842,11 +845,9 @@ void MainWindow::loadMapFile(const QString& filePath) {
 
     m_currentMap = map;
 
-    progress.setValue(55);
-    progress.setLabelText(tr("Analyzing map memory footprint..."));
-    QCoreApplication::processEvents();
-    m_cachedMemoryReport = MemoryAnalyzer::analyze(m_currentMap);
-    m_memoryReportValid = true;
+    // Start memory footprint calculation asynchronously in background worker
+    m_memoryReportValid = false;
+    startAsyncMemoryAnalysis(m_currentMap);
 
     progress.setValue(70);
     progress.setLabelText(tr("Building visibility zones & portals..."));
@@ -868,7 +869,7 @@ void MainWindow::loadMapFile(const QString& filePath) {
         m_portalLeakDialog->setMap(m_currentMap);
     }
     if (m_memoryAnalyzerDialog && m_memoryAnalyzerDialog->isVisible()) {
-        m_memoryAnalyzerDialog->setMap(m_currentMap);
+        m_memoryAnalyzerDialog->setMap(m_currentMap, nullptr);
     }
 
     progress.setValue(95);
@@ -941,11 +942,19 @@ void MainWindow::onOpenMemoryAnalyzer() {
     }
 
     if (!m_memoryAnalyzerDialog) {
-        m_memoryAnalyzerDialog = new MemoryAnalyzerDialog(m_currentMap, this);
+        m_memoryAnalyzerDialog = new MemoryAnalyzerDialog(
+            m_currentMap,
+            m_memoryReportValid ? &m_cachedMemoryReport : nullptr,
+            this
+        );
         m_memoryAnalyzerDialog->setAttribute(Qt::WA_DeleteOnClose);
         m_memoryAnalyzerDialog->show();
     } else {
-        m_memoryAnalyzerDialog->setMap(m_currentMap);
+        if (m_memoryReportValid) {
+            m_memoryAnalyzerDialog->setReport(m_cachedMemoryReport);
+        } else {
+            m_memoryAnalyzerDialog->setMap(m_currentMap, nullptr);
+        }
         m_memoryAnalyzerDialog->raise();
         m_memoryAnalyzerDialog->activateWindow();
         m_memoryAnalyzerDialog->show();
@@ -1072,9 +1081,40 @@ void MainWindow::updateStatusBar() {
         m_statusMemory->setText(tr("Level RAM: %1 MB (%2%)")
             .arg(m_cachedMemoryReport.totalEstimatedRamBytes / (1024.0 * 1024.0), 0, 'f', 1)
             .arg(m_cachedMemoryReport.engineLimitPercent, 0, 'f', 1));
+    } else if (m_isMemoryAnalyzing) {
+        m_statusMemory->setText(tr("Level RAM: calculating..."));
     } else {
         m_statusMemory->setText(tr("Level RAM: --"));
     }
+}
+
+void MainWindow::startAsyncMemoryAnalysis(std::shared_ptr<FPSCMap> map) {
+    if (!map) return;
+
+    m_isMemoryAnalyzing = true;
+    m_memoryReportValid = false;
+    updateStatusBar();
+
+    uint64_t token = ++m_memoryAnalysisToken;
+    auto* watcher = new QFutureWatcher<MemoryReport>(this);
+
+    connect(watcher, &QFutureWatcher<MemoryReport>::finished, this, [this, watcher, token, map]() {
+        if (token == m_memoryAnalysisToken && m_currentMap == map) {
+            m_cachedMemoryReport = watcher->result();
+            m_memoryReportValid = true;
+            m_isMemoryAnalyzing = false;
+            updateStatusBar();
+
+            if (m_memoryAnalyzerDialog && m_memoryAnalyzerDialog->isVisible()) {
+                m_memoryAnalyzerDialog->setReport(m_cachedMemoryReport);
+            }
+        }
+        watcher->deleteLater();
+    });
+
+    watcher->setFuture(QtConcurrent::run([map]() {
+        return MemoryAnalyzer::analyze(map);
+    }));
 }
 
 void MainWindow::onOpenPortalLeakDetector() {

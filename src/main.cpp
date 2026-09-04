@@ -11,6 +11,7 @@
 #include <QDebug>
 #include <QToolBar>
 #include <QAction>
+#include <QThread>
 
 int main(int argc, char* argv[]) {
     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
@@ -185,6 +186,18 @@ int main(int argc, char* argv[]) {
             } else {
                 if (auto* canvas = window.findChild<MapCanvas*>()) {
                     canvas->zoomFit();
+                }
+            }
+            if (args.contains("--wait-ms")) {
+                int wIdx = args.indexOf("--wait-ms");
+                if (args.size() > wIdx + 1) {
+                    int ms = args.value(wIdx + 1).toInt();
+                    QElapsedTimer timer;
+                    timer.start();
+                    while (timer.elapsed() < ms) {
+                        app.processEvents();
+                        QThread::msleep(20);
+                    }
                 }
             }
             app.processEvents();

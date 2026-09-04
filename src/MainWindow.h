@@ -72,6 +72,9 @@ private:
     QPointer<MemoryAnalyzerDialog> m_memoryAnalyzerDialog;
     MemoryReport m_cachedMemoryReport;
     bool m_memoryReportValid = false;
+    bool m_isMemoryAnalyzing = false;
+    uint64_t m_memoryAnalysisToken = 0;
+    void startAsyncMemoryAnalysis(std::shared_ptr<FPSCMap> map);
 
     // Floor UI Controls
     QComboBox* m_floorCombo = nullptr;

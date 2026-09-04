@@ -8,7 +8,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets)
+find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
 
 set(SOURCES
     src/main.cpp
@@ -58,10 +58,10 @@ set(HEADERS
 )
 
 add_executable(FPSCMapViewer WIN32 ${SOURCES} ${HEADERS} ${MANIFEST_OBJ})
-target_link_libraries(FPSCMapViewer PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets)
+target_link_libraries(FPSCMapViewer PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Concurrent)
 
 add_executable(FPSCMapViewerTool ${SOURCES} ${HEADERS} ${MANIFEST_OBJ})
-target_link_libraries(FPSCMapViewerTool PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets)
+target_link_libraries(FPSCMapViewerTool PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Concurrent)
 
 add_executable(test_standalone
     src/test_standalone.cpp
@@ -77,7 +77,7 @@ add_executable(test_standalone
     src/UniverseDBUParser.cpp
     src/VisZoneManager.cpp
 )
-target_link_libraries(test_standalone PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets)
+target_link_libraries(test_standalone PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Concurrent)
 
 
 

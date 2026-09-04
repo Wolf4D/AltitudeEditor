@@ -7,10 +7,29 @@
 
 static const qint64 FPSC_32BIT_LIMIT_BYTES = 1850LL * 1024LL * 1024LL; // 1.85 GB
 
-static void inspectTextureWithMaps(const QString& texPath, qint64& outDiff, qint64& outNorm, qint64& outSpec, int& outW, int& outH) {
+struct TextureMapInfo {
+    qint64 diff = 0;
+    qint64 norm = 0;
+    qint64 spec = 0;
+    int w = 0;
+    int h = 0;
+};
+
+static void inspectTextureWithMaps(const QString& texPath, qint64& outDiff, qint64& outNorm, qint64& outSpec, int& outW, int& outH, QMap<QString, TextureMapInfo>& cache) {
     outDiff = 0; outNorm = 0; outSpec = 0; outW = 0; outH = 0;
     if (texPath.isEmpty()) return;
     QString clean = QString(texPath).replace('\\', '/').toLower();
+
+    if (cache.contains(clean)) {
+        const auto& c = cache.value(clean);
+        outDiff = c.diff;
+        outNorm = c.norm;
+        outSpec = c.spec;
+        outW = c.w;
+        outH = c.h;
+        return;
+    }
+
     int w = 0, h = 0; qint64 r = 0, d = 0;
     if (AssetManager::instance().getTextureMetrics(clean, w, h, r, d)) {
         outDiff = r;
@@ -58,11 +77,21 @@ static void inspectTextureWithMaps(const QString& texPath, qint64& outDiff, qint
             }
         }
     }
+
+    TextureMapInfo info;
+    info.diff = outDiff;
+    info.norm = outNorm;
+    info.spec = outSpec;
+    info.w = outW;
+    info.h = outH;
+    cache[clean] = info;
 }
 
 MemoryReport MemoryAnalyzer::analyze(std::shared_ptr<FPSCMap> map) {
     MemoryReport rep;
     if (!map) return rep;
+
+    QMap<QString, TextureMapInfo> texMapCache;
 
     // =========================================================================
     // 1. SEGMENTS (ROOMS, CORRIDORS, ARCHITECTURE)
@@ -131,7 +160,7 @@ MemoryReport MemoryAnalyzer::analyze(std::shared_ptr<FPSCMap> map) {
                     itemTextures.insert(t);
                     qint64 diff = 0, norm = 0, spec = 0;
                     int tw = 0, th = 0;
-                    inspectTextureWithMaps(t, diff, norm, spec, tw, th);
+                    inspectTextureWithMaps(t, diff, norm, spec, tw, th, texMapCache);
 
                     item.diffuseRamBytes += diff;
                     item.normalRamBytes += norm;
@@ -220,7 +249,7 @@ MemoryReport MemoryAnalyzer::analyze(std::shared_ptr<FPSCMap> map) {
             QString t = QString(tPath).replace('\\', '/').toLower();
             qint64 diff = 0, norm = 0, spec = 0;
             int tw = 0, th = 0;
-            inspectTextureWithMaps(t, diff, norm, spec, tw, th);
+            inspectTextureWithMaps(t, diff, norm, spec, tw, th, texMapCache);
 
             item.texWidth = tw;
             item.texHeight = th;

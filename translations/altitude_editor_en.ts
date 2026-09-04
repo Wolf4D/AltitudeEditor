@@ -1011,6 +1011,10 @@ Do you want to save your changes?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Level RAM: calculating...</source>
+        <translation>Level RAM: calculating...</translation>
+    </message>
+    <message>
         <location filename="../src/MainWindow.cpp" line="1071"/>
         <source>Please open a map first.</source>
         <translation type="unfinished"></translation>
@@ -1272,6 +1276,26 @@ Do you want to save your changes?</source>
         <location filename="../src/MemoryAnalyzerDialog.cpp" line="326"/>
         <source>Segments (%1 types, %2 blocks)</source>
         <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Level RAM Usage: Calculating memory footprint...</source>
+        <translation>Level RAM Usage: Calculating memory footprint...</translation>
+    </message>
+    <message>
+        <source>Calculating memory footprint...</source>
+        <translation>Calculating memory footprint...</translation>
+    </message>
+    <message>
+        <source>Entities (calculating...)</source>
+        <translation>Entities (calculating...)</translation>
+    </message>
+    <message>
+        <source>Segments (calculating...)</source>
+        <translation>Segments (calculating...)</translation>
+    </message>
+    <message>
+        <source>Calculating level RAM memory footprint in background...</source>
+        <translation>Calculating level RAM memory footprint in background...</translation>
     </message>
 </context>
 <context>
