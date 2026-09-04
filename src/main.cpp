@@ -2,6 +2,7 @@
 #include "AssetManager.h"
 #include "FPMReader.h"
 #include "MemoryAnalyzer.h"
+#include "PortalLeakAnalyzer.h"
 #include "Version.h"
 #include "LanguageManager.h"
 #include <QApplication>
@@ -12,6 +13,33 @@
 #include <QToolBar>
 #include <QAction>
 #include <QThread>
+
+static void printCliHelp() {
+    fprintf(stdout,
+        "Altitude Editor CLI - Level Analysis & Automation Tool\n"
+        "Usage: AltitudeEditor-cli [options]\n\n"
+        "General Options:\n"
+        "  -h, --help                          Show this help message and exit\n"
+        "  -v, --version                       Print version and build number\n\n"
+        "Level Inspection & Analysis:\n"
+        "  --analyze-memory <map.fpm>          Calculate exact level RAM footprint (Segments, Entities, CSG, Lights)\n"
+        "  --check-leaks <map.fpm>             Analyze portals and CSG geometry for leaks and errors\n"
+        "  --dump-floor <map.fpm> <floor>      Print dimensions and block stats for a specific floor\n\n"
+        "Rendering & Export (Headless):\n"
+        "  --export-png <map.fpm> <out.png> [floor] [--color-zones]\n"
+        "                                      Render map floor to a high-resolution PNG image\n"
+        "  --snapshot-window <map.fpm> <out.png> [entity_idx] [--size W H] [--color-zones] [--floor N]\n"
+        "                                      Headless offscreen window snapshot for automated testing\n"
+        "  --snapshot-memory <map.fpm> <out.png>\n"
+        "                                      Headless offscreen memory analyzer dialog snapshot\n\n"
+        "Examples:\n"
+        "  AltitudeEditor-cli --version\n"
+        "  AltitudeEditor-cli --analyze-memory \"Files/mapbank/1.fpm\"\n"
+        "  AltitudeEditor-cli --check-leaks \"Files/mapbank/1.fpm\"\n"
+        "  AltitudeEditor-cli --export-png \"Files/mapbank/1.fpm\" \"preview.png\" 0\n"
+    );
+    fflush(stdout);
+}
 
 int main(int argc, char* argv[]) {
     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
@@ -67,13 +95,57 @@ int main(int argc, char* argv[]) {
         "QStatusBar { background: #181b24; border-top: 1px solid #262c3a; color: #8898b0; }"
     );
 
-    // Check for CLI memory analysis mode
+    // Check for CLI options
     QStringList args = app.arguments();
+
+#ifdef ALTITUDE_CLI_TOOL
+    if (args.size() <= 1 || args.contains("--help") || args.contains("-h")) {
+        printCliHelp();
+        std::exit(0);
+    }
+#endif
+
     if (args.contains("--version") || args.contains("-v")) {
         fprintf(stdout, "%s v%s\n", qPrintable(VersionInfo::AppName), qPrintable(VersionInfo::Version));
         fflush(stdout);
         std::exit(0);
     }
+
+    if (args.contains("--help") || args.contains("-h")) {
+        printCliHelp();
+        std::exit(0);
+    }
+
+    if (args.contains("--check-leaks")) {
+        int idx = args.indexOf("--check-leaks");
+        if (args.size() >= idx + 2) {
+            QString mapPath = args.value(idx + 1);
+            auto map = FPMReader::loadMap(mapPath, "mypassword");
+            if (!map) {
+                fprintf(stderr, "Error: Failed to load map: %s\n", qPrintable(mapPath));
+                std::exit(1);
+            }
+            PortalLeakAnalyzer analyzer(map);
+            auto warnings = analyzer.analyze();
+            fprintf(stdout, "=== PORTAL & CSG LEAK ANALYSIS: %s ===\n", qPrintable(map->mapName));
+            fprintf(stdout, "Total issues detected: %zu\n", warnings.size());
+            int errCount = 0, warnCount = 0;
+            for (const auto& w : warnings) {
+                if (w.severity == PortalLeakWarning::ERROR) errCount++;
+                else warnCount++;
+                fprintf(stdout, "  [%s] %s at Floor %d (Grid: %d, %d): %s\n",
+                        w.severity == PortalLeakWarning::ERROR ? "ERROR" : "WARN",
+                        qPrintable(w.type), w.layer, w.x, w.y, qPrintable(w.description));
+            }
+            fprintf(stdout, "Summary: %d Errors, %d Warnings\n", errCount, warnCount);
+            fflush(stdout);
+            std::exit(errCount > 0 ? 2 : 0);
+        } else {
+            fprintf(stderr, "Error: Missing map path for --check-leaks. Usage: --check-leaks <map.fpm>\n");
+            std::exit(1);
+        }
+    }
+
     if (args.contains("--analyze-memory") && args.size() >= 3) {
         int idx = args.indexOf("--analyze-memory");
         QString mapPath = args.value(idx + 1);
@@ -251,6 +323,11 @@ int main(int argc, char* argv[]) {
         fflush(stdout);
         std::exit(0);
     }
+
+#ifdef ALTITUDE_CLI_TOOL
+    fprintf(stderr, "Error: Unknown command or missing parameters. Run 'AltitudeEditor-cli --help' for usage.\n");
+    std::exit(1);
+#endif
 
     MainWindow window;
     window.show();

@@ -67,10 +67,13 @@ add_custom_target(UpdateBuildNumber
 )
 
 add_executable(FPSCMapViewer WIN32 ${SOURCES} ${HEADERS} ${MANIFEST_OBJ})
+set_target_properties(FPSCMapViewer PROPERTIES OUTPUT_NAME "AltitudeEditor")
 target_link_libraries(FPSCMapViewer PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Concurrent)
 add_dependencies(FPSCMapViewer UpdateBuildNumber)
 
 add_executable(FPSCMapViewerTool ${SOURCES} ${HEADERS} ${MANIFEST_OBJ})
+set_target_properties(FPSCMapViewerTool PROPERTIES OUTPUT_NAME "AltitudeEditor-cli")
+target_compile_definitions(FPSCMapViewerTool PRIVATE ALTITUDE_CLI_TOOL)
 target_link_libraries(FPSCMapViewerTool PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Concurrent)
 add_dependencies(FPSCMapViewerTool UpdateBuildNumber)
 

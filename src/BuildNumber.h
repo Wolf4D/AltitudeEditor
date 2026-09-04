@@ -1,5 +1,5 @@
 // Generated automatically by cmake/update_build_number.cmake
 #pragma once
 
-#define BUILD_NUMBER 86
-#define BUILD_NUMBER_STR "86"
+#define BUILD_NUMBER 89
+#define BUILD_NUMBER_STR "89"

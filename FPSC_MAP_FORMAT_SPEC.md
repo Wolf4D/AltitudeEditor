@@ -1,116 +1,116 @@
-﻿# Полная спецификация форматов карт и структур игрового движка FPS Creator
+# Comprehensive Specification of FPS Creator Map Formats & Engine Structures
 
-**Автор:** Иван Клёнов (**Ivan Klenov**)  
-**Проект:** FPS Creator 2D Map Viewer  
-**Версия документации:** 1.0 (2026)  
-**Целевые движки:** FPS Creator V1, V1.04, V1.07, V1.18 Classic, FPS Creator X10, WASP Branch
-
----
-
-## 1. Введение и общая архитектура
-
-Игровой движок **FPS Creator (FPSC)**, разработанный компанией *The Game Creators* под руководством Ли Бэмбера (Lee Bamber) на базе **DarkBasic Pro**, использует модульную блочно-сеточную архитектуру построения уровней.
-
-Уровень FPS Creator состоит из:
-1. **3D-сетки сегментов (Segments Grid)**: модульные блоки стен, полов, потолков и коридоров фиксированного размера ($100 \times 100 \times 100$ единиц мира).
-2. **Библиотеки сегментов (Segment Bank)**: список уникальных сегментов (`.fps`), используемых на карте.
-3. **Объектов (Entities)**: интерактивные игровые сущности (персонажи, оружие, патроны, двери, декорации, зоны триггеров, источники света, маркер игрока), имеющие произвольные непрерывные координаты $(X, Y, Z)$ и ориентацию в пространстве.
-4. **Вейпоинтов (Waypoints)**: графы путей патрулирования для искусственного интеллекта.
-5. **Таблицы освещения (Lights Table)**: статические и динамические точечные источники света.
-
-Все данные уровня упаковываются в единый пакет с расширением **`.fpm`** (*FPS Creator Map*).
+**Author:** Ivan Klenov (aka NavY LiK)  
+**Project:** Altitude Editor (FPS Creator 2D Map Editor & Analyzer)  
+**Documentation Version:** 1.0 (2026)  
+**Target Engines:** FPS Creator V1, V1.04, V1.07, V1.18 Classic, FPS Creator X10, WASP Branch  
 
 ---
 
-## 2. Контейнер карты: формат `.FPM`
+## 1. Introduction & High-Level Architecture
 
-Файл `.fpm` представляет собой стандартный архив **ZIP (PKZIP 2.0)** со сжатием Deflate или Store.
+The **FPS Creator (FPSC)** game engine, originally developed by *The Game Creators* under the direction of Lee Bamber on top of **DarkBasic Pro**, employs a modular tile-and-grid architecture for level construction.
 
-### 2.1. Парольная защита
-В большинстве версий редактора FPS Creator для защиты карт от прямого вскрытия обычными архиваторами используется стандартный встроенный пароль ZIP:
+An FPS Creator level comprises:
+1. **3D Segment Grid**: Modular blocks of walls, floors, ceilings, and corridors of fixed dimensions ($100 \times 100 \times 100$ world units).
+2. **Segment Bank**: A registry of unique segment definition files (`.fps`) utilized across the map.
+3. **Entities**: Interactive game objects (characters, weapons, ammo, doors, scenery props, trigger zones, dynamic lights, and player markers) with arbitrary continuous 3D coordinates $(X, Y, Z)$ and spatial orientations.
+4. **Waypoints**: AI navigation path graphs and patrol route sequences.
+5. **Lights Table**: Static and dynamic point light emitters.
+
+All level assets and descriptors are packaged into a single archive with the **`.fpm`** extension (*FPS Creator Map*).
+
+---
+
+## 2. Map Container: `.FPM` Format
+
+An `.fpm` file is a standard **ZIP archive (PKZIP 2.0)** compressed using Deflate or Store algorithms.
+
+### 2.1. Password Protection
+In most official releases of FPS Creator, maps are protected against direct extraction by standard ZIP utilities using a hardcoded default password:
 ```text
 mypassword
 ```
-*(Примечание: некоторые мод-паки или пользовательские сборки могут сохранять файлы без пароля)*.
+*(Note: some custom community builds or mod packages may save `.fpm` archives unencrypted without a password).*
 
-### 2.2. Содержимое архива `.fpm`
-Внутри архива располагается фиксированный набор файлов:
+### 2.2. Archive Contents
+The `.fpm` container typically includes the following internal files:
 
-| Имя файла в архиве | Назначение | Формат |
+| Internal Filename | Purpose | Format |
 | :--- | :--- | :--- |
-| `map.fpm` / `map.fpmb` | 3D-сетка уровня и заголовки размеров | Текстовый или бинарный массив DarkBasic Pro |
-| `map.seg` | Каталог типов сегментов, использованных в карте | Текстовый файл (список путей `.fps`) |
-| `map.ele` | Список и свойства всех размещенных сущностей (Entities) | Бинарный формат переменной длины |
-| `map.way` | Точки путей и графы маршрутов AI | Текстовый / бинарный файл |
-| `map.lgt` | Таблица источников света | Бинарный / текстовый файл |
-| `header.ini` *(опционально)* | Метаданные уровня (небо, туман, шейдеры) | INI-файл конфигурации |
+| `map.fpm` / `map.fpmb` | 3D level grid and dimension headers | Plaintext or binary DarkBasic Pro array |
+| `map.seg` | Catalog of segment types referenced in the map | Plaintext (newline-separated `.fps` relative paths) |
+| `map.ele` | Serialized properties of all placed entities | Variable-length binary records |
+| `map.way` | AI waypoint coordinates and patrol graphs | Plaintext or binary |
+| `map.lgt` | Light emitter parameter table | Plaintext or binary |
+| `header.ini` *(optional)* | Level environment metadata (skybox, fog, shaders) | INI configuration file |
 
 ---
 
-## 3. Система координат движка и соответствие 2D-холсту
+## 3. Coordinate System & 2D Canvas Mapping
 
-### 3.1. Размеры сетки
-- Сетка уровня по умолчанию имеет размер **$41 \times 41$ ячеек** по горизонтали ($X \in [0..40]$, $Y_{\text{grid}} \in [0..40]$).
-- По вертикали карта разбита на **21 этаж / слой (Layers)** ($L \in [0..20]$).
-- Размер одной ячейки сетки (Tile): **$100 \times 100 \times 100$ единиц мира**.
-- Общий размер уровня: $4100 \times 4100 \times 2100$ единиц.
+### 3.1. Grid Dimensions
+- By default, the level grid spans **$41 \times 41$ cells** horizontally ($X \in [0..40]$, $Y_{\text{grid}} \in [0..40]$).
+- Vertically, the level is partitioned into **21 floors / layers** ($L \in [0..20]$).
+- Tile size: **$100 \times 100 \times 100$ world units**.
+- Total world bounding volume: $4100 \times 4100 \times 2100$ units.
 
-### 3.2. Мировые 3D-координаты движка
-В кодовой базе движка (*DarkBasic Pro* / `FPSC-Game.DBA`) координаты рассчитываются следующим образом:
-- **Ось $X$**: направлена вправо ($X \ge 0$). Центр ячейки $x$:
+### 3.2. Engine 3D World Coordinates
+In the engine codebase (*DarkBasic Pro* / `FPSC-Game.DBA`), coordinates are evaluated as follows:
+- **$X$ Axis**: Extends to the right ($X \ge 0$). Cell center:
   $$X_{\text{world}} = x \times 100 + 50$$
-- **Ось $Y$ (Высота)**: направлена вверх ($Y \ge 0$). Центр этажа $L$:
+- **$Y$ Axis (Altitude / Height)**: Extends upward ($Y \ge 0$). Floor center:
   $$Y_{\text{world}} = L \times 100 + 50$$
-- **Ось $Z$ (Глубина)**: в DarkBasic Pro ось $Z$ направлена вглубь со **знаком минус** ($Z \le 0$). Центр ячейки $y$:
+- **$Z$ Axis (Depth)**: In DarkBasic Pro, the $Z$ axis extends forward with a **negative sign** ($Z \le 0$). Cell center:
   $$Z_{\text{world}} = -(y \times 100 + 50)$$
 
-### 3.3. Проекция на 2D вид сверху (Top-Down Canvas)
-Для отображения карты в 2D-виде (вид сверху, где $(0, 0)$ — верхний левый угол):
+### 3.3. Top-Down 2D Projection
+To project 3D world space onto a top-down 2D canvas (where $(0, 0)$ corresponds to the top-left corner):
 $$\text{Canvas } X = X_{\text{world}}$$
 $$\text{Canvas } Y = -Z_{\text{world}}$$
-$$\text{Этаж (Floor Layer)} = \left\lfloor \frac{Y_{\text{world}} + 25}{100} \right\rfloor$$
+$$\text{Floor Layer } L = \left\lfloor \frac{Y_{\text{world}} + 25}{100} \right\rfloor$$
 
 ---
 
-## 4. Сетка уровня: бинарный формат `map.fpmb`
+## 4. Level Grid: Binary Format `map.fpmb`
 
-Файл `map.fpmb` содержит состояние 3D-массива ячеек сетки.
+The `map.fpmb` file stores the state of the 3D cell array.
 
-### 4.1. Сериализация 3D-массивов в DarkBasic Pro
-В DarkBasic Pro оператор `dim map(layermax, maxx, maxy)` выделяет 3-мерный массив, который сохраняется на диск в **Column-Major (Fortran) порядке**.
+### 4.1. DarkBasic Pro 3D Array Serialization
+In DarkBasic Pro, the statement `dim map(layermax, maxx, maxy)` allocates a 3-dimensional array serialized to disk in **Column-Major (Fortran) order**.
 
-Структура файла `map.fpmb`:
-1. `int32 headerCount` — заголовок (обычно 0).
-2. `int32 totalCells` — общее число ячеек ($21 \times 41 \times 41 = 35\,301$).
-3. Последовательность из 35 301 элементов по **8 байт** каждый:
-   - `int32 cellIndex` (порядковый номер элемента);
-   - `int32 mapid` (32-битное битовое поле данных ячейки).
+File structure of `map.fpmb`:
+1. `int32 headerCount` — Header marker (typically 0).
+2. `int32 totalCells` — Total cell count ($21 \times 41 \times 41 = 35\,301$).
+3. Stream of 35,301 elements, each occupying **8 bytes**:
+   - `int32 cellIndex`: Sequential element index;
+   - `int32 mapid`: 32-bit encoded cell bitfield.
 
-### 4.2. Формула адресации индекса ячейки
-Для ячейки с координатами $(\text{layer}, x, y)$ одномерный индекс $i$ в файле вычисляется по формуле:
+### 4.2. Cell Index Addressing Formula
+For a cell located at coordinate tuple $(\text{layer}, x, y)$, the 1D serialized element index $i$ is computed as:
 $$i = \text{layer} + x \times (\text{layers}) + y \times (\text{layers} \times \text{cols})$$
-где $\text{layers} = \text{layermax} + 1 = 21$, $\text{cols} = \text{maxx} + 1 = 41$.
+where $\text{layers} = \text{layermax} + 1 = 21$, $\text{cols} = \text{maxx} + 1 = 41$.
 
-И обратно, при чтении потока элементов $i = 0 \dots 35\,300$:
+Conversely, when reading a sequential element stream ($i = 0 \dots 35\,300$):
 $$\text{layer} = i \pmod{21}$$
 $$\text{rem} = \lfloor i / 21 \rfloor$$
 $$x = \text{rem} \pmod{41}$$
 $$y = \lfloor \text{rem} / 41 \rfloor$$
 
-### 4.3. Распаковка битового поля `mapid` (Bitfield Layout)
-Значение `mapid` (DWORD) кодирует тип размещенного сегмента, его вращение и ориентацию:
+### 4.3. Bitfield Layout of `mapid`
+The `mapid` (DWORD) encodes the segment index, vertical alignment, and spatial orientation:
 
-| Биты | Имя в коде движка | Описание |
+| Bits | Field Name | Description |
 | :--- | :--- | :--- |
-| **31 .. 20** (12 бит) | `segId` | 1-based индекс сегмента в `map.seg` (`0` = пусто) |
-| **19 .. 16** (4 бита) | `scaler` | Масштабирование высоты блока |
-| **15 .. 14** (2 бита) | `ground` | Привязка к полу/потолку |
-| **13 .. 12** (2 бита) | `rotation` | Угол поворота блока ($0 = 0^\circ, 1 = 90^\circ, 2 = 180^\circ, 3 = 270^\circ$) |
-| **11 .. 10** (2 бита) | `orient` | Флаг зеркалирования / ориентации |
-| **9 .. 4** (6 бит) | `symbol` | Идентификатор специального символа маркера |
-| **3 .. 0** (4 бита) | `flags` | Дополнительные флаги отрисовки |
+| **31 .. 20** (12 bits) | `segId` | 1-based segment index in `map.seg` (`0` = empty air) |
+| **19 .. 16** (4 bits) | `scaler` | Vertical height scaling factor |
+| **15 .. 14** (2 bits) | `ground` | Floor / ceiling snap flag |
+| **13 .. 12** (2 bits) | `rotation` | Yaw rotation ($0 = 0^\circ, 1 = 90^\circ, 2 = 180^\circ, 3 = 270^\circ$) |
+| **11 .. 10** (2 bits) | `orient` | Mirroring / inversion flag |
+| **9 .. 4** (6 bits) | `symbol` | Special marker symbol ID |
+| **3 .. 0** (4 bits) | `flags` | Auxiliary rendering and visibility flags |
 
-**Формулы извлечения на C++:**
+**C++ Bit Extraction:**
 ```cpp
 uint32_t mapid = ...;
 int segId    = (mapid >> 20) & 0x0FFF;
@@ -123,19 +123,19 @@ int symbol   = (mapid >> 4)  & 0x003F;
 
 ---
 
-## 5. Библиотека сегментов: формат `map.seg`
+## 5. Segment Bank: `map.seg` Format
 
-Файл `map.seg` — это текстовый файл со списком относительных путей к файлам описания сегментов (`.fps`), проиндексированных с единицы ($1, 2, 3 \dots$).
+The `map.seg` file is a plaintext list of relative filepaths referencing segment definition files (`.fps`), indexed starting from one ($1, 2, 3 \dots$).
 
-Пример содержимого:
+Example content:
 ```text
 segments\scifi\rooms\corridora.fps
 segments\scifi\doors\door_frame.fps
 segments\ww2\scenery\armoury.fps
 ```
 
-### 5.1. Структура файла описания сегмента `.FPS`
-Файлы `.fps` представляют собой текстовые конфигурации:
+### 5.1. Segment Definition Structure (`.FPS`)
+An `.fps` file is an INI-like configuration script:
 ```ini
 ; Segment Configuration File
 desc          = Sci-Fi Corridor A
@@ -144,88 +144,87 @@ texture       = texturebank\scifi\corridora_D.dds
 materialindex = 1
 kind          = 0
 ```
-Связанные текстуры:
-- `_D.dds` / `_D.tga` — диффузная текстура (Diffuse).
-- `_N.dds` / `_N.tga` — карта нормалей (Normal Bump Map).
-- `_S.dds` / `_S.tga` — карта отражений (Specular).
-- `_I.dds` / `_I.tga` — карта свечения (Illumination).
+Standard texture channel conventions:
+- `_D.dds` / `_D.tga` — Diffuse color map.
+- `_N.dds` / `_N.tga` — Normal / bump map.
+- `_S.dds` / `_S.tga` — Specular reflectance map.
+- `_I.dds` / `_I.tga` — Self-illumination / emissive map.
 
 ---
 
-## 6. База сущностей уровня: бинарный формат `map.ele`
+## 6. Entity Database: Binary Format `map.ele`
 
-Файл `map.ele` хранит все динамические и статические сущности уровня. Формат развивался от версии к версии движка.
+The `map.ele` file stores all dynamic and static placed entities. The format evolved across engine revisions.
 
-### 6.1. Заголовок файла
-- `int32 version` — номер версии формата ($100 \dots 218$).
-- `int32 count` — количество сохраненных элементов.
+### 6.1. File Header
+- `int32 version` — Format version identifier ($100 \dots 218$).
+- `int32 count` — Total number of serialized entity records.
 
-### 6.2. Чтение строк в DarkBasic Pro
-Оператор `write string 1, a$` записывает строку с суффиксом **CRLF (`\r\n`)**.
-При десериализации парсер должен сканировать байты до маркера `\r\n` (2 байта).
+### 6.2. String Deserialization
+In DarkBasic Pro, `write string 1, a$` outputs characters followed by a **CRLF (`\r\n`)** sequence.
+Parsers must scan incoming bytes up to the `\r\n` delimiter (2 bytes).
 
-### 6.3. Побайтовая структура одной сущности (Entity Block)
+### 6.3. Entity Record Binary Layout
 
-#### Базовый блок (Версия 101):
+#### Base Record Block (Version 101):
 1. `int32 mainType`
-2. `int32 bankIndex` (1-based индекс профиля `.fpe`)
-3. `int32 staticFlag` ($0$ = динамический, $1$ = статический)
-4. `float x, y, z` (Мировые 3D координаты, 12 байт)
-5. `float rx, ry, rz` (Углы вращения в градусах, 12 байт)
-6. `string name$` (Имя сущности, CRLF)
-7. `string aiInit$` (Скрипт инициализации, CRLF)
-8. `string aiMain$` (Главный скрипт поведения, CRLF)
-9. `string aiDestroy$` (Скрипт уничтожения, CRLF)
+2. `int32 bankIndex` (1-based index in entity registry)
+3. `int32 staticFlag` ($0$ = dynamic, $1$ = static)
+4. `float x, y, z` (World coordinates, 12 bytes)
+5. `float rx, ry, rz` (Euler rotation angles in degrees, 12 bytes)
+6. `string name$` (Entity instance identifier, CRLF)
+7. `string aiInit$` (Init FPI script, CRLF)
+8. `string aiMain$` (Main behavior script, CRLF)
+9. `string aiDestroy$` (Destroy script, CRLF)
 10. `int32 isObjective`
-11. `string useKey$` (CRLF)
-12. `string ifUsed$` (CRLF)
-13. `string ifUsedNear$` (CRLF)
+11. `string useKey$` (Required key name, CRLF)
+12. `string ifUsed$` (Trigger script when used, CRLF)
+13. `string ifUsedNear$` (Proximity script, CRLF)
 14. `int32 uniqueElement`
-15. `string texD$` (Пользовательская текстура, CRLF)
-16. `string texAltD$` (Альтернативная текстура, CRLF)
-17. `string effect$` (Шейдер эффекта, CRLF)
+15. `string texD$` (Custom diffuse override, CRLF)
+16. `string texAltD$` (Alternative texture, CRLF)
+17. `string effect$` (Custom shader path, CRLF)
 18. `int32 transparency`
 19. `int32 editorFixed`
-20. `string soundSet$` (CRLF)
-21. `string soundSet1$` (CRLF)
-22. `int32[7] spawnParams` ($7 \times 4 = 28$ байт: `spawnmax`, `spawndelay`, `spawnqty`, `hurtfall`, `castshadow`, `reducetexture`, `speed`)
-23. `string aiShoot$` (CRLF)
-24. `string hasWeapon$` (CRLF)
-25. `int32[4] liveSpawn` ($4 \times 4 = 16$ байт: `lives`, `spawn.max`, `spawn.delay`, `spawn.qty`)
-26. `float[3] coneScale` ($3 \times 4 = 12$ байт: `scale`, `coneheight`, `coneangle`)
-27. `int32[13] propsAndTrigger` ($13 \times 4 = 52$ байта: `strength`, `isimmobile`, `cantakeweapon`, `quantity`, `markerindex`, `light.color`, `light.range`, `areax1`, `areay1`, `areaz1`, `areax2`, `areay2`, `areaz2`)
-28. `string baseDecal$` (CRLF)
+20. `string soundSet$` (Audio package, CRLF)
+21. `string soundSet1$` (Secondary audio package, CRLF)
+22. `int32[7] spawnParams` (28 bytes: `spawnmax`, `spawndelay`, `spawnqty`, `hurtfall`, `castshadow`, `reducetexture`, `speed`)
+23. `string aiShoot$` (Combat behavior script, CRLF)
+24. `string hasWeapon$` (Equipped weapon descriptor, CRLF)
+25. `int32[4] liveSpawn` (16 bytes: `lives`, `spawn.max`, `spawn.delay`, `spawn.qty`)
+26. `float[3] coneScale` (12 bytes: `scale`, `coneheight`, `coneangle`)
+27. `int32[13] propsAndTrigger` (52 bytes: `strength`, `isimmobile`, `cantakeweapon`, `quantity`, `markerindex`, `light.color`, `light.range`, `areax1`, `areay1`, `areaz1`, `areax2`, `areay2`, `areaz2`)
+28. `string baseDecal$` (Decal descriptor, CRLF)
 
-#### Дополнительные блоки версий:
-- **$\ge 102$**: **80 байт** (20 полей `int32`/`float`: `rateoffire`, `damage`, `accuracy`, `reloadqty`, `fireiterations`, `lifespan`, `throwspeed`, `throwangle`, `bounceqty`, `explodeonhit`, `weaponisammo`, `spawnupto`, `spawnafterdelay`, `spawnwhendead`, `spare1..6`).
-- **$\ge 103$**: **36 байт** (9 полей `int32`: параметры физики Newton/ODE — `physics`, `phyweight`, `phyfriction`, `phyforcedamage`, `rotatethrow`, `explodable`, `explodedamage`, `phydw4`, `phydw5`).
-- **$\ge 104$**: **4 байта** (`phyalways`).
-- **$\ge 105$**: **24 байта** (6 полей: расширенный рандомизатор спавна).
-- **$\ge 106$**: **8 байт** (`spawnatstart`, `spawnlife`).
-- **$\ge 107$**: **4 байта** (`light.index` — индекс динамического источника).
-- **$\ge 199$** *(FPS Creator X10)*: **68 байт** (17 полей расширенного ИИ).
-- **$\ge 200$** *(FPS Creator X10)*: **24 байта** (6 полей расширенной физики).
-- **$\ge 217$** *(FPS Creator V1.18)*: **68 байт** (17 полей управления эмиттерами частиц).
-- **$\ge 218$** *(FPS Creator V1.18 Final)*: **4 байта** (`particle.animated`).
-
----
-
-## 7. Вейпоинты и маршруты патрулирования: `map.way`
-
-Файл `map.way` описывает графы навигации AI.
-
-- Содержит массив узловых точек $(\text{waypoint\_x}, \text{waypoint\_y}, \text{waypoint\_z})$.
-- Каждая точка связывается в линейные или циклические последовательности (Sequences).
-- В редакторе и 2D-просмотрщике линии между вейпоинтами одного маршрута отрисовываются пунктирными линиями со стрелками направления движения патруля.
+#### Extended Version Blocks:
+- **$\ge 102$**: **80 bytes** (20 fields: `rateoffire`, `damage`, `accuracy`, `reloadqty`, `fireiterations`, `lifespan`, `throwspeed`, `throwangle`, `bounceqty`, `explodeonhit`, `weaponisammo`, `spawnupto`, `spawnafterdelay`, `spawnwhendead`, `spare1..6`).
+- **$\ge 103$**: **36 bytes** (9 fields: ODE / Newton physics parameters — `physics`, `phyweight`, `phyfriction`, `phyforcedamage`, `rotatethrow`, `explodable`, `explodedamage`, `phydw4`, `phydw5`).
+- **$\ge 104$**: **4 bytes** (`phyalways`).
+- **$\ge 105$**: **24 bytes** (6 fields: extended spawn randomizers).
+- **$\ge 106$**: **8 bytes** (`spawnatstart`, `spawnlife`).
+- **$\ge 107$**: **4 bytes** (`light.index` — dynamic light registry index).
+- **$\ge 199$** *(FPS Creator X10)*: **68 bytes** (17 advanced AI attributes).
+- **$\ge 200$** *(FPS Creator X10)*: **24 bytes** (6 advanced physics fields).
+- **$\ge 217$** *(FPS Creator V1.18)*: **68 bytes** (17 particle emitter fields).
+- **$\ge 218$** *(FPS Creator V1.18 Final)*: **4 bytes** (`particle.animated`).
 
 ---
 
-## 8. Профили сущностей `.FPE` и прозрачность иконок
+## 7. Waypoints & AI Patrol Graphs: `map.way`
 
-Каждая сущность ссылается на профиль `entitybank\...\*.fpe` (*FPS Creator Entity Profile*).
+The `map.way` file defines AI navigation graphs:
+- Stores an array of nodes $(\text{waypoint\_x}, \text{waypoint\_y}, \text{waypoint\_z})$.
+- Waypoints are linked into linear or closed cyclical sequences.
+- Rendered in 2D top-down view as directional dashed lines with arrowheads indicating patrol routes.
 
-### 8.1. Формат `.FPE`
-Текстовый конфигурационный файл с парами `key = value`:
+---
+
+## 8. Entity Profiles `.FPE` and Chroma-Key Transparency
+
+Each placed entity references a profile template located under `entitybank\...\*.fpe` (*FPS Creator Entity Profile*).
+
+### 8.1. `.FPE` Configuration Format
+Plaintext key-value configuration file:
 ```ini
 ; Saved by FPS Creator
 desc          = Sci-Fi Door A
@@ -240,41 +239,41 @@ defaultstatic = 0
 ai_main       = defaultdoor.fpi
 ```
 
-### 8.2. Превью-иконки и алгоритм прозрачности (Chroma-Key)
-Рядом с каждым `.fpe` находится иконка предпросмотра `.bmp` ($64 \times 64$ пикселя, 24-bit RGB).
-В оригинальном редакторе BMP не имеет альфа-канала, а фон является сплошным белым `RGB(255, 255, 255)` или черным `RGB(0, 0, 0)`.
+### 8.2. Preview Icons & Auto-Chroma-Key Algorithm
+Accompanying each `.fpe` file is a $64 \times 64$ 24-bit RGB bitmap icon (`.bmp`).
+Because classic BMP files lack an alpha channel, icons were rendered against solid white `RGB(255, 255, 255)` or solid black `RGB(0, 0, 0)` backgrounds.
 
-**Алгоритм авто-хромакея в FPSC 2D Viewer:**
-1. Сэмплируются 4 угловых пикселя $(0,0)$, $(W-1,0)$, $(0,H-1)$, $(W-1,H-1)$.
-2. Если углы однородны и близки к фоновому цвету $(R_0, G_0, B_0)$:
-   - Для каждого пикселя вычисляется максимальное цветовое расстояние:
+**Auto-Chroma-Key Algorithm implemented in Altitude Editor:**
+1. Sample four corner pixels $(0,0)$, $(W-1,0)$, $(0,H-1)$, and $(W-1,H-1)$.
+2. If the corners are uniform and match a background color $(R_0, G_0, B_0)$:
+   - Compute maximum component distance for each pixel:
      $$\Delta = \max(|R - R_0|, |G - G_0|, |B - B_0|)$$
-   - Если $\Delta < 12 \implies \text{Alpha} = 0$ (полная прозрачность).
-   - Если $12 \le \Delta < 28 \implies \text{Alpha} = \frac{\Delta - 12}{16} \times 255$ (плавное сглаживание контура).
-   - Иначе $\text{Alpha} = 255$.
+   - If $\Delta < 12 \implies \text{Alpha} = 0$ (fully transparent).
+   - If $12 \le \Delta < 28 \implies \text{Alpha} = \frac{\Delta - 12}{16} \times 255$ (smooth edge anti-aliasing).
+   - Otherwise $\text{Alpha} = 255$ (fully opaque).
 
 ---
 
-## 9. Анализ использования оперативной памяти (Memory Budget)
+## 9. Memory Footprint Analysis (Memory Budget)
 
-Так как движок FPS Creator собран как **32-битное приложение** на базе DirectX 9 и DarkBasic Pro, предельный лимит выделяемой памяти процесса составляет **$1.8 \dots 2.0\text{ ГБ}$**. Превышение этого лимита приводит к немедленному падению (`Runtime Error 7005: Out of Memory`).
+Because the FPS Creator engine runs as a **32-bit DirectX 9 application**, the process address space is limited to **$1.8 \dots 2.0\text{ GB}$**. Exceeding this limit causes an immediate crash (`Runtime Error 7005: Out of Memory`).
 
-### 9.1. Расчет памяти геометрии (Meshes RAM)
-Для каждого уникального `.x` меша:
-$$\text{RAM}_{\text{mesh}} \approx \text{Header} + (\text{Vertices} \times 32\text{ байта}) + (\text{Indices} \times 2\text{ байта})$$
+### 9.1. Mesh Memory Estimation (Meshes RAM)
+For each unique `.x` mesh:
+$$\text{RAM}_{\text{mesh}} \approx \text{Header} + (\text{Vertices} \times 32\text{ bytes}) + (\text{Indices} \times 2\text{ bytes})$$
 
-### 9.2. Расчет памяти текстур (Textures VRAM)
-- **Сжатые DDS DXT1**: $\frac{\text{Width} \times \text{Height}}{2}$ байт.
-- **Сжатые DDS DXT3 / DXT5**: $\text{Width} \times \text{Height}$ байт.
-- **Несжатые 32-bit TGA / BMP / PNG**: $\text{Width} \times \text{Height} \times 4$ байта.
-- **Мип-мапы (Mipmaps)**: добавляют $+33.3\%$ к общему объему текстуры.
+### 9.2. Texture Memory Estimation (Textures VRAM)
+- **Compressed DDS DXT1**: $\frac{\text{Width} \times \text{Height}}{2}$ bytes.
+- **Compressed DDS DXT3 / DXT5**: $\text{Width} \times \text{Height}$ bytes.
+- **Uncompressed 32-bit TGA / BMP / PNG**: $\text{Width} \times \text{Height} \times 4$ bytes.
+- **Mipmaps**: Account for an additional $+33.3\%$ of total texture size.
 
-### 9.3. Расчет памяти аудио (Audio RAM)
-- **WAV (PCM)**: несжатый размер в памяти ($\text{SampleRate} \times \text{Channels} \times \text{BytesPerSample} \times \text{Duration}$).
-- **MP3 / OGG**: размер закодированного потока + буфер декодера DirectShow ($\sim 512\text{ КБ}$ на трек).
+### 9.3. Audio Memory Estimation (Audio RAM)
+- **WAV (PCM)**: Uncompressed in-memory buffer size ($\text{SampleRate} \times \text{Channels} \times \text{BytesPerSample} \times \text{Duration}$).
+- **MP3 / OGG**: Encoded stream size + DirectShow decoder buffer overhead ($\sim 512\text{ KB}$ per track).
 
 ---
 
-## 10. Заключение
+## 10. Conclusion
 
-Данная спецификация полностью покрывает все внутренние форматы данных FPS Creator и может использоваться как справочник при разработке новых инструментов, конвертеров, редакторов и движков, совместимых с классической экосистемой The Game Creators.
+This specification provides an authoritative reverse-engineered reference for the FPS Creator binary map formats and memory models, facilitating the development of external level tools, format converters, editors, and modern engine reimplementations compatible with The Game Creators ecosystem.
