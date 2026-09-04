@@ -49,7 +49,10 @@ int main(int argc, char* argv[]) {
     app.setApplicationName(VersionInfo::AppName);
     app.setApplicationVersion(VersionInfo::Version);
     app.setOrganizationName(VersionInfo::Studio);
-    app.setWindowIcon(QIcon(":/app.png"));
+
+    QIcon appIcon(":/app.ico");
+    appIcon.addFile(":/app.png");
+    app.setWindowIcon(appIcon);
 
     // Initialize localization (loads system language on first launch or saved preference)
     LanguageManager::instance().init();
