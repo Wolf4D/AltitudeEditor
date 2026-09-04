@@ -30,14 +30,27 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
-# Temporary scratch and test scripts
+# Deployed Qt plugins in root
+platforms/
+styles/
+imageformats/
+iconengines/
+
+# Temporary scratch, tests, and artifacts
 __pycache__/
 *.pyc
 scratch/
 test_*.py
 check_*.py
 inspect_*.py
+dump_*.py
 generate_project.py
 build_files.py
+test_*.png
+test_*.fpm
+test_*.cpp
+test_*.exe
+*.tmp
+*.bak
 cmds.gdb
 debug.bat

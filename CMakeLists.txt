@@ -55,13 +55,24 @@ set(HEADERS
     src/VisZoneDock.h
     src/LanguageManager.h
     src/miniz_deflate.h
+    src/BuildNumber.h
+)
+
+add_custom_target(UpdateBuildNumber
+    COMMAND ${CMAKE_COMMAND}
+        -DHEADER_FILE=${CMAKE_CURRENT_SOURCE_DIR}/src/BuildNumber.h
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/update_build_number.cmake
+    BYPRODUCTS ${CMAKE_CURRENT_SOURCE_DIR}/src/BuildNumber.h
+    COMMENT "Auto-incrementing build number in src/BuildNumber.h"
 )
 
 add_executable(FPSCMapViewer WIN32 ${SOURCES} ${HEADERS} ${MANIFEST_OBJ})
 target_link_libraries(FPSCMapViewer PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Concurrent)
+add_dependencies(FPSCMapViewer UpdateBuildNumber)
 
 add_executable(FPSCMapViewerTool ${SOURCES} ${HEADERS} ${MANIFEST_OBJ})
 target_link_libraries(FPSCMapViewerTool PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Concurrent)
+add_dependencies(FPSCMapViewerTool UpdateBuildNumber)
 
 add_executable(test_standalone
     src/test_standalone.cpp

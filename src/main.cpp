@@ -69,6 +69,11 @@ int main(int argc, char* argv[]) {
 
     // Check for CLI memory analysis mode
     QStringList args = app.arguments();
+    if (args.contains("--version") || args.contains("-v")) {
+        fprintf(stdout, "%s v%s\n", qPrintable(VersionInfo::AppName), qPrintable(VersionInfo::Version));
+        fflush(stdout);
+        std::exit(0);
+    }
     if (args.contains("--analyze-memory") && args.size() >= 3) {
         int idx = args.indexOf("--analyze-memory");
         QString mapPath = args.value(idx + 1);
