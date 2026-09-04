@@ -1,6 +1,7 @@
-﻿# Build outputs
+# Build outputs
 build/
 bin/
+distribution/
 *.exe
 *.dll
 *.a
