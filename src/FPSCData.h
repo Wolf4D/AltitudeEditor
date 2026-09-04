@@ -223,6 +223,23 @@ struct PlacedEntity {
     
     int floorLayer = 0;
     std::shared_ptr<FPSCEntityProfile> profile;
+
+    QColor effectiveLightColor() const {
+        if (lightColor.isValid() && (lightColor.red() > 0 || lightColor.green() > 0 || lightColor.blue() > 0)) {
+            return lightColor;
+        }
+        if (profile && profile->lightColor.isValid() &&
+            (profile->lightColor.red() > 0 || profile->lightColor.green() > 0 || profile->lightColor.blue() > 0)) {
+            return profile->lightColor;
+        }
+        return QColor(255, 255, 255);
+    }
+
+    float effectiveLightRange() const {
+        if (lightRange > 0) return lightRange;
+        if (profile && profile->lightRange > 0) return profile->lightRange;
+        return 0.0f;
+    }
 };
 
 struct AIWaypoint {

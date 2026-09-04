@@ -676,10 +676,11 @@ void MapCanvas::drawZonesAndLights(QPainter& p) {
         QPointF entScreen = worldToScreen(QPointF(ent.x, -ent.z));
 
         // Draw Light Source Radiant Halo
-        if (m_showLights && ent.lightRange > 0) {
-            float radScreen = ent.lightRange * m_zoom;
+        float lRange = ent.effectiveLightRange();
+        if (m_showLights && lRange > 0) {
+            float radScreen = lRange * m_zoom;
             QRadialGradient grad(entScreen, radScreen);
-            QColor lColor = ent.lightColor;
+            QColor lColor = ent.effectiveLightColor();
             lColor.setAlpha(70);
             grad.setColorAt(0.0f, lColor);
             lColor.setAlpha(20);
@@ -688,7 +689,9 @@ void MapCanvas::drawZonesAndLights(QPainter& p) {
             grad.setColorAt(1.0f, lColor);
 
             p.setBrush(grad);
-            p.setPen(Qt::NoPen);
+            QColor ringColor = ent.effectiveLightColor();
+            ringColor.setAlpha(110);
+            p.setPen(QPen(ringColor, 1.0f));
             p.drawEllipse(entScreen, radScreen, radScreen);
         }
 
@@ -755,10 +758,11 @@ void MapCanvas::drawEntities(QPainter& p) {
         }
 
         // Draw colored base ring for light sources
-        if (cat == EntityCategory::Light || ent.lightRange > 0) {
+        if (cat == EntityCategory::Light || ent.lightRange > 0 || ent.effectiveLightRange() > 0) {
             QRectF lRing = iconRect.adjusted(-3, -3, 3, 3);
-            p.setPen(QPen(ent.lightColor, 2.5f));
-            p.setBrush(QColor(ent.lightColor.red(), ent.lightColor.green(), ent.lightColor.blue(), 75));
+            QColor c = ent.effectiveLightColor();
+            p.setPen(QPen(c, 2.5f));
+            p.setBrush(QColor(c.red(), c.green(), c.blue(), 75));
             p.drawEllipse(lRing);
         }
 

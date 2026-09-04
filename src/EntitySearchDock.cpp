@@ -386,12 +386,12 @@ void EntitySearchDock::rebuildTable() {
             gp.setFont(QFont("Segoe UI", 9, QFont::Bold));
             gp.drawText(gen.rect(), Qt::AlignCenter, name.left(1).toUpper());
             iconPx = gen;
-        } else if (cat == EntityCategory::Light || ent.lightRange > 0) {
+        } else if (cat == EntityCategory::Light || ent.lightRange > 0 || ent.effectiveLightRange() > 0) {
             // Overlay colored light badge on table thumbnail
             QPixmap tinted = iconPx;
             QPainter ip(&tinted);
             ip.setRenderHint(QPainter::Antialiasing);
-            ip.setBrush(ent.lightColor);
+            ip.setBrush(ent.effectiveLightColor());
             ip.setPen(QPen(Qt::black, 1.5f));
             ip.drawEllipse(tinted.width() - 14, tinted.height() - 14, 12, 12);
             iconPx = tinted;
