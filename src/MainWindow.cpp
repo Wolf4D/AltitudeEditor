@@ -108,6 +108,8 @@ MainWindow::MainWindow(QWidget* parent)
     updateWindowTitle();
     resize(1360, 860);
 
+    setWindowIcon(QIcon(":/app.png"));
+
     m_canvas = new MapCanvas(this);
     setCentralWidget(m_canvas);
 

@@ -3,9 +3,9 @@
 #include <QString>
 
 namespace VersionInfo {
-    inline const QString AppName     = QStringLiteral("AltEd");
+    inline const QString AppName     = QStringLiteral("Altitude Editor");
     inline const QString Version     = QStringLiteral("0.9.0b");
-    inline const QString AppSubtitle = QStringLiteral("FPS Creator map tool");
+    inline const QString AppSubtitle = QStringLiteral("FPS Creator map editor");
     inline const QString Developer   = QStringLiteral("Ivan Klenov (aka NavY LiK)");
     inline const QString Studio      = QStringLiteral("Madness Studio");
 

@@ -28,9 +28,10 @@ set(SOURCES
     src/UniverseDBUParser.cpp
     src/VisZoneManager.cpp
     src/VisZoneDock.cpp
+    src/resources.qrc
 )
 
-set(MANIFEST_OBJ "${CMAKE_CURRENT_SOURCE_DIR}/src/app_manifest.o")
+set(MANIFEST_OBJ "${CMAKE_CURRENT_SOURCE_DIR}/src/app_res.o")
 
 set(HEADERS
     src/Version.h

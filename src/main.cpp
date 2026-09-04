@@ -17,6 +17,7 @@ int main(int argc, char* argv[]) {
     app.setApplicationName(VersionInfo::AppName);
     app.setApplicationVersion(VersionInfo::Version);
     app.setOrganizationName(VersionInfo::Studio);
+    app.setWindowIcon(QIcon(":/app.png"));
 
     // Apply Deep Dark Fusion Theme
     app.setStyle(QStyleFactory::create("Fusion"));
