@@ -464,8 +464,12 @@ void MainWindow::createMenusAndToolbars() {
     }
 
     m_floorCombo = new QComboBox(this);
-    m_floorCombo->setMinimumWidth(120);
-    m_floorCombo->setMaximumWidth(160);
+    m_floorCombo->setMinimumWidth(140);
+    m_floorCombo->setMaximumWidth(240);
+    m_floorCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    if (m_floorCombo->view()) {
+        m_floorCombo->view()->setMinimumWidth(240);
+    }
     mainBar->addWidget(m_floorCombo);
     connect(m_floorCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::onFloorComboChanged);
 
@@ -993,7 +997,7 @@ void MainWindow::updateFloorControls() {
     for (int l = 0; l <= layerMax; ++l) {
         QString label = tr("Floor %1 (Y: %2)").arg(l).arg(l * 100);
         if (entCounts[l] > 0 || segCounts[l] > 0) {
-            label += tr(" [%1/%2]").arg(entCounts[l]).arg(segCounts[l]);
+            label += tr(" [%1 ent, %2 seg]").arg(entCounts[l]).arg(segCounts[l]);
         }
         m_floorCombo->addItem(label, l);
     }

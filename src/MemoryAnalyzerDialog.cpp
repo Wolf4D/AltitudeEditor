@@ -12,6 +12,34 @@
 #include <QTextStream>
 #include <QFile>
 
+class NumericTableWidgetItem : public QTableWidgetItem {
+public:
+    NumericTableWidgetItem(const QString& text, double sortVal)
+        : QTableWidgetItem(text)
+    {
+        setData(Qt::UserRole, sortVal);
+    }
+    NumericTableWidgetItem(const QString& text, qint64 sortVal)
+        : QTableWidgetItem(text)
+    {
+        setData(Qt::UserRole, static_cast<double>(sortVal));
+    }
+    NumericTableWidgetItem(const QString& text, int sortVal)
+        : QTableWidgetItem(text)
+    {
+        setData(Qt::UserRole, static_cast<double>(sortVal));
+    }
+
+    bool operator<(const QTableWidgetItem& other) const override {
+        QVariant v1 = data(Qt::UserRole);
+        QVariant v2 = other.data(Qt::UserRole);
+        if (v1.isValid() && v2.isValid()) {
+            return v1.toDouble() < v2.toDouble();
+        }
+        return QTableWidgetItem::operator<(other);
+    }
+};
+
 MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const MemoryReport* cachedReport, QWidget* parent)
     : QDialog(parent)
     , m_map(map)
@@ -418,21 +446,24 @@ void MemoryAnalyzerDialog::populateUI() {
         m_entityTable->setItem(row, 2, catItm);
 
         // Col 3: Instances
-        QTableWidgetItem* cntItm = new QTableWidgetItem();
-        cntItm->setData(Qt::DisplayRole, itm.instanceCount);
+        QTableWidgetItem* cntItm = new NumericTableWidgetItem(QString::number(itm.instanceCount), itm.instanceCount);
         cntItm->setTextAlignment(Qt::AlignCenter);
         m_entityTable->setItem(row, 3, cntItm);
 
         // Col 4: Mesh Size
-        QTableWidgetItem* meshItm = new QTableWidgetItem();
-        meshItm->setData(Qt::DisplayRole, QString("%1 MB").arg(itm.meshSizeBytes / (1024.0f * 1024.0f), 0, 'f', 2));
+        QTableWidgetItem* meshItm = new NumericTableWidgetItem(
+            QString("%1 MB").arg(itm.meshSizeBytes / (1024.0f * 1024.0f), 0, 'f', 2),
+            itm.meshSizeBytes
+        );
         meshItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         m_entityTable->setItem(row, 4, meshItm);
 
         // Col 5: Texture RAM Size
         qint64 texTotal = itm.textureRamBytes + itm.normalRamBytes + itm.specularRamBytes;
-        QTableWidgetItem* texItm = new QTableWidgetItem();
-        texItm->setData(Qt::DisplayRole, QString("%1 MB").arg(texTotal / (1024.0f * 1024.0f), 0, 'f', 2));
+        QTableWidgetItem* texItm = new NumericTableWidgetItem(
+            QString("%1 MB").arg(texTotal / (1024.0f * 1024.0f), 0, 'f', 2),
+            texTotal
+        );
         texItm->setToolTip(QString("Diffuse: %1 MB\nNormals: %2 MB\nSpecular: %3 MB\nRes: %4x%5")
             .arg(itm.textureRamBytes / (1024.0 * 1024.0), 0, 'f', 2)
             .arg(itm.normalRamBytes / (1024.0 * 1024.0), 0, 'f', 2)
@@ -442,20 +473,26 @@ void MemoryAnalyzerDialog::populateUI() {
         m_entityTable->setItem(row, 5, texItm);
 
         // Col 6: Audio Size
-        QTableWidgetItem* audItm = new QTableWidgetItem();
-        audItm->setData(Qt::DisplayRole, QString("%1 KB").arg(itm.audioSizeBytes / 1024.0f, 0, 'f', 1));
+        QTableWidgetItem* audItm = new NumericTableWidgetItem(
+            QString("%1 KB").arg(itm.audioSizeBytes / 1024.0f, 0, 'f', 1),
+            itm.audioSizeBytes
+        );
         audItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         m_entityTable->setItem(row, 6, audItm);
 
         // Col 7: RAM / Inst
-        QTableWidgetItem* rpiItm = new QTableWidgetItem();
-        rpiItm->setData(Qt::DisplayRole, QString("%1 MB").arg(itm.ramPerInstanceBytes / (1024.0f * 1024.0f), 0, 'f', 2));
+        QTableWidgetItem* rpiItm = new NumericTableWidgetItem(
+            QString("%1 MB").arg(itm.ramPerInstanceBytes / (1024.0f * 1024.0f), 0, 'f', 2),
+            itm.ramPerInstanceBytes
+        );
         rpiItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         m_entityTable->setItem(row, 7, rpiItm);
 
         // Col 8: Total RAM
-        QTableWidgetItem* totItm = new QTableWidgetItem();
-        totItm->setData(Qt::DisplayRole, QString("%1 MB").arg(itm.totalTypeRamBytes / (1024.0f * 1024.0f), 0, 'f', 2));
+        QTableWidgetItem* totItm = new NumericTableWidgetItem(
+            QString("%1 MB").arg(itm.totalTypeRamBytes / (1024.0f * 1024.0f), 0, 'f', 2),
+            itm.totalTypeRamBytes
+        );
         totItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         if (itm.totalTypeRamBytes >= 15LL * 1024LL * 1024LL) {
             totItm->setForeground(QColor(235, 77, 75));
@@ -502,39 +539,45 @@ void MemoryAnalyzerDialog::populateUI() {
         m_segmentTable->setItem(row, 1, nameItm);
 
         // Col 2: Parts
-        QTableWidgetItem* partsItm = new QTableWidgetItem();
-        partsItm->setData(Qt::DisplayRole, itm.partCount);
+        QTableWidgetItem* partsItm = new NumericTableWidgetItem(QString::number(itm.partCount), itm.partCount);
         partsItm->setTextAlignment(Qt::AlignCenter);
         m_segmentTable->setItem(row, 2, partsItm);
 
         // Col 3: Placed Blocks
-        QTableWidgetItem* placedItm = new QTableWidgetItem();
-        placedItm->setData(Qt::DisplayRole, itm.placedCount);
+        QTableWidgetItem* placedItm = new NumericTableWidgetItem(QString::number(itm.placedCount), itm.placedCount);
         placedItm->setTextAlignment(Qt::AlignCenter);
         m_segmentTable->setItem(row, 3, placedItm);
 
         // Col 4: Mesh RAM
-        QTableWidgetItem* meshItm = new QTableWidgetItem();
-        meshItm->setData(Qt::DisplayRole, QString("%1 MB").arg(itm.meshSizeBytes / (1024.0f * 1024.0f), 0, 'f', 2));
+        QTableWidgetItem* meshItm = new NumericTableWidgetItem(
+            QString("%1 MB").arg(itm.meshSizeBytes / (1024.0f * 1024.0f), 0, 'f', 2),
+            itm.meshSizeBytes
+        );
         meshItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         m_segmentTable->setItem(row, 4, meshItm);
 
         // Col 5: Diffuse RAM
-        QTableWidgetItem* diffItm = new QTableWidgetItem();
-        diffItm->setData(Qt::DisplayRole, QString("%1 MB").arg(itm.diffuseRamBytes / (1024.0f * 1024.0f), 0, 'f', 2));
+        QTableWidgetItem* diffItm = new NumericTableWidgetItem(
+            QString("%1 MB").arg(itm.diffuseRamBytes / (1024.0f * 1024.0f), 0, 'f', 2),
+            itm.diffuseRamBytes
+        );
         diffItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         m_segmentTable->setItem(row, 5, diffItm);
 
         // Col 6: Normal/Spec RAM
         qint64 normSpec = itm.normalRamBytes + itm.specularRamBytes;
-        QTableWidgetItem* nsItm = new QTableWidgetItem();
-        nsItm->setData(Qt::DisplayRole, QString("%1 MB").arg(normSpec / (1024.0f * 1024.0f), 0, 'f', 2));
+        QTableWidgetItem* nsItm = new NumericTableWidgetItem(
+            QString("%1 MB").arg(normSpec / (1024.0f * 1024.0f), 0, 'f', 2),
+            normSpec
+        );
         nsItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         m_segmentTable->setItem(row, 6, nsItm);
 
         // Col 7: Total RAM
-        QTableWidgetItem* totItm = new QTableWidgetItem();
-        totItm->setData(Qt::DisplayRole, QString("%1 MB").arg(itm.totalTypeRamBytes / (1024.0f * 1024.0f), 0, 'f', 2));
+        QTableWidgetItem* totItm = new NumericTableWidgetItem(
+            QString("%1 MB").arg(itm.totalTypeRamBytes / (1024.0f * 1024.0f), 0, 'f', 2),
+            itm.totalTypeRamBytes
+        );
         totItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         if (itm.totalTypeRamBytes >= 15LL * 1024LL * 1024LL) {
             totItm->setForeground(QColor(235, 77, 75));
@@ -553,13 +596,14 @@ void MemoryAnalyzerDialog::populateUI() {
     m_segmentTable->setSortingEnabled(true);
 
     // 3. Populate Universe & Engine Breakdown Table
+    m_engineTable->setSortingEnabled(false);
     m_engineTable->setRowCount(0);
     auto addEngineRow = [&](const QString& comp, const QString& type, float mb, const QString& desc) {
         int r = m_engineTable->rowCount();
         m_engineTable->insertRow(r);
         m_engineTable->setItem(r, 0, new QTableWidgetItem(comp));
         m_engineTable->setItem(r, 1, new QTableWidgetItem(type));
-        QTableWidgetItem* ramItm = new QTableWidgetItem(QString("%1 MB").arg(mb, 0, 'f', 1));
+        QTableWidgetItem* ramItm = new NumericTableWidgetItem(QString("%1 MB").arg(mb, 0, 'f', 1), static_cast<double>(mb));
         ramItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         m_engineTable->setItem(r, 2, ramItm);
         m_engineTable->setItem(r, 3, new QTableWidgetItem(desc));
@@ -580,6 +624,8 @@ void MemoryAnalyzerDialog::populateUI() {
     addEngineRow(QStringLiteral("Engine & Physics DLLs"), QStringLiteral("Runtime Code"),
                  25.0f,
                  QStringLiteral("FPSC-Game.exe core, DarkBasic Pro runtime modules, ODE physics engine, DirectSound mixer"));
+
+    m_engineTable->setSortingEnabled(true);
 
     // 4. Update Optimization Tips
     if (m_tipsEdit) {

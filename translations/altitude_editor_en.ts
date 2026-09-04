@@ -810,7 +810,7 @@ Script: %3</source>
     </message>
     <message>
         <location filename="../src/MainWindow.cpp" line="976"/>
-        <source> [%1/%2]</source>
+        <source> [%1 ent, %2 seg]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

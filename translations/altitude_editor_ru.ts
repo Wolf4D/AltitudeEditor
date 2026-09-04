@@ -811,8 +811,8 @@ Script: %3</source>
     </message>
     <message>
         <location filename="../src/MainWindow.cpp" line="976" />
-        <source> [%1/%2]</source>
-        <translation> [%1/%2]</translation>
+        <source> [%1 ent, %2 seg]</source>
+        <translation> [%1 ent, %2 seg]</translation>
     </message>
     <message>
         <location filename="../src/MainWindow.cpp" line="614" />
