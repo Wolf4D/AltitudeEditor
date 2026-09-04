@@ -153,64 +153,7 @@ void PortalLeakAnalyzer::checkCompiledUniverse() {
 
         quint64 cellKey = (quint64(layer) << 32) | (quint64(gy) << 16) | quint64(gx);
 
-        bool isHorizontal = (portal.box.maxY - portal.box.minY) < 50.0f;
-        int seg = (layer >= 0 && layer < m_map->gridBlocks.size() &&
-                   gy >= 0 && gy < m_map->gridBlocks[layer].size() &&
-                   gx >= 0 && gx < m_map->gridBlocks[layer][gy].size())
-                  ? m_map->gridBlocks[layer][gy][gx] : 0;
-
-        // 1. Check for physical BSP ceiling or floor hole
-        if (isHorizontal && seg <= 0) {
-            bool hasRoomBelow = false;
-            for (int l = 0; l < layer; ++l) {
-                if (m_map->gridBlocks[l][gy][gx] > 0) { hasRoomBelow = true; break; }
-            }
-            if (hasRoomBelow && !reportedCells.contains(cellKey)) {
-                reportedCells.insert(cellKey);
-                PortalLeakWarning w;
-                w.severity = PortalLeakWarning::ERROR;
-                w.type = QStringLiteral("Compiled BSP Ceiling Hole");
-                w.layer = layer;
-                w.x = gx;
-                w.y = gy;
-                w.description = QStringLiteral("Compiled BSP portal %1 at 3D pos (%2, %3, %4) is an open hole in the ceiling into universe void. Missing ceiling slab at Floor %5 (%6, %7).")
-                                .arg(i)
-                                .arg(portal.box.cenX, 0, 'f', 0)
-                                .arg(portal.box.cenY, 0, 'f', 0)
-                                .arg(portal.box.cenZ, 0, 'f', 0)
-                                .arg(layer)
-                                .arg(gx)
-                                .arg(gy);
-                m_warnings.push_back(w);
-                continue;
-            }
-
-            bool hasRoomAbove = false;
-            for (int l = layer + 1; l < m_map->gridBlocks.size(); ++l) {
-                if (m_map->gridBlocks[l][gy][gx] > 0) { hasRoomAbove = true; break; }
-            }
-            if (hasRoomAbove && !reportedCells.contains(cellKey)) {
-                reportedCells.insert(cellKey);
-                PortalLeakWarning w;
-                w.severity = PortalLeakWarning::ERROR;
-                w.type = QStringLiteral("Compiled BSP Floor Hole");
-                w.layer = layer;
-                w.x = gx;
-                w.y = gy;
-                w.description = QStringLiteral("Compiled BSP portal %1 at 3D pos (%2, %3, %4) is an open hole in the floor into universe void. Missing floor slab at Floor %5 (%6, %7).")
-                                .arg(i)
-                                .arg(portal.box.cenX, 0, 'f', 0)
-                                .arg(portal.box.cenY, 0, 'f', 0)
-                                .arg(portal.box.cenZ, 0, 'f', 0)
-                                .arg(layer)
-                                .arg(gx)
-                                .arg(gy);
-                m_warnings.push_back(w);
-                continue;
-            }
-        }
-
-        // 2. Check for portals touching outer limits or marked as leak
+        // Check for portals touching outer limits or marked as leak
         if (portal.isLeak || portal.targetZone >= m_dbuParser.zones().size()) {
             if (!reportedCells.contains(cellKey)) {
                 reportedCells.insert(cellKey);
@@ -371,11 +314,39 @@ void PortalLeakAnalyzer::checkVerticalGaps() {
         int coveredCount = 0;
         std::vector<QPoint> missingTiles;
 
+        int zoneMaxCeilingFloor = -1;
+        for (const auto& t : z.tiles) {
+            for (int l = z.floor; l <= m_map->header.layerMax; ++l) {
+                if (mapGround(l, t.x(), t.y()) == 2 || isCeilingAt(l, t.x(), t.y())) {
+                    if (l > zoneMaxCeilingFloor) {
+                        zoneMaxCeilingFloor = l;
+                    }
+                }
+            }
+        }
+
+        auto isUniverseVoid = [&](int x, int y) -> bool {
+            if (x < 0 || x > m_map->header.maxX || y < 0 || y > m_map->header.maxY) return true;
+            for (int l = 0; l <= m_map->header.layerMax; ++l) {
+                if (m_map->gridBlocks[l][y][x] > 0) return false;
+            }
+            return true;
+        };
+
+        const int dx[4] = {0, 1, 0, -1};
+        const int dy[4] = {-1, 0, 1, 0};
+
         for (const auto& pt : z.tiles) {
+            // Find top occupied layer of this column in the structure
+            int colTop = z.floor;
+            for (int l = z.floor; l <= m_map->header.layerMax; ++l) {
+                if (m_map->gridBlocks[l][pt.y()][pt.x()] > 0) {
+                    colTop = l;
+                }
+            }
+
             bool covered = false;
-            // A room occupies layers from z.minFloor to z.maxFloor.
-            // A column is only capped at or above the room's ceiling (z.maxFloor).
-            for (int l = z.maxFloor; l <= m_map->header.layerMax; ++l) {
+            for (int l = colTop; l <= m_map->header.layerMax; ++l) {
                 int seg = m_map->gridBlocks[l][pt.y()][pt.x()];
                 if (seg > 0) {
                     int g = mapGround(l, pt.x(), pt.y());
@@ -385,12 +356,30 @@ void PortalLeakAnalyzer::checkVerticalGaps() {
                         break;
                     }
                     // A solid floor of another room directly on a higher floor also caps this column
-                    if (l > z.maxFloor && isFloorAt(l, pt.x(), pt.y())) {
+                    if (l > colTop && isFloorAt(l, pt.x(), pt.y())) {
                         covered = true;
                         break;
                     }
                 }
             }
+
+            // If the zone has no ceiling slabs above colTop, then colTop is already at or above the room's roofline
+            if (!covered && zoneMaxCeilingFloor > 0 && colTop >= zoneMaxCeilingFloor) {
+                covered = true;
+            }
+
+            // Wall segments at the top of a column (perimeter and exterior walls) do not require ceiling slabs
+            if (!covered) {
+                int segId = m_map->gridBlocks[colTop][pt.y()][pt.x()];
+                if (segId > 0 && m_map->segments.contains(segId)) {
+                    const auto& seg = m_map->segments[segId];
+                    if (seg->name.contains("wall", Qt::CaseInsensitive) ||
+                        seg->relPath.contains("wall", Qt::CaseInsensitive)) {
+                        covered = true;
+                    }
+                }
+            }
+
             if (covered) {
                 coveredCount++;
             } else {

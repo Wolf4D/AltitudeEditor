@@ -5,7 +5,7 @@
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
-    QString fpmPath = "C:/Program Files (x86)/The Game Creators/FPS Creator/Files/mapbank/leaks.fpm";
+    QString fpmPath = (argc > 1) ? QString::fromLocal8Bit(argv[1]) : "C:/Program Files (x86)/The Game Creators/FPS Creator/Files/mapbank/leaks.fpm";
     auto map = FPMReader::loadMap(fpmPath, "mypassword");
     if (!map) return 1;
 

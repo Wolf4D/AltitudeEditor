@@ -95,7 +95,7 @@ void UniverseDBUParser::identifyLeaks() {
         float lenX = portal.box.maxX - portal.box.minX;
         float lenZ = portal.box.maxZ - portal.box.minZ;
 
-        if (lenX > 600.0f || lenZ > 600.0f || portal.box.minZ <= -3500.0f) {
+        if (lenX > 600.0f || lenZ > 600.0f) {
             portal.isExteriorHull = true;
         }
 
