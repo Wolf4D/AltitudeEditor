@@ -423,27 +423,23 @@ void PortalLeakAnalyzer::checkVerticalGaps() {
 void PortalLeakAnalyzer::checkCoplanarOverlaps() {
     if (!m_map) return;
 
-    // 1. Same-layer Overlay conflicts (Base segment vs Overlay segment)
+    // 1. Same-layer duplicate conflicts (Exact duplicate segment placed as both base block and overlay)
     for (int layer = 0; layer < m_map->gridBlocks.size(); ++layer) {
         for (int y = 0; y < m_map->gridBlocks[layer].size(); ++y) {
             for (int x = 0; x < m_map->gridBlocks[layer][y].size(); ++x) {
                 int baseSeg = m_map->gridBlocks[layer][y][x];
                 int olaySeg = (layer < m_map->gridOverlays.size() && y < m_map->gridOverlays[layer].size() && x < m_map->gridOverlays[layer][y].size())
                               ? m_map->gridOverlays[layer][y][x] : 0;
-                if (baseSeg > 0 && olaySeg > 0) {
-                    auto sBase = m_map->segments.value(baseSeg);
-                    auto sOlay = m_map->segments.value(olaySeg);
-                    if (sBase && sOlay) {
-                        // An overlay without CSG punch will draw directly on top of the base segment -> true Z-fighting
-                        if (!sOlay->hasPunch) {
-                            PortalLeakWarning w;
-                            w.severity = PortalLeakWarning::WARNING;
-                            w.type = QStringLiteral("Coplanar Overlay Z-Fighting");
-                            w.layer = layer; w.x = x; w.y = y;
-                            w.description = QString("Overlay segment \"%1\" placed directly over \"%2\" on Floor %3 at (%4, %5) without CSG punch cutout. Causes severe in-game texture flickering (Z-fighting).")
-                                                .arg(sOlay->name).arg(sBase->name).arg(layer).arg(x).arg(y);
-                            m_warnings.push_back(w);
-                        }
+                if (baseSeg > 0 && olaySeg > 0 && baseSeg == olaySeg) {
+                    auto s = m_map->segments.value(baseSeg);
+                    if (s) {
+                        PortalLeakWarning w;
+                        w.severity = PortalLeakWarning::WARNING;
+                        w.type = QStringLiteral("Duplicate Segment Z-Fighting");
+                        w.layer = layer; w.x = x; w.y = y;
+                        w.description = QString("Segment \"%1\" is placed as both base block and overlay on Floor %2 at (%3, %4). Duplicate identical meshes cause severe in-game flickering (Z-fighting).")
+                                            .arg(s->name).arg(layer).arg(x).arg(y);
+                        m_warnings.push_back(w);
                     }
                 }
             }

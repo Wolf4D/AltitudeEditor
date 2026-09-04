@@ -1,5 +1,5 @@
 // Generated automatically by cmake/update_build_number.cmake
 #pragma once
 
-#define BUILD_NUMBER 105
-#define BUILD_NUMBER_STR "105"
+#define BUILD_NUMBER 107
+#define BUILD_NUMBER_STR "107"
