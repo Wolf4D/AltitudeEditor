@@ -375,12 +375,10 @@ void MainWindow::createMenusAndToolbars() {
 
     m_portalsMenu->addSeparator();
     m_portalsMenu->addAction(m_actShowPortals);
-    m_actLeakDetector = m_portalsMenu->addAction(QString(), this, &MainWindow::onOpenPortalLeakDetector);
 
     m_toolsMenu = menuBar()->addMenu(QString());
     m_actMemoryAnalyzer = m_toolsMenu->addAction(QString(), this, &MainWindow::onOpenMemoryAnalyzer, QKeySequence(Qt::CTRL + Qt::Key_M));
-    m_toolsMenu->addAction(m_actLeakDetector);
-    m_toolsMenu->addAction(m_actPvsPanel);
+    m_actLeakDetector = m_toolsMenu->addAction(QString(), this, &MainWindow::onOpenPortalLeakDetector);
 
     // Language Menu
     m_languageMenu = menuBar()->addMenu(QString());
