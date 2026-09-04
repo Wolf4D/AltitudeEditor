@@ -680,9 +680,9 @@ void MapCanvas::drawZonesAndLights(QPainter& p) {
             float radScreen = ent.lightRange * m_zoom;
             QRadialGradient grad(entScreen, radScreen);
             QColor lColor = ent.lightColor;
-            lColor.setAlpha(140);
+            lColor.setAlpha(70);
             grad.setColorAt(0.0f, lColor);
-            lColor.setAlpha(40);
+            lColor.setAlpha(20);
             grad.setColorAt(0.5f, lColor);
             lColor.setAlpha(0);
             grad.setColorAt(1.0f, lColor);
