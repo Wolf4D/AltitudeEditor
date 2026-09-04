@@ -9,6 +9,8 @@
 #include <QPalette>
 #include <QDir>
 #include <QDebug>
+#include <QToolBar>
+#include <QAction>
 
 int main(int argc, char* argv[]) {
     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
@@ -131,11 +133,20 @@ int main(int argc, char* argv[]) {
             QString outPath = args.value(idx + 2);
             int entIdx = (args.size() > idx + 3) ? args.value(idx + 3).toInt() : 0;
 
+            int w = 1400, h = 900;
+            if (args.contains("--size")) {
+                int sIdx = args.indexOf("--size");
+                if (args.size() > sIdx + 2) {
+                    w = args.value(sIdx + 1).toInt();
+                    h = args.value(sIdx + 2).toInt();
+                }
+            }
             MainWindow window;
-            window.resize(1400, 900);
+            window.resize(w, h);
             window.loadMapFile(mapPath);
             window.show();
             app.processEvents();
+
 
             if (args.contains("--color-zones")) {
                 if (auto* dock = window.findChild<VisZoneDock*>()) {

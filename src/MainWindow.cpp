@@ -127,6 +127,88 @@ static QIcon makeColorZonesIcon() {
     return QIcon(px);
 }
 
+static QIcon makeReloadIcon() {
+    QPixmap px(20, 20);
+    px.fill(Qt::transparent);
+    QPainter p(&px);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    // Circular arrow
+    p.setPen(QPen(QColor(160, 200, 240), 1.8f));
+    QRectF arcRect(3.5, 3.5, 13.0, 13.0);
+    p.drawArc(arcRect, 45 * 16, 270 * 16);
+
+    // Arrowhead at top
+    QPolygonF head;
+    head << QPointF(11.5, 1.0) << QPointF(16.5, 5.0) << QPointF(11.5, 9.0);
+    p.setBrush(QColor(160, 200, 240));
+    p.setPen(Qt::NoPen);
+    p.drawPolygon(head);
+
+    return QIcon(px);
+}
+
+static QIcon makeZoomFitIcon() {
+    QPixmap px(20, 20);
+    px.fill(Qt::transparent);
+    QPainter p(&px);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    p.setPen(QPen(QColor(160, 200, 240), 1.8f));
+    // 4 corner brackets indicating framing / fit to view
+    // Top-Left
+    p.drawLine(QPointF(3.5, 7.5), QPointF(3.5, 3.5));
+    p.drawLine(QPointF(3.5, 3.5), QPointF(7.5, 3.5));
+
+    // Top-Right
+    p.drawLine(QPointF(12.5, 3.5), QPointF(16.5, 3.5));
+    p.drawLine(QPointF(16.5, 3.5), QPointF(16.5, 7.5));
+
+    // Bottom-Left
+    p.drawLine(QPointF(3.5, 12.5), QPointF(3.5, 16.5));
+    p.drawLine(QPointF(3.5, 16.5), QPointF(7.5, 16.5));
+
+    // Bottom-Right
+    p.drawLine(QPointF(12.5, 16.5), QPointF(16.5, 16.5));
+    p.drawLine(QPointF(16.5, 16.5), QPointF(16.5, 12.5));
+
+    // Center indicator dot
+    p.setBrush(QColor(160, 200, 240));
+    p.setPen(Qt::NoPen);
+    p.drawRect(QRectF(8.5, 8.5, 3.0, 3.0));
+
+    return QIcon(px);
+}
+
+static QIcon makeEntityToggleIcon() {
+    QPixmap px(20, 20);
+    px.fill(Qt::transparent);
+    QPainter p(&px);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    // Stylized isometric 3D cube / entity marker in emerald green
+    p.setPen(QPen(QColor(80, 220, 140), 1.4f));
+    // Top face
+    QPolygonF top;
+    top << QPointF(10.0, 3.0) << QPointF(16.0, 6.5) << QPointF(10.0, 10.0) << QPointF(4.0, 6.5);
+    p.setBrush(QColor(60, 200, 120, 180));
+    p.drawPolygon(top);
+
+    // Left face
+    QPolygonF left;
+    left << QPointF(4.0, 6.5) << QPointF(10.0, 10.0) << QPointF(10.0, 16.5) << QPointF(4.0, 13.0);
+    p.setBrush(QColor(40, 170, 95, 210));
+    p.drawPolygon(left);
+
+    // Right face
+    QPolygonF right;
+    right << QPointF(10.0, 10.0) << QPointF(16.0, 6.5) << QPointF(16.0, 13.0) << QPointF(10.0, 16.5);
+    p.setBrush(QColor(30, 145, 80, 230));
+    p.drawPolygon(right);
+
+    return QIcon(px);
+}
+
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
@@ -361,21 +443,34 @@ void MainWindow::createMenusAndToolbars() {
     mainBar->setMovable(false);
     mainBar->setIconSize(QSize(18, 18));
 
+    m_actReload->setIcon(makeReloadIcon());
     mainBar->addAction(m_actReload);
+    QToolButton* btnReload = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actReload));
+    if (btnReload) {
+        btnReload->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    }
     mainBar->addSeparator();
 
     // Floor Navigation Controls
     m_actFloorDown = mainBar->addAction(QStringLiteral("▼"), m_canvas, &MapCanvas::floorDown);
     m_actFloorDown->setShortcuts({QKeySequence(Qt::Key_PageDown), QKeySequence(Qt::Key_Minus), QKeySequence(Qt::Key_Underscore)});
+    QToolButton* btnDown = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actFloorDown));
+    if (btnDown) {
+        btnDown->setFixedWidth(26);
+    }
 
     m_floorCombo = new QComboBox(this);
-    m_floorCombo->setMinimumWidth(230);
-    m_floorCombo->setMaximumWidth(280);
+    m_floorCombo->setMinimumWidth(120);
+    m_floorCombo->setMaximumWidth(160);
     mainBar->addWidget(m_floorCombo);
     connect(m_floorCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::onFloorComboChanged);
 
     m_actFloorUp = mainBar->addAction(QStringLiteral("▲"), m_canvas, &MapCanvas::floorUp);
     m_actFloorUp->setShortcuts({QKeySequence(Qt::Key_PageUp), QKeySequence(Qt::Key_Plus), QKeySequence(Qt::Key_Equal)});
+    QToolButton* btnUp = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actFloorUp));
+    if (btnUp) {
+        btnUp->setFixedWidth(26);
+    }
     mainBar->addSeparator();
 
     // View Toggles (Grouped together)
@@ -384,7 +479,12 @@ void MainWindow::createMenusAndToolbars() {
     if (btnGhost) {
         btnGhost->setToolButtonStyle(Qt::ToolButtonIconOnly);
     }
+    m_actEntities->setIcon(makeEntityToggleIcon());
     mainBar->addAction(m_actEntities);
+    QToolButton* btnEntities = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actEntities));
+    if (btnEntities) {
+        btnEntities->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    }
     mainBar->addAction(m_actShowPortals);
     QToolButton* btnPortals = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actShowPortals));
     if (btnPortals) {
@@ -395,10 +495,12 @@ void MainWindow::createMenusAndToolbars() {
     if (btnColorZones) {
         btnColorZones->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     }
-    mainBar->addSeparator();
-
-    // Fit in View
+    m_actZoomFit->setIcon(makeZoomFitIcon());
     mainBar->addAction(m_actZoomFit);
+    QToolButton* btnFit = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actZoomFit));
+    if (btnFit) {
+        btnFit->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    }
     mainBar->addSeparator();
 
     // Analysis Tools
@@ -409,16 +511,20 @@ void MainWindow::createMenusAndToolbars() {
     }
 
     m_actLaunchLeaks = mainBar->addAction(QString(), this, &MainWindow::onOpenPortalLeakDetector);
+    QToolButton* btnLeaks = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actLaunchLeaks));
+    if (btnLeaks) {
+        btnLeaks->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    }
+    mainBar->addSeparator();
 
-    // Expanding spacer to push VisZones button to the far right
-    QWidget* rightSpacer = new QWidget(this);
-    rightSpacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    mainBar->addWidget(rightSpacer);
-
-    // Visibility Zones Toggle Button (Pinned to the right, directly above the right dock!)
+    // Visibility Zones & Portals Panel Toggle Button (in main toolbar)
     m_actToggleVisZone = mainBar->addAction(QString(), this, [this]() {});
     m_actToggleVisZone->setCheckable(true);
     m_actToggleVisZone->setChecked(true);
+    QToolButton* btnVis = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actToggleVisZone));
+    if (btnVis) {
+        btnVis->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    }
     connect(m_actToggleVisZone, &QAction::toggled, this, [this](bool checked) {
         m_visZoneDock->setVisible(checked);
         if (checked) {
@@ -451,7 +557,10 @@ void MainWindow::retranslateUi() {
     if (m_actOpen) m_actOpen->setText(tr("&Open Map (.FPM)..."));
     if (m_actSave) m_actSave->setText(tr("&Save Map"));
     if (m_actSaveAs) m_actSaveAs->setText(tr("Save Map &As..."));
-    if (m_actReload) m_actReload->setText(tr("&Reload Map"));
+    if (m_actReload) {
+        m_actReload->setText(tr("&Reload Map"));
+        m_actReload->setToolTip(tr("Reload map from disk (F5)"));
+    }
     if (m_actConfigEngine) m_actConfigEngine->setText(tr("&Configure FPS Creator Path..."));
     if (m_actExit) m_actExit->setText(tr("E&xit"));
 
@@ -466,7 +575,10 @@ void MainWindow::retranslateUi() {
     if (m_actWallTex) m_actWallTex->setText(tr("&Wall Textures"));
     if (m_actFloorTex) m_actFloorTex->setText(tr("&Floor Textures"));
     if (m_actGrid) m_actGrid->setText(tr("&Grid Lines"));
-    if (m_actEntities) m_actEntities->setText(tr("&Entities"));
+    if (m_actEntities) {
+        m_actEntities->setText(tr("&Entities"));
+        m_actEntities->setToolTip(tr("Toggle entity rendering on map (E)"));
+    }
     if (m_actLights) m_actLights->setText(tr("Light &Halos"));
     if (m_actZones) m_actZones->setText(tr("Trigger &Zones"));
     if (m_actWaypoints) m_actWaypoints->setText(tr("&Waypoints"));
@@ -498,7 +610,7 @@ void MainWindow::retranslateUi() {
         m_actLaunchMem->setToolTip(tr("Measure level RAM weight in Megabytes and inspect memory budget (Ctrl+M)"));
     }
     if (m_actLaunchLeaks) {
-        m_actLaunchLeaks->setText(tr("🔍 Leak Detector"));
+        m_actLaunchLeaks->setText(tr("🔍 Leaks"));
         m_actLaunchLeaks->setToolTip(tr("Scan compiled universe.dbu and map geometry for occlusion leaks"));
     }
     if (m_actToggleVisZone) {
@@ -859,9 +971,9 @@ void MainWindow::updateFloorControls() {
     }
 
     for (int l = 0; l <= layerMax; ++l) {
-        QString label = tr("Floor %1 (Y: %2..%3)").arg(l).arg(l * 100).arg((l + 1) * 100);
+        QString label = tr("Floor %1 (Y: %2)").arg(l).arg(l * 100);
         if (entCounts[l] > 0 || segCounts[l] > 0) {
-            label += tr(" — %1 ents, %2 segs").arg(entCounts[l]).arg(segCounts[l]);
+            label += tr(" [%1/%2]").arg(entCounts[l]).arg(segCounts[l]);
         }
         m_floorCombo->addItem(label, l);
     }
