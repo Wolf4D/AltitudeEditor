@@ -25,7 +25,7 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override = default;
 
-    void loadMapFile(const QString& filePath);
+    void loadMapFile(const QString& filePath, bool preserveView = false);
 
 protected:
     void closeEvent(QCloseEvent* event) override;

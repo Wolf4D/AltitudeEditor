@@ -30,11 +30,13 @@ public:
     explicit MapCanvas(QWidget* parent = nullptr);
     ~MapCanvas() override = default;
 
-    void setMap(std::shared_ptr<FPSCMap> map);
+    void setMap(std::shared_ptr<FPSCMap> map, bool preserveView = false);
     std::shared_ptr<FPSCMap> map() const { return m_map; }
 
     int currentFloor() const { return m_currentFloor; }
     int selectedEntityIndex() const { return m_selectedEntityIndex; }
+    float zoom() const { return m_zoom; }
+    QPointF panOffset() const { return m_panOffset; }
     void renderMap(QPainter& p);
 
     enum class GizmoHandle {

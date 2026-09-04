@@ -799,7 +799,9 @@ void MainWindow::populateRecentMapsMenu() {
         QString text = QString("&%1 %2").arg(i + 1).arg(name);
         QAction* act = m_recentMapsMenu->addAction(text, this, [this, fPath]() {
             if (maybeSave()) {
-                loadMapFile(fPath);
+                bool isSameFile = (m_currentMap && !m_currentMap->filePath.isEmpty() &&
+                                   QFileInfo(m_currentMap->filePath).canonicalFilePath() == QFileInfo(fPath).canonicalFilePath());
+                loadMapFile(fPath, isSameFile);
             }
         });
         act->setToolTip(fPath);
@@ -814,7 +816,7 @@ void MainWindow::populateRecentMapsMenu() {
     });
 }
 
-void MainWindow::loadMapFile(const QString& filePath) {
+void MainWindow::loadMapFile(const QString& filePath, bool preserveView) {
     QElapsedTimer timer;
     timer.start();
 
@@ -856,14 +858,21 @@ void MainWindow::loadMapFile(const QString& filePath) {
     progress.setValue(70);
     progress.setLabelText(tr("Building visibility zones & portals..."));
     QCoreApplication::processEvents();
-    m_canvas->setMap(m_currentMap);
+    m_canvas->setMap(m_currentMap, preserveView);
 
     progress.setValue(85);
     progress.setLabelText(tr("Populating entity list..."));
     QCoreApplication::processEvents();
     m_searchDock->setCurrentFloor(m_canvas->currentFloor());
     m_searchDock->setMap(m_currentMap);
-    m_inspectorDock->clear();
+    if (!preserveView) {
+        m_inspectorDock->clear();
+    } else if (m_canvas->selectedEntityIndex() >= 0 && m_canvas->selectedEntityIndex() < m_currentMap->placedEntities.size()) {
+        m_inspectorDock->setEntity(m_currentMap, m_canvas->selectedEntityIndex());
+        m_searchDock->selectEntity(m_canvas->selectedEntityIndex());
+    } else {
+        m_inspectorDock->clear();
+    }
 
     if (m_visZoneDock) {
         m_visZoneDock->setMap(m_currentMap);
@@ -907,7 +916,9 @@ void MainWindow::loadMapFile(const QString& filePath) {
 
 void MainWindow::onOpenRecentMap(const QString& filePath) {
     if (!filePath.isEmpty() && maybeSave()) {
-        loadMapFile(filePath);
+        bool isSameFile = (m_currentMap && !m_currentMap->filePath.isEmpty() &&
+                           QFileInfo(m_currentMap->filePath).canonicalFilePath() == QFileInfo(filePath).canonicalFilePath());
+        loadMapFile(filePath, isSameFile);
     }
 }
 
@@ -916,14 +927,16 @@ void MainWindow::onOpenMap() {
     QString startDir = AssetManager::instance().engineRoot() + "/Files/mapbank";
     QString file = QFileDialog::getOpenFileName(this, tr("Open FPS Creator Map"), startDir, tr("FPS Creator Project Map (*.fpm);;All Files (*.*)"));
     if (!file.isEmpty()) {
-        loadMapFile(file);
+        bool isSameFile = (m_currentMap && !m_currentMap->filePath.isEmpty() &&
+                           QFileInfo(m_currentMap->filePath).canonicalFilePath() == QFileInfo(file).canonicalFilePath());
+        loadMapFile(file, isSameFile);
     }
 }
 
 void MainWindow::onReloadMap() {
     if (m_currentMap && !m_currentMap->filePath.isEmpty()) {
         if (!maybeSave()) return;
-        loadMapFile(m_currentMap->filePath);
+        loadMapFile(m_currentMap->filePath, true);
     }
 }
 

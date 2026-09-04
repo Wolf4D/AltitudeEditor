@@ -38,11 +38,15 @@ void MapCanvas::hideEvent(QHideEvent* event) {
     m_animTimer.stop();
 }
 
-void MapCanvas::setMap(std::shared_ptr<FPSCMap> map) {
+void MapCanvas::setMap(std::shared_ptr<FPSCMap> map, bool preserveView) {
+    int savedFloor = m_currentFloor;
+    QPointF savedPan = m_panOffset;
+    float savedZoom = m_zoom;
+    int savedSelectedEntity = m_selectedEntityIndex;
+    int savedVisZone = m_activeVisZoneId;
+
     m_map = map;
-    m_selectedEntityIndex = -1;
     m_hoveredEntityIndex = -1;
-    m_activeVisZoneId = -1;
     if (!m_visZoneManager) {
         m_visZoneManager = std::make_shared<VisZoneManager>();
     }
@@ -50,9 +54,29 @@ void MapCanvas::setMap(std::shared_ptr<FPSCMap> map) {
         m_visZoneManager->buildFromMap(m_map);
     }
     if (m_map) {
-        m_currentFloor = qBound(0, m_map->activeEditorLayer, m_map->header.layerMax);
-        emit floorChanged(m_currentFloor);
-        zoomFit();
+        if (preserveView) {
+            m_currentFloor = qBound(0, savedFloor, m_map->header.layerMax);
+            m_panOffset = savedPan;
+            m_zoom = savedZoom;
+            if (savedSelectedEntity >= 0 && savedSelectedEntity < m_map->placedEntities.size()) {
+                m_selectedEntityIndex = savedSelectedEntity;
+            } else {
+                m_selectedEntityIndex = -1;
+            }
+            if (savedVisZone >= 0 && m_visZoneManager && savedVisZone < static_cast<int>(m_visZoneManager->zones().size())) {
+                m_activeVisZoneId = savedVisZone;
+            } else {
+                m_activeVisZoneId = -1;
+            }
+            emit floorChanged(m_currentFloor);
+            emit zoomChanged(m_zoom);
+        } else {
+            m_selectedEntityIndex = -1;
+            m_activeVisZoneId = -1;
+            m_currentFloor = qBound(0, m_map->activeEditorLayer, m_map->header.layerMax);
+            emit floorChanged(m_currentFloor);
+            zoomFit();
+        }
     }
     update();
 }
