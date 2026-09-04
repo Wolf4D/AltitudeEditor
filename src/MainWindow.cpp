@@ -102,6 +102,31 @@ static QIcon makeMemoryIcon() {
     return QIcon(px);
 }
 
+static QIcon makeColorZonesIcon() {
+    QPixmap px(20, 20);
+    px.fill(Qt::transparent);
+    QPainter p(&px);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    // Draw 3 overlapping rounded color swatches representing colored zones
+    // 1. Magenta / Pink swatch (top-left)
+    p.setPen(QPen(QColor(245, 70, 160), 1.2f));
+    p.setBrush(QColor(230, 50, 140, 210));
+    p.drawRoundedRect(QRectF(2.0, 2.0, 8.5, 8.5), 2.0, 2.0);
+
+    // 2. Cyan swatch (top-right)
+    p.setPen(QPen(QColor(40, 220, 245), 1.2f));
+    p.setBrush(QColor(20, 190, 220, 210));
+    p.drawRoundedRect(QRectF(9.5, 2.0, 8.5, 8.5), 2.0, 2.0);
+
+    // 3. Amber / Gold swatch (bottom-center)
+    p.setPen(QPen(QColor(255, 195, 45), 1.2f));
+    p.setBrush(QColor(245, 165, 25, 210));
+    p.drawRoundedRect(QRectF(5.5, 9.0, 9.0, 8.5), 2.0, 2.0);
+
+    return QIcon(px);
+}
+
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
@@ -260,13 +285,14 @@ void MainWindow::createMenusAndToolbars() {
     portalsMenu->addAction(QStringLiteral("🔄 &Show All Zones (Normal View)"), m_visZoneDock, &VisZoneDock::resetToNormalView, QKeySequence(Qt::Key_Escape));
     portalsMenu->addSeparator();
 
-    QAction* actColorAllZones = portalsMenu->addAction(QStringLiteral("🎨 &Color All Vis-Zones (Show Overlay)"));
-    actColorAllZones->setCheckable(true);
-    actColorAllZones->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_C));
-    connect(actColorAllZones, &QAction::toggled, m_canvas, &MapCanvas::setColorAllVisZones);
-    connect(actColorAllZones, &QAction::toggled, m_visZoneDock, &VisZoneDock::setColorAllZones);
-    connect(m_visZoneDock, &VisZoneDock::colorAllZonesToggled, actColorAllZones, &QAction::setChecked);
-    viewMenu->addAction(actColorAllZones);
+    m_actColorAllZones = portalsMenu->addAction(makeColorZonesIcon(), QStringLiteral("Color Zones"));
+    m_actColorAllZones->setCheckable(true);
+    m_actColorAllZones->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_C));
+    m_actColorAllZones->setToolTip(QStringLiteral("Color all visibility zones with unique colors overlay (Ctrl+Shift+C)"));
+    connect(m_actColorAllZones, &QAction::toggled, m_canvas, &MapCanvas::setColorAllVisZones);
+    connect(m_actColorAllZones, &QAction::toggled, m_visZoneDock, &VisZoneDock::setColorAllZones);
+    connect(m_visZoneDock, &VisZoneDock::colorAllZonesToggled, m_actColorAllZones, &QAction::setChecked);
+    viewMenu->addAction(m_actColorAllZones);
 
     portalsMenu->addSeparator();
     portalsMenu->addAction(m_actShowPortals);
@@ -345,6 +371,11 @@ void MainWindow::createMenusAndToolbars() {
     QToolButton* btnPortals = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actShowPortals));
     if (btnPortals) {
         btnPortals->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    }
+    mainBar->addAction(m_actColorAllZones);
+    QToolButton* btnColorZones = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actColorAllZones));
+    if (btnColorZones) {
+        btnColorZones->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     }
     mainBar->addSeparator();
 
