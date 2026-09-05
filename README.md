@@ -24,6 +24,10 @@
 
 It provides streamlined, high-speed **2D navigation** (Doom/Build-style floorplan) that allows you to view FPS Creator levels with layer-by-layer floor switching, visual display of segments and entities, along with focused tools for editing and optimizing your maps.
 
+<p align="center">
+  <img src="docs/0.jpg" alt="Altitude Editor Main Interface" width="850" />
+</p>
+
 ---
 
 ## 🌟 Core Highlights & Tools
