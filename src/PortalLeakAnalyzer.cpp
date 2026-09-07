@@ -11,8 +11,8 @@
 #include <cmath>
 #include <queue>
 
-PortalLeakAnalyzer::PortalLeakAnalyzer(std::shared_ptr<FPSCMap> map)
-    : m_map(map) {
+PortalLeakAnalyzer::PortalLeakAnalyzer(std::shared_ptr<FPSCMap> map, std::shared_ptr<VisZoneManager> visZoneManager)
+    : m_map(map), m_visZoneManager(visZoneManager) {
 }
 
 DBUValidationResult PortalLeakAnalyzer::validateCompiledUniverse() const {
@@ -98,6 +98,11 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::analyze() {
     m_hasCompiledUniverse = false;
     if (!m_map) return m_warnings;
 
+    if (!m_visZoneManager && m_map) {
+        m_visZoneManager = std::make_shared<VisZoneManager>();
+        m_visZoneManager->buildFromMap(m_map);
+    }
+
     // 1. Method 1: Check compiled universe.dbu (Primary ground-truth physics / BSP compiler)
     if (m_checkCompiledUniverse) {
         checkCompiledUniverse();
@@ -111,6 +116,17 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::analyze() {
         checkWallHolesToVoid();
         checkInvertedWalls();
         checkDoubleWallClashes();
+    }
+
+    // Populate zone details on all warnings
+    for (auto& w : m_warnings) {
+        if (w.zoneId < 0 && m_visZoneManager) {
+            w.zoneId = m_visZoneManager->getZoneAt(w.layer, w.x, w.y);
+        }
+        if (w.zoneName.isEmpty() && w.zoneId >= 0 && m_visZoneManager) {
+            const VisZone* z = m_visZoneManager->getZone(w.zoneId);
+            if (z) w.zoneName = z->name;
+        }
     }
 
     return m_warnings;
@@ -276,9 +292,8 @@ int PortalLeakAnalyzer::mapGround(int layer, int x, int y) const {
 }
 
 void PortalLeakAnalyzer::checkVerticalGaps() {
-    if (!m_map) return;
-    VisZoneManager zm;
-    zm.buildFromMap(m_map);
+    if (!m_map || !m_visZoneManager) return;
+    const VisZoneManager& zm = *m_visZoneManager;
 
     // Sort zones by floor descending so we process upper room tiers first
     auto zones = zm.zones();
@@ -481,9 +496,8 @@ void PortalLeakAnalyzer::checkCoplanarOverlaps() {
 }
 
 void PortalLeakAnalyzer::checkWallHolesToVoid() {
-    if (!m_map) return;
-    VisZoneManager zm;
-    zm.buildFromMap(m_map);
+    if (!m_map || !m_visZoneManager) return;
+    const VisZoneManager& zm = *m_visZoneManager;
 
     int rows = m_map->header.maxY + 1;
     int cols = m_map->header.maxX + 1;
@@ -602,9 +616,8 @@ void PortalLeakAnalyzer::checkWallHolesToVoid() {
 }
 
 void PortalLeakAnalyzer::checkInvertedWalls() {
-    if (!m_map) return;
-    VisZoneManager zm;
-    zm.buildFromMap(m_map);
+    if (!m_map || !m_visZoneManager) return;
+    const VisZoneManager& zm = *m_visZoneManager;
 
     const int dx[4] = {0, 1, 0, -1};
     const int dy[4] = {-1, 0, 1, 0};
@@ -762,6 +775,23 @@ void PortalLeakAnalyzer::checkDoubleWallClashes() {
                             w.layer = l;
                             w.x = x;
                             w.y = y;
+                            w.x2 = nx;
+                            w.y2 = ny;
+                            w.isClash = true;
+                            w.sideA = s;
+                            if (m_visZoneManager) {
+                                w.zoneId = m_visZoneManager->getZoneAt(l, x, y);
+                                w.zoneId2 = m_visZoneManager->getZoneAt(l, nx, ny);
+                                const VisZone* za = m_visZoneManager->getZone(w.zoneId);
+                                const VisZone* zb = m_visZoneManager->getZone(w.zoneId2);
+                                if (za && zb && za->id != zb->id) {
+                                    w.zoneName = QString("%1 / %2").arg(za->name.section(' ', 0, 1), zb->name.section(' ', 0, 1));
+                                } else if (za) {
+                                    w.zoneName = za->name;
+                                } else if (zb) {
+                                    w.zoneName = zb->name;
+                                }
+                            }
                             w.description = QString("Both adjacent rooms (\"%1\" and \"%2\") place solid walls on the exact same shared boundary at Floor %3 between (%4, %5) and (%6, %7) without a doorway. Causes severe in-game Z-fighting flickering and degenerate BSP portal bleed.")
                                                 .arg(nameA).arg(nameB).arg(l).arg(x).arg(y).arg(nx).arg(ny);
                             m_warnings.push_back(w);

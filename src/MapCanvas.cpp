@@ -1258,6 +1258,30 @@ void MapCanvas::mouseReleaseEvent(QMouseEvent* event) {
                 event->accept();
                 return;
             }
+
+            // Check if right clicked on a segment tile
+            int tileX = static_cast<int>(std::floor(worldPos.x() / TILE_SIZE));
+            int tileY = static_cast<int>(std::floor(worldPos.y() / TILE_SIZE));
+            if (tileX >= 0 && tileX <= m_map->header.maxX && tileY >= 0 && tileY <= m_map->header.maxY) {
+                int segId = (m_currentFloor < m_map->gridBlocks.size() &&
+                             tileY < m_map->gridBlocks[m_currentFloor].size() &&
+                             tileX < m_map->gridBlocks[m_currentFloor][tileY].size())
+                            ? m_map->gridBlocks[m_currentFloor][tileY][tileX] : 0;
+                if (segId > 0) {
+                    QMenu menu(this);
+                    QString segName = m_map->segments.contains(segId) ? m_map->segments[segId]->name : QString("Segment #%1").arg(segId);
+                    QAction* titleAct = menu.addAction(QString("Tile (%1, %2): %3").arg(tileX).arg(tileY).arg(segName));
+                    titleAct->setEnabled(false);
+                    menu.addSeparator();
+                    QAction* actInspectSeg = menu.addAction(tr("🧱 Inspect & Edit Segment..."));
+                    QAction* chosen = menu.exec(mapToGlobal(event->pos()));
+                    if (chosen == actInspectSeg) {
+                        emit segmentInspectRequested(m_currentFloor, tileX, tileY);
+                    }
+                    event->accept();
+                    return;
+                }
+            }
         }
         event->accept();
         return;

@@ -90,6 +90,7 @@ signals:
     void hoverInfoChanged(const QString& info);
     void zoomChanged(float zoom);
     void visZoneSelected(int zoneId);
+    void segmentInspectRequested(int layer, int x, int y);
 
 protected:
     void paintEvent(QPaintEvent* event) override;

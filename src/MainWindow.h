@@ -17,6 +17,7 @@
 #include "VisZoneManager.h"
 #include "PortalLeakDialog.h"
 #include "MemoryAnalyzerDialog.h"
+#include "SegmentEditorDialog.h"
 #include "LanguageManager.h"
 
 class MainWindow : public QMainWindow {
@@ -69,6 +70,7 @@ private:
     VisZoneDock* m_visZoneDock = nullptr;
     std::shared_ptr<VisZoneManager> m_visZoneManager;
     QPointer<PortalLeakDialog> m_portalLeakDialog;
+    QPointer<SegmentEditorDialog> m_segmentEditorDialog;
     QPointer<MemoryAnalyzerDialog> m_memoryAnalyzerDialog;
     MemoryReport m_cachedMemoryReport;
     bool m_memoryReportValid = false;
@@ -117,8 +119,15 @@ private:
     QAction* m_actMemoryAnalyzer = nullptr;
     QAction* m_actLaunchMem = nullptr;
     QAction* m_actLaunchLeaks = nullptr;
+    QAction* m_actSegmentEditor = nullptr;
     QAction* m_actAbout = nullptr;
 
+public slots:
+    void onOpenSegmentEditor(int layer = -1, int x = -1, int y = -1);
+    void onResolveSegmentConflict(int layer, int x1, int y1, int x2, int y2);
+    void onSegmentModified(int layer, int x, int y);
+
+private:
     // Language Menu Actions
     QMenu* m_languageMenu = nullptr;
     QAction* m_actLangAuto = nullptr;

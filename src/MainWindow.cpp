@@ -275,6 +275,9 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_visZoneDock, &VisZoneDock::colorAllZonesToggled, m_canvas, &MapCanvas::setColorAllVisZones);
     connect(m_visZoneDock, &VisZoneDock::entitySelected, this, &MainWindow::onEntitySelected);
     connect(m_canvas, &MapCanvas::visZoneSelected, m_visZoneDock, &VisZoneDock::onExternalZoneSelected);
+    connect(m_canvas, &MapCanvas::segmentInspectRequested, this, [this](int l, int x, int y) {
+        onOpenSegmentEditor(l, x, y);
+    });
 }
 
 void MainWindow::createMenusAndToolbars() {
@@ -387,6 +390,7 @@ void MainWindow::createMenusAndToolbars() {
     m_toolsMenu = menuBar()->addMenu(QString());
     m_actMemoryAnalyzer = m_toolsMenu->addAction(QString(), this, &MainWindow::onOpenMemoryAnalyzer, QKeySequence(Qt::CTRL + Qt::Key_M));
     m_actLeakDetector = m_toolsMenu->addAction(QString(), this, &MainWindow::onOpenPortalLeakDetector);
+    m_actSegmentEditor = m_toolsMenu->addAction(QString(), this, [this]() { onOpenSegmentEditor(); }, QKeySequence(Qt::CTRL + Qt::Key_E));
 
     // Language Menu
     m_languageMenu = menuBar()->addMenu(QString());
@@ -620,6 +624,7 @@ void MainWindow::retranslateUi() {
     if (m_actResetView) m_actResetView->setText(tr("🔄 &Show All Zones (Normal View)"));
     if (m_actLeakDetector) m_actLeakDetector->setText(tr("&Leak Detector..."));
     if (m_actMemoryAnalyzer) m_actMemoryAnalyzer->setText(tr("&Memory Analyzer..."));
+    if (m_actSegmentEditor) m_actSegmentEditor->setText(tr("🧱 &Segment Inspector && Editor..."));
     if (m_actAbout) m_actAbout->setText(tr("&About %1...").arg(VersionInfo::AppName));
 
     // Toolbar Buttons
@@ -1142,11 +1147,16 @@ void MainWindow::onOpenPortalLeakDetector() {
         return;
     }
     if (!m_portalLeakDialog) {
-        m_portalLeakDialog = new PortalLeakDialog(m_currentMap, this);
+        m_portalLeakDialog = new PortalLeakDialog(m_currentMap, m_visZoneManager, this);
         m_portalLeakDialog->setAttribute(Qt::WA_DeleteOnClose);
         connect(m_portalLeakDialog, &PortalLeakDialog::cellSelected, m_canvas, &MapCanvas::highlightCell);
+        connect(m_portalLeakDialog, &PortalLeakDialog::resolveConflictRequested, this, &MainWindow::onResolveSegmentConflict);
+        connect(m_portalLeakDialog, &PortalLeakDialog::editSegmentRequested, this, [this](int l, int x, int y) {
+            onOpenSegmentEditor(l, x, y);
+        });
         m_portalLeakDialog->show();
     } else {
+        m_portalLeakDialog->setVisZoneManager(m_visZoneManager);
         m_portalLeakDialog->setMap(m_currentMap);
         m_portalLeakDialog->raise();
         m_portalLeakDialog->activateWindow();
@@ -1154,7 +1164,74 @@ void MainWindow::onOpenPortalLeakDetector() {
     }
 
     // Also auto-refresh canvas portals
-    PortalLeakAnalyzer analyzer(m_currentMap);
+    PortalLeakAnalyzer analyzer(m_currentMap, m_visZoneManager);
     analyzer.analyze();
     m_canvas->setPortals(analyzer.allPortals(), analyzer.allZones());
+}
+
+void MainWindow::onOpenSegmentEditor(int layer, int x, int y) {
+    if (!m_currentMap) {
+        QMessageBox::warning(this, tr("Error"), tr("Please open a map first."));
+        return;
+    }
+
+    if (layer < 0) layer = m_canvas ? m_canvas->currentFloor() : 0;
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+
+    if (!m_segmentEditorDialog) {
+        m_segmentEditorDialog = new SegmentEditorDialog(m_currentMap, m_visZoneManager, this);
+        m_segmentEditorDialog->setAttribute(Qt::WA_DeleteOnClose);
+        connect(m_segmentEditorDialog, &SegmentEditorDialog::segmentModified, this, &MainWindow::onSegmentModified);
+        m_segmentEditorDialog->inspectCell(layer, x, y);
+        m_segmentEditorDialog->show();
+    } else {
+        m_segmentEditorDialog->setVisZoneManager(m_visZoneManager);
+        m_segmentEditorDialog->setMap(m_currentMap);
+        m_segmentEditorDialog->inspectCell(layer, x, y);
+        m_segmentEditorDialog->raise();
+        m_segmentEditorDialog->activateWindow();
+        m_segmentEditorDialog->show();
+    }
+}
+
+void MainWindow::onResolveSegmentConflict(int layer, int x1, int y1, int x2, int y2) {
+    if (!m_currentMap) return;
+
+    if (!m_segmentEditorDialog) {
+        m_segmentEditorDialog = new SegmentEditorDialog(m_currentMap, m_visZoneManager, this);
+        m_segmentEditorDialog->setAttribute(Qt::WA_DeleteOnClose);
+        connect(m_segmentEditorDialog, &SegmentEditorDialog::segmentModified, this, &MainWindow::onSegmentModified);
+        m_segmentEditorDialog->inspectConflict(layer, x1, y1, x2, y2);
+        m_segmentEditorDialog->show();
+    } else {
+        m_segmentEditorDialog->setVisZoneManager(m_visZoneManager);
+        m_segmentEditorDialog->setMap(m_currentMap);
+        m_segmentEditorDialog->inspectConflict(layer, x1, y1, x2, y2);
+        m_segmentEditorDialog->raise();
+        m_segmentEditorDialog->activateWindow();
+        m_segmentEditorDialog->show();
+    }
+}
+
+void MainWindow::onSegmentModified(int layer, int x, int y) {
+    Q_UNUSED(layer);
+    Q_UNUSED(x);
+    Q_UNUSED(y);
+    if (!m_currentMap) return;
+
+    m_currentMap->isModified = true;
+    updateWindowTitle();
+
+    if (m_visZoneManager) {
+        m_visZoneManager->buildFromMap(m_currentMap);
+    }
+
+    if (m_canvas) {
+        m_canvas->update();
+    }
+
+    if (m_portalLeakDialog) {
+        m_portalLeakDialog->runAnalysis();
+    }
 }

@@ -28,6 +28,7 @@ set(SOURCES
     src/UniverseDBUParser.cpp
     src/VisZoneManager.cpp
     src/VisZoneDock.cpp
+    src/SegmentEditorDialog.cpp
     src/LanguageManager.cpp
     src/resources.qrc
 )
@@ -50,6 +51,7 @@ set(HEADERS
     src/EntityInspector.h
     src/PortalLeakAnalyzer.h
     src/PortalLeakDialog.h
+    src/SegmentEditorDialog.h
     src/UniverseDBUParser.h
     src/VisZoneManager.h
     src/VisZoneDock.h

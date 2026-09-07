@@ -13,7 +13,7 @@ int main(int argc, char* argv[]) {
     // default flags: checkCompiledUniverse=true, checkStaticMap=true
     auto warnings = analyzer.analyze();
 
-    printf("Total warnings found in leaks.fpm: %zu\n", warnings.size());
+    printf("Total warnings found: %zu\n", warnings.size());
     for (const auto& w : warnings) {
         printf("  [%s] %s at Layer %d (%d, %d): %s\n",
                w.severity == PortalLeakWarning::ERROR ? "ERROR" : "WARNING",

@@ -8,6 +8,8 @@
 #include <QHash>
 #include <QDateTime>
 
+class VisZoneManager;
+
 struct PortalLeakWarning {
     enum Severity {
         WARNING,
@@ -20,6 +22,13 @@ struct PortalLeakWarning {
     int layer;
     int x;
     int y;
+    int zoneId = -1;
+    int zoneId2 = -1;
+    QString zoneName;
+    int x2 = -1;
+    int y2 = -1;
+    bool isClash = false;
+    int sideA = -1; // 0=N, 1=E, 2=S, 3=W
 };
 
 struct DBUValidationResult {
@@ -33,11 +42,14 @@ struct DBUValidationResult {
 
 class PortalLeakAnalyzer {
 public:
-    PortalLeakAnalyzer(std::shared_ptr<FPSCMap> map);
+    PortalLeakAnalyzer(std::shared_ptr<FPSCMap> map, std::shared_ptr<VisZoneManager> visZoneManager = nullptr);
 
     std::vector<PortalLeakWarning> analyze();
 
     DBUValidationResult validateCompiledUniverse() const;
+
+    void setVisZoneManager(std::shared_ptr<VisZoneManager> mgr) { m_visZoneManager = mgr; }
+    std::shared_ptr<VisZoneManager> visZoneManager() const { return m_visZoneManager; }
 
     void setCheckCompiledUniverse(bool enable) { m_checkCompiledUniverse = enable; }
     void setCheckStaticMap(bool enable) { m_checkStaticMap = enable; }
@@ -57,6 +69,7 @@ private:
     void checkDoubleWallClashes();
 
     std::shared_ptr<FPSCMap> m_map;
+    std::shared_ptr<VisZoneManager> m_visZoneManager;
     std::vector<PortalLeakWarning> m_warnings;
     
     UniverseDBUParser m_dbuParser;
