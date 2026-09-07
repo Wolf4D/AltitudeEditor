@@ -1,6 +1,36 @@
 <?xml version='1.0' encoding='utf-8'?>
 <TS version="2.1" language="ru_RU">
 <context>
+    <name>ConflictDiagramWidget</name>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="231" />
+        <source>🏠 Room A: %1 (%2, %3)</source>
+        <translation>🏠 Комната A: %1 (%2, %3)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="239" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="254" />
+        <source>None</source>
+        <translation>Нет</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="239" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="254" />
+        <source>Zone: %1</source>
+        <translation>Зона: %1</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="249" />
+        <source>🏠 Room B: %1 (%2, %3)</source>
+        <translation>🏠 Комната B: %1 (%2, %3)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="267" />
+        <source>⚠️ CLASH</source>
+        <translation>⚠️ КОНФЛИКТ</translation>
+    </message>
+</context>
+<context>
     <name>EntityCategory</name>
     <message>
         <location filename="../src/FPSCData.h" line="28" />
@@ -584,721 +614,754 @@ Script: %3</source>
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../src/MainWindow.cpp" line="414" />
+        <location filename="../src/MainWindow.cpp" line="424" />
         <source>About %1</source>
         <translation>О программе %1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="415" />
+        <location filename="../src/MainWindow.cpp" line="425" />
         <source>&lt;h3&gt;%1 v%2 - %3&lt;/h3&gt;&lt;p style='font-size: 13px;'&gt;&lt;b&gt;Version:&lt;/b&gt; %2&lt;br&gt;&lt;b&gt;Developer:&lt;/b&gt; %4&lt;br&gt;&lt;b&gt;Studio:&lt;/b&gt; %5&lt;/p&gt;&lt;hr&gt;&lt;p&gt;A professional tool for editing, visualizing, and analyzing &lt;b&gt;FPS Creator&lt;/b&gt; maps (.FPM).&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Doom-Style Segment Wall &amp; Floor Rendering:&lt;/b&gt; Visualizes segment walls, custom floors, ceilings, and gantry walkways.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Multi-Overlay Engine Architecture:&lt;/b&gt; Accurate overlay placement for doorways, CSG punch-outs, and corridors.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Floor-by-Floor Navigation:&lt;/b&gt; Full layer switching (0..20) via toolbar, shortcuts (PageUp/PageDown), and mouse wheel.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Entity Browser &amp; Inspector:&lt;/b&gt; Inspect, filter, search, and edit placed map entities.&lt;/li&gt;&lt;li&gt;&lt;b&gt;PVS Visibility Zones &amp; Portals:&lt;/b&gt; Complete room topology, portal leak detection, and culling visualization.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Memory Footprint Analyzer:&lt;/b&gt; Measures memory weight in MB for 3D meshes, textures, and audio buffers with 32-bit limit warnings.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Built with &lt;b&gt;Qt 5.15.2 (MinGW 32-bit)&lt;/b&gt;.&lt;/p&gt;</source>
         <translation>&lt;h3&gt;%1 v%2 - %3&lt;/h3&gt;&lt;p style='font-size: 13px;'&gt;&lt;b&gt;Версия:&lt;/b&gt; %2&lt;br&gt;&lt;b&gt;Разработчик:&lt;/b&gt; %4&lt;br&gt;&lt;b&gt;Студия:&lt;/b&gt; %5&lt;/p&gt;&lt;hr&gt;&lt;p&gt;Профессиональный инструмент для редактирования, визуализации и анализа карт &lt;b&gt;FPS Creator&lt;/b&gt; (.FPM).&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Отрисовка стен и полов сегментов в стиле Doom:&lt;/b&gt; визуализация стен сегментов, полов, потолков и подвесных мостиков.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Архитектура многослойных оверлеев:&lt;/b&gt; точное позиционирование наложений для дверных проёмов, CSG-вырезов и коридоров.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Поэтажная навигация:&lt;/b&gt; переключение слоёв (0..20) через панель инструментов, горячие клавиши (PageUp/PageDown) и колёсико мыши.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Браузер и инспектор энтити:&lt;/b&gt; просмотр, фильтрация, поиск и редактирование установленных энтити карты.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Зоны видимости PVS и порталы:&lt;/b&gt; полная топология комнат, детектор утечек порталов и визуализация отсечения.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Анализатор расхода памяти:&lt;/b&gt; измерение веса памяти в МБ для 3D-моделей, текстур и аудио-буферов с контролем лимита 32-битного процесса.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Собрано с &lt;b&gt;Qt 5.15.2 (MinGW 32-bit)&lt;/b&gt;.&lt;/p&gt;</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="548" />
+        <location filename="../src/MainWindow.cpp" line="572" />
         <source>&amp;File</source>
         <translation>&amp;Файл</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="549" />
+        <location filename="../src/MainWindow.cpp" line="573" />
         <source>&amp;View</source>
         <translation>&amp;Вид</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="550" />
-        <location filename="../src/MainWindow.cpp" line="590" />
+        <location filename="../src/MainWindow.cpp" line="574" />
+        <location filename="../src/MainWindow.cpp" line="614" />
         <source>&amp;Portals</source>
         <translation>&amp;Порталы</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="551" />
+        <location filename="../src/MainWindow.cpp" line="575" />
         <source>&amp;Tools</source>
         <translation>&amp;Инструменты</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="552" />
+        <location filename="../src/MainWindow.cpp" line="576" />
         <source>&amp;Language</source>
         <translation>&amp;Язык</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="553" />
+        <location filename="../src/MainWindow.cpp" line="577" />
         <source>&amp;Help</source>
         <translation>&amp;Справка</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="554" />
+        <location filename="../src/MainWindow.cpp" line="578" />
         <source>&amp;Recent Maps</source>
         <translation>&amp;Недавние карты</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="557" />
+        <location filename="../src/MainWindow.cpp" line="581" />
         <source>&amp;Open Map (.FPM)...</source>
         <translation>&amp;Открыть карту (.FPM)...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="558" />
+        <location filename="../src/MainWindow.cpp" line="582" />
         <source>&amp;Save Map</source>
         <translation>&amp;Сохранить карту</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="559" />
+        <location filename="../src/MainWindow.cpp" line="583" />
         <source>Save Map &amp;As...</source>
         <translation>Сохранить карту &amp;как...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="561" />
+        <location filename="../src/MainWindow.cpp" line="585" />
         <source>&amp;Reload Map</source>
         <translation>&amp;Перезагрузить карту</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="562" />
+        <location filename="../src/MainWindow.cpp" line="586" />
         <source>Reload map from disk (F5)</source>
         <translation>Перезагрузить карту с диска (F5)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="564" />
+        <location filename="../src/MainWindow.cpp" line="588" />
         <source>&amp;Configure FPS Creator Path...</source>
         <translation>&amp;Настроить путь к FPS Creator...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="565" />
+        <location filename="../src/MainWindow.cpp" line="589" />
         <source>E&amp;xit</source>
         <translation>В&amp;ыход</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="568" />
+        <location filename="../src/MainWindow.cpp" line="592" />
         <source>Zoom &amp;In</source>
         <translation>Увеличить ма&amp;сштаб</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="569" />
+        <location filename="../src/MainWindow.cpp" line="593" />
         <source>Zoom &amp;Out</source>
         <translation>У&amp;меньшить масштаб</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="570" />
+        <location filename="../src/MainWindow.cpp" line="594" />
         <source>Reset Zoom (100%)</source>
         <translation>Сбросить масштаб (100%)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="572" />
+        <location filename="../src/MainWindow.cpp" line="596" />
         <source>Fit View</source>
         <translation>По размеру</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="573" />
+        <location filename="../src/MainWindow.cpp" line="597" />
         <source>Fit whole map in view (Home)</source>
         <translation>Поместить всю карту в окно (Home)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="575" />
+        <location filename="../src/MainWindow.cpp" line="599" />
         <source>&amp;Wall Textures</source>
         <translation>Текстуры с&amp;тен</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="576" />
+        <location filename="../src/MainWindow.cpp" line="600" />
         <source>&amp;Floor Textures</source>
         <translation>Текстуры &amp;пола</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="577" />
+        <location filename="../src/MainWindow.cpp" line="601" />
         <source>&amp;Grid Lines</source>
         <translation>Линии &amp;сетки</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="579" />
+        <location filename="../src/MainWindow.cpp" line="603" />
         <source>&amp;Entities</source>
         <translation>&amp;Энтити</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="580" />
+        <location filename="../src/MainWindow.cpp" line="604" />
         <source>Toggle entity rendering on map (E)</source>
         <translation>Отображение энтити на карте (E)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="582" />
+        <location filename="../src/MainWindow.cpp" line="606" />
         <source>Light &amp;Halos</source>
         <translation>&amp;Ореолы света</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="583" />
+        <location filename="../src/MainWindow.cpp" line="607" />
         <source>Trigger &amp;Zones</source>
         <translation>Триггерные &amp;зоны</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="584" />
+        <location filename="../src/MainWindow.cpp" line="608" />
         <source>&amp;Waypoints</source>
         <translation>Путевые &amp;точки</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="586" />
+        <location filename="../src/MainWindow.cpp" line="610" />
         <source>&amp;Ghost Lower Floor</source>
         <translation>&amp;Полупрозрачный нижний этаж</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="587" />
+        <location filename="../src/MainWindow.cpp" line="611" />
         <source>Show Ghost Lower Floor (toggle semi-transparent rendering of the floor below)</source>
         <translation>Показать нижний этаж полупрозрачным фоном</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="591" />
+        <location filename="../src/MainWindow.cpp" line="615" />
         <source>Toggle Portals &amp; VisZones display</source>
         <translation>Переключить отображение порталов и зон видимости</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="594" />
+        <location filename="../src/MainWindow.cpp" line="618" />
         <source>Vis Zones</source>
         <translation>Зоны видимости</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="595" />
+        <location filename="../src/MainWindow.cpp" line="619" />
         <source>Color all visibility zones with unique colors overlay (Ctrl+Shift+C)</source>
         <translation>Отобразить цветовую карту всех зон видимости текущего этажа (Ctrl+Shift+C)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="599" />
+        <location filename="../src/MainWindow.cpp" line="623" />
         <source>👁 &amp;Visibility Zones &amp; Portals Panel (PVS)...</source>
         <translation>👁 Панель &amp;зон видимости и порталов (PVS)...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="600" />
+        <location filename="../src/MainWindow.cpp" line="624" />
         <source>🔄 &amp;Show All Zones (Normal View)</source>
         <translation>🔄 &amp;Показать все зоны (обычный вид)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="601" />
+        <location filename="../src/MainWindow.cpp" line="625" />
         <source>&amp;Leak Detector...</source>
         <translation>Детектор &amp;утечек порталов...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="602" />
+        <location filename="../src/MainWindow.cpp" line="626" />
         <source>&amp;Memory Analyzer...</source>
         <translation>Анализатор &amp;памяти...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="603" />
+        <location filename="../src/MainWindow.cpp" line="627" />
+        <source>🧱 &amp;Segment Inspector &amp;&amp; Editor...</source>
+        <translation>🧱 &amp;Инспектор и редактор сегментов...</translation>
+    </message>
+    <message>
+        <location filename="../src/MainWindow.cpp" line="628" />
         <source>&amp;About %1...</source>
         <translation>О &amp;программе %1...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="606" />
+        <location filename="../src/MainWindow.cpp" line="631" />
         <source>Go one floor down (PageDown / -)</source>
         <translation>Перейти на этаж ниже (PageDown / -)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="607" />
+        <location filename="../src/MainWindow.cpp" line="632" />
         <source>Go one floor up (PageUp / +)</source>
         <translation>Перейти на этаж выше (PageUp / +)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="609" />
+        <location filename="../src/MainWindow.cpp" line="634" />
         <source>Memory</source>
         <translation>Память</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="610" />
+        <location filename="../src/MainWindow.cpp" line="635" />
         <source>Measure level RAM weight in Megabytes and inspect memory budget (Ctrl+M)</source>
         <translation>Измерить расход оперативной памяти уровня в мегабайтах и проверить бюджет (Ctrl+M)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="613" />
+        <location filename="../src/MainWindow.cpp" line="638" />
         <source>🔍 Leaks</source>
         <translation>🔍 Утечки</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="974" />
+        <location filename="../src/MainWindow.cpp" line="1018" />
         <source>Floor %1 (Y: %2)</source>
         <translation>Этаж %1 (Y: %2)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="976" />
+        <location filename="../src/MainWindow.cpp" line="1020" />
         <source> [%1 ent, %2 seg]</source>
         <translation> [%1 ent, %2 seg]</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="614" />
+        <location filename="../src/MainWindow.cpp" line="639" />
         <source>Scan compiled universe.dbu and map geometry for occlusion leaks</source>
         <translation>Сканировать скомпилированный universe.dbu и геометрию карты на предмет утечек окклюзии</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="617" />
+        <location filename="../src/MainWindow.cpp" line="642" />
         <source>👁 VisZones</source>
         <translation>👁 Зоны PVS</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="618" />
+        <location filename="../src/MainWindow.cpp" line="643" />
         <source>Toggle Visibility Zones &amp; Portals (PVS) right dock panel</source>
         <translation>Переключить правую панель зон видимости и порталов (PVS)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="622" />
+        <location filename="../src/MainWindow.cpp" line="647" />
         <source>System Default</source>
         <translation>Системный по умолчанию</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="630" />
+        <location filename="../src/MainWindow.cpp" line="655" />
         <source>Entity Search &amp; Palette</source>
         <translation>Поиск энтити и палитра</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="631" />
+        <location filename="../src/MainWindow.cpp" line="656" />
         <source>Entity Properties Inspector</source>
         <translation>Свойства энтити</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="632" />
+        <location filename="../src/MainWindow.cpp" line="657" />
         <source>Visibility Zones &amp; Portals (PVS)</source>
         <translation>Зоны видимости и порталы (PVS)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="654" />
+        <location filename="../src/MainWindow.cpp" line="679" />
         <source>Unsaved Changes</source>
         <translation>Несохранённые изменения</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="655" />
+        <location filename="../src/MainWindow.cpp" line="680" />
         <source>The map '%1' has unsaved modifications.
 Do you want to save your changes?</source>
         <translation>Карта '%1' содержит несохранённые изменения.
 Сохранить изменения перед выходом?</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="695" />
+        <location filename="../src/MainWindow.cpp" line="720" />
         <source>Saved %1</source>
         <translation>Карта сохранена: %1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="697" />
-        <location filename="../src/MainWindow.cpp" line="720" />
+        <location filename="../src/MainWindow.cpp" line="722" />
+        <location filename="../src/MainWindow.cpp" line="745" />
         <source>Save Error</source>
         <translation>Ошибка сохранения</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="697" />
-        <location filename="../src/MainWindow.cpp" line="720" />
+        <location filename="../src/MainWindow.cpp" line="722" />
+        <location filename="../src/MainWindow.cpp" line="745" />
         <source>Failed to save map to:
 %1</source>
         <translation>Не удалось сохранить карту в:
 %1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="709" />
+        <location filename="../src/MainWindow.cpp" line="734" />
         <source>Save FPS Creator Map As</source>
         <translation>Сохранить карту FPS Creator как</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="711" />
-        <location filename="../src/MainWindow.cpp" line="901" />
+        <location filename="../src/MainWindow.cpp" line="736" />
+        <location filename="../src/MainWindow.cpp" line="935" />
         <source>FPS Creator Project Map (*.fpm);;All Files (*.*)</source>
         <translation>Карта проекта FPS Creator (*.fpm);;Все файлы (*.*)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="718" />
+        <location filename="../src/MainWindow.cpp" line="743" />
         <source>Saved as %1</source>
         <translation>Сохранено как %1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="740" />
+        <location filename="../src/MainWindow.cpp" line="765" />
         <source>Entity #%1</source>
         <translation>Энтити #%1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="755" />
+        <location filename="../src/MainWindow.cpp" line="780" />
         <source>Deleted %1</source>
         <translation>Удалено: %1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="773" />
+        <location filename="../src/MainWindow.cpp" line="798" />
         <source>No Recent Maps</source>
         <translation>Нет недавних карт</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="792" />
+        <location filename="../src/MainWindow.cpp" line="819" />
         <source>Clear Recent Maps</source>
         <translation>Очистить список недавних карт</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="804" />
+        <location filename="../src/MainWindow.cpp" line="831" />
         <source>Loading %1...</source>
         <translation>Загрузка %1...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="828" />
-        <location filename="../src/MainWindow.cpp" line="1071" />
+        <location filename="../src/MainWindow.cpp" line="855" />
+        <location filename="../src/MainWindow.cpp" line="1146" />
+        <location filename="../src/MainWindow.cpp" line="1174" />
         <source>Error</source>
         <translation>Ошибка</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="828" />
+        <location filename="../src/MainWindow.cpp" line="855" />
         <source>Failed to load FPM map file:
 %1</source>
         <translation>Не удалось загрузить файл карты FPM:
 %1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="835" />
         <source>Analyzing map memory footprint...</source>
-        <translation>Анализ расхода оперативной памяти карты...</translation>
+        <translation type="vanished">Анализ расхода оперативной памяти карты...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="841" />
+        <location filename="../src/MainWindow.cpp" line="866" />
         <source>Building visibility zones &amp; portals...</source>
         <translation>Построение зон видимости и порталов...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="846" />
+        <location filename="../src/MainWindow.cpp" line="871" />
         <source>Populating entity list...</source>
         <translation>Заполнение списка энтити...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="864" />
+        <location filename="../src/MainWindow.cpp" line="896" />
         <source>Rendering map canvas...</source>
         <translation>Отрисовка холста карты...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="885" />
+        <location filename="../src/MainWindow.cpp" line="917" />
         <source>Loaded "%1" (%2 entities, %3 segments) in %4 ms</source>
         <translation>Загружено "%1" (%2 энтити, %3 сегментов) за %4 мс</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="901" />
+        <location filename="../src/MainWindow.cpp" line="935" />
         <source>Open FPS Creator Map</source>
         <translation>Открыть карту FPS Creator</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="916" />
+        <location filename="../src/MainWindow.cpp" line="952" />
         <source>Select FPS Creator Installation Directory</source>
         <translation>Выберите каталог установки FPS Creator</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="928" />
+        <location filename="../src/MainWindow.cpp" line="964" />
         <source>No Map Loaded</source>
         <translation>Карта не загружена</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="928" />
+        <location filename="../src/MainWindow.cpp" line="964" />
         <source>Please open an FPS Creator map (.FPM) first.</source>
         <translation>Пожалуйста, сначала откройте карту FPS Creator (.FPM).</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1044" />
+        <location filename="../src/MainWindow.cpp" line="1088" />
         <source>No map loaded</source>
         <translation>Карта не загружена</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1045" />
+        <location filename="../src/MainWindow.cpp" line="1089" />
         <source>Floor: 0</source>
         <translation>Этаж: 0</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1046" />
+        <location filename="../src/MainWindow.cpp" line="1090" />
         <source>RAM: 0 MB</source>
         <translation>RAM: 0 МБ</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1050" />
+        <location filename="../src/MainWindow.cpp" line="1094" />
         <source>Map: %1 (%2 entities, %3 segments)</source>
         <translation>Карта: %1 (%2 энтити, %3 сегментов)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1055" />
+        <location filename="../src/MainWindow.cpp" line="1099" />
         <source>Floor: %1 / %2 (Height: %3 units)</source>
         <translation>Этаж: %1 / %2 (Высота: %3 ед.)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1061" />
+        <location filename="../src/MainWindow.cpp" line="1105" />
         <source>Level RAM: %1 MB (%2%)</source>
         <translation>RAM уровня: %1 МБ (%2%)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1065" />
+        <location filename="../src/MainWindow.cpp" line="1111" />
         <source>Level RAM: --</source>
         <translation>RAM уровня: --</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1084" />
+        <location filename="../src/MainWindow.cpp" line="1109" />
         <source>Level RAM: calculating...</source>
         <translation>RAM уровня: расчёт...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1071" />
+        <location filename="../src/MainWindow.cpp" line="1146" />
+        <location filename="../src/MainWindow.cpp" line="1174" />
         <source>Please open a map first.</source>
         <translation>Пожалуйста, сначала откройте карту.</translation>
     </message>
 </context>
 <context>
+    <name>MapCanvas</name>
+    <message>
+        <location filename="../src/MapCanvas.cpp" line="1273" />
+        <source>Tile (%1, %2): %3</source>
+        <translation>Тайл (%1, %2): %3</translation>
+    </message>
+    <message>
+        <location filename="../src/MapCanvas.cpp" line="1276" />
+        <source>🧱 Inspect &amp; Edit Segment...</source>
+        <translation>🧱 Осмотреть и изменить сегмент...</translation>
+    </message>
+</context>
+<context>
     <name>MemoryAnalyzerDialog</name>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="19" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="190" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="250" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="47" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="226" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="290" />
         <source>No Map</source>
         <translation>Карта не загружена</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="20" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="191" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="251" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="48" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="227" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="291" />
         <source>%1 Memory Footprint Analyzer — %2</source>
         <translation>%1 Анализатор расхода памяти — %2</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="34" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="193" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="70" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="229" />
         <source>TOTAL LEVEL RAM</source>
         <translation>ОБЩИЙ РАСХОД RAM</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="35" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="194" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="71" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="230" />
         <source>SEGMENTS (ROOMS)</source>
         <translation>СЕГМЕНТЫ (КОМНАТЫ)</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="36" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="195" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="72" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="231" />
         <source>ENTITIES (PROPS)</source>
         <translation>ЭНТИТИ (ОБЪЕКТЫ)</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="37" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="196" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="73" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="232" />
         <source>UNIVERSE &amp; LIGHTMAPS</source>
         <translation>UNIVERSE И ЛАЙТМАПЫ</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="38" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="197" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="74" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="233" />
         <source>ENGINE &amp; D3D BASE</source>
         <translation>ДВИЖОК И D3D БАЗА</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="42" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="199" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="78" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="235" />
         <source>DirectX 9 / 32-bit Process Memory Budget (Limit: ~1850 MB)</source>
         <translation>Бюджет памяти DirectX 9 / 32-битного процесса (лимит: ~1850 МБ)</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="62" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="201" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="98" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="237" />
         <source>Filter table by name, category, or texture path...</source>
         <translation>Фильтр таблицы по имени, категории или пути к текстуре...</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="64" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="200" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="100" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="236" />
         <source>Search:</source>
         <translation>Поиск:</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="76" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="107" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="205" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="220" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="112" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="143" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="241" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="256" />
         <source>Icon</source>
         <translation>Иконка</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="77" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="206" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="113" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="242" />
         <source>Entity Profile</source>
         <translation>Профиль энтити</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="78" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="207" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="114" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="243" />
         <source>Category</source>
         <translation>Категория</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="79" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="208" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="115" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="244" />
         <source>Placed</source>
         <translation>Установлено</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="80" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="209" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="116" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="245" />
         <source>Model (.X)</source>
         <translation>Модель (.X)</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="81" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="210" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="117" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="246" />
         <source>Texture RAM</source>
         <translation>RAM текстур</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="82" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="211" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="118" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="247" />
         <source>Audio</source>
         <translation>Аудио</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="83" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="212" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="119" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="248" />
         <source>RAM / Inst</source>
         <translation>RAM / экз.</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="84" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="114" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="213" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="227" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="120" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="150" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="249" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="263" />
         <source>Total RAM</source>
         <translation>Всего RAM</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="85" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="214" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="121" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="250" />
         <source>Alerts / Advice</source>
         <translation>Предупреждения / Советы</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="101" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="137" />
         <source>Entities</source>
         <translation>Энтити</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="108" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="221" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="144" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="257" />
         <source>Segment Name</source>
         <translation>Имя сегмента</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="109" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="222" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="145" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="258" />
         <source>Parts</source>
         <translation>Части</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="110" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="223" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="146" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="259" />
         <source>Placed Blocks</source>
         <translation>Размещено блоков</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="111" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="224" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="147" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="260" />
         <source>Mesh RAM</source>
         <translation>RAM мешей</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="112" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="225" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="148" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="261" />
         <source>Diffuse RAM</source>
         <translation>RAM диффуза</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="113" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="226" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="149" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="262" />
         <source>Normal/Spec RAM</source>
         <translation>RAM нормалей/спекуляра</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="115" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="228" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="151" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="264" />
         <source>Alerts</source>
         <translation>Предупреждения</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="130" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="166" />
         <source>Segments (Architecture)</source>
         <translation>Сегменты (Архитектура)</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="136" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="234" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="172" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="270" />
         <source>Component</source>
         <translation>Компонент</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="137" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="235" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="173" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="271" />
         <source>Type / Format</source>
         <translation>Тип / Формат</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="138" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="236" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="174" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="272" />
         <source>Estimated RAM</source>
         <translation>Расчётная RAM</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="139" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="237" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="175" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="273" />
         <source>Description</source>
         <translation>Описание</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="148" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="184" />
         <source>Universe &amp; Engine Breakdown</source>
         <translation>Детализация Universe и движка</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="157" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="193" />
         <source>Optimization Tips</source>
         <translation>Советы по оптимизации</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="163" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="241" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="199" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="277" />
         <source>Copy Full Report to Clipboard</source>
         <translation>Копировать полный отчёт в буфер обмена</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="164" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="242" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="200" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="278" />
         <source>Export CSV Report...</source>
         <translation>Экспорт отчёта в CSV...</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="165" />
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="243" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="201" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="279" />
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="290" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="308" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="309" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="310" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="311" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="312" />
+        <source>...</source>
+        <translation>...</translation>
+    </message>
+    <message>
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="375" />
         <source>Level RAM Usage: %1 MB / 1850 MB (%2%) — Status: %3</source>
         <translation>Использование RAM: %1 МБ / 1850 МБ (%2%) — Статус: %3</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="303" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="388" />
         <source>%1 MB / %2 MB (%3%) — OVER BUDGET!</source>
         <translation>%1 МБ / %2 МБ (%3%) — ПРЕВЫШЕНИЕ БЮДЖЕТА!</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="308" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="393" />
         <source>%1 MB / %2 MB (%3%)</source>
         <translation>%1 МБ / %2 МБ (%3%)</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="325" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="410" />
         <source>Entities (%1 types, %2 placed)</source>
         <translation>Энтити (%1 типов, %2 установлено)</translation>
     </message>
     <message>
-        <location filename="../src/MemoryAnalyzerDialog.cpp" line="326" />
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="411" />
         <source>Segments (%1 types, %2 blocks)</source>
         <translation>Сегменты (%1 типов, %2 блоков)</translation>
     </message>
     <message>
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="315" />
         <source>Level RAM Usage: Calculating memory footprint...</source>
         <translation>Использование RAM: расчёт потребления...</translation>
     </message>
     <message>
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="320" />
         <source>Calculating memory footprint...</source>
         <translation>Подсчёт потребления RAM...</translation>
     </message>
     <message>
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="328" />
         <source>Entities (calculating...)</source>
         <translation>Энтити (расчёт...)</translation>
     </message>
     <message>
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="329" />
         <source>Segments (calculating...)</source>
         <translation>Сегменты (расчёт...)</translation>
     </message>
     <message>
+        <location filename="../src/MemoryAnalyzerDialog.cpp" line="337" />
         <source>Calculating level RAM memory footprint in background...</source>
         <translation>Подсчёт потребления RAM уровня в фоновом режиме...</translation>
     </message>
@@ -1344,118 +1407,600 @@ Do you want to save your changes?</source>
 <context>
     <name>PortalLeakDialog</name>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="15" />
-        <location filename="../src/PortalLeakDialog.cpp" line="111" />
-        <location filename="../src/PortalLeakDialog.cpp" line="209" />
+        <location filename="../src/PortalLeakDialog.cpp" line="16" />
+        <location filename="../src/PortalLeakDialog.cpp" line="144" />
+        <location filename="../src/PortalLeakDialog.cpp" line="428" />
         <source>No Map</source>
         <translation>Карта не загружена</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="16" />
-        <location filename="../src/PortalLeakDialog.cpp" line="112" />
-        <location filename="../src/PortalLeakDialog.cpp" line="210" />
+        <location filename="../src/PortalLeakDialog.cpp" line="17" />
+        <location filename="../src/PortalLeakDialog.cpp" line="145" />
+        <location filename="../src/PortalLeakDialog.cpp" line="429" />
         <source>%1 — Portal &amp; CSG Leak Detector — %2</source>
         <translation>%1 — Детектор утечек порталов и CSG — %2</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="23" />
-        <location filename="../src/PortalLeakDialog.cpp" line="114" />
+        <location filename="../src/PortalLeakDialog.cpp" line="24" />
+        <location filename="../src/PortalLeakDialog.cpp" line="147" />
         <source>Geometry &amp; Leak Detection Methods</source>
         <translation>Геометрия и методы обнаружения утечек</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="29" />
-        <location filename="../src/PortalLeakDialog.cpp" line="116" />
+        <location filename="../src/PortalLeakDialog.cpp" line="30" />
+        <location filename="../src/PortalLeakDialog.cpp" line="149" />
         <source>1. Physical Compiled BSP Analysis (universe.dbu)</source>
         <translation>1. Анализ скомпилированного физического BSP (universe.dbu)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="30" />
-        <location filename="../src/PortalLeakDialog.cpp" line="117" />
+        <location filename="../src/PortalLeakDialog.cpp" line="31" />
+        <location filename="../src/PortalLeakDialog.cpp" line="150" />
         <source>Detects physical gaps, unclosed CSG polyhedra, and see-through portals into the void from compiled universe.dbu (after Test Game in FPS Creator).</source>
         <translation>Обнаруживает физические зазоры, незакрытые полиэдры CSG и сквозные порталы в пустоту из скомпилированного universe.dbu (после запуска Test Game в FPS Creator).</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="54" />
-        <location filename="../src/PortalLeakDialog.cpp" line="120" />
+        <location filename="../src/PortalLeakDialog.cpp" line="55" />
+        <location filename="../src/PortalLeakDialog.cpp" line="153" />
         <source>2. Static Grid / Topological Analysis (.FPM / .FPS)</source>
         <translation>2. Статический сеточный / топологический анализ (.FPM / .FPS)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="56" />
-        <location filename="../src/PortalLeakDialog.cpp" line="121" />
+        <location filename="../src/PortalLeakDialog.cpp" line="57" />
+        <location filename="../src/PortalLeakDialog.cpp" line="154" />
         <source>Checks for unclosed ceiling tiles, outer wall breaches in room perimeters, and CSG overlaps before map compilation.</source>
         <translation>Проверяет незакрытые потолочные плитки, проломы внешних стен по периметру комнат и пересечения CSG до компиляции карты.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="63" />
-        <location filename="../src/PortalLeakDialog.cpp" line="123" />
+        <location filename="../src/PortalLeakDialog.cpp" line="64" />
+        <location filename="../src/PortalLeakDialog.cpp" line="156" />
         <source>🔍 Run Analysis</source>
         <translation>🔍 Запустить анализ</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="69" />
+        <location filename="../src/PortalLeakDialog.cpp" line="71" />
+        <location filename="../src/PortalLeakDialog.cpp" line="157" />
+        <source>Filter by Vis Zone:</source>
+        <translation>Фильтр по Vis-зоне:</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="82" />
+        <location filename="../src/PortalLeakDialog.cpp" line="158" />
+        <location filename="../src/PortalLeakDialog.cpp" line="372" />
+        <source>⚡ Resolve Clash / Edit...</source>
+        <translation>⚡ Устранить конфликт / Редактировать...</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="84" />
+        <source>Open the Segment Editor &amp; Conflict Resolver for the selected row</source>
+        <translation>Открыть редактор сегментов и устранение конфликтов для выбранной строки</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="95" />
         <source>Select detection methods and click "Run Analysis".</source>
         <translation>Выберите методы проверки и нажмите "Запустить анализ".</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="79" />
-        <location filename="../src/PortalLeakDialog.cpp" line="127" />
+        <location filename="../src/PortalLeakDialog.cpp" line="105" />
+        <location filename="../src/PortalLeakDialog.cpp" line="162" />
         <source>Severity</source>
         <translation>Серьёзность</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="80" />
-        <location filename="../src/PortalLeakDialog.cpp" line="128" />
+        <location filename="../src/PortalLeakDialog.cpp" line="106" />
+        <location filename="../src/PortalLeakDialog.cpp" line="163" />
         <source>Leak Type</source>
         <translation>Тип утечки</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="81" />
-        <location filename="../src/PortalLeakDialog.cpp" line="129" />
+        <location filename="../src/PortalLeakDialog.cpp" line="107" />
+        <location filename="../src/PortalLeakDialog.cpp" line="164" />
+        <source>Vis Zone</source>
+        <translation>Vis-зона</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="108" />
+        <location filename="../src/PortalLeakDialog.cpp" line="165" />
         <source>Coordinates</source>
         <translation>Координаты</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="82" />
-        <location filename="../src/PortalLeakDialog.cpp" line="130" />
+        <location filename="../src/PortalLeakDialog.cpp" line="109" />
+        <location filename="../src/PortalLeakDialog.cpp" line="166" />
         <source>Issue Description</source>
         <translation>Описание проблемы</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="149" />
+        <location filename="../src/PortalLeakDialog.cpp" line="187" />
         <source>Enable at least one detection method to run analysis.</source>
         <translation>Включите хотя бы один метод проверки для запуска анализа.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="155" />
+        <location filename="../src/PortalLeakDialog.cpp" line="194" />
         <source>Error</source>
         <translation>Ошибка</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="155" />
+        <location filename="../src/PortalLeakDialog.cpp" line="194" />
         <source>Map is not loaded.</source>
         <translation>Карта не загружена.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="181" />
+        <location filename="../src/PortalLeakDialog.cpp" line="232" />
+        <source>All Vis Zones (%1 issues)</source>
+        <translation>Все Vis-зоны (проблем: %1)</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="235" />
+        <source>Outside / Void / Unzoned (%1)</source>
+        <translation>Вне зон / Пустота / Без зоны (%1)</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="250" />
+        <source>%1 — %2 issues</source>
+        <translation>%1 — проблем: %2</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="307" />
         <source>ERROR</source>
         <translation>ОШИБКА</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="181" />
+        <location filename="../src/PortalLeakDialog.cpp" line="307" />
         <source>WARNING</source>
         <translation>ПРЕДУПРЕЖДЕНИЕ</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="186" />
+        <location filename="../src/PortalLeakDialog.cpp" line="320" />
         <source>Layer %1 (%2, %3)</source>
         <translation>Слой %1 (%2, %3)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="196" />
+        <location filename="../src/PortalLeakDialog.cpp" line="322" />
+        <source>L%1 (%2,%3) ↔ (%4,%5)</source>
+        <translation>Слой %1 (%2,%3) ↔ (%4,%5)</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="338" />
+        <source> [Filtered by: %1]</source>
+        <translation> [Фильтр: %1]</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="341" />
+        <source>Showing issues: &lt;b&gt;%1&lt;/b&gt; of %2%3 (Physical BSP: %4, Static Grid: %5). Double-click jumps camera to tile.</source>
+        <translation>Показано проблем: &lt;b&gt;%1&lt;/b&gt; из %2%3 (Физический BSP: %4, Статическая сетка: %5). Двойной клик наводит камеру на тайл.</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="366" />
+        <source>⚡ Resolve Clash...</source>
+        <translation>⚡ Устранить конфликт...</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="368" />
+        <source>🧱 Edit Segment...</source>
+        <translation>🧱 Редактировать сегмент...</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="399" />
+        <source>🔍 Focus View on Tile (%1, %2)</source>
+        <translation>🔍 Навести камеру на тайл (%1, %2)</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="407" />
+        <source>⚡ Resolve Double-Wall Clash...</source>
+        <translation>⚡ Устранить конфликт двойной стены...</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="408" />
+        <source>🧱 Inspect Cell A (%1, %2)</source>
+        <translation>🧱 Осмотреть ячейку A (%1, %2)</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="409" />
+        <source>🧱 Inspect Cell B (%1, %2)</source>
+        <translation>🧱 Осмотреть ячейку B (%1, %2)</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="411" />
+        <source>🧱 Inspect &amp; Edit Segment (%1, %2)</source>
+        <translation>🧱 Осмотреть и изменить сегмент (%1, %2)</translation>
+    </message>
+    <message>
         <source>Found issues: &lt;b&gt;%1&lt;/b&gt; (Physical BSP: %2, Static Grid: %3). Double-click jumps camera to tile.</source>
-        <translation>Найдено проблем: &lt;b&gt;%1&lt;/b&gt; (Физический BSP: %2, Статическая сетка: %3). Двойной клик перемещает камеру к плитке.</translation>
+        <translation type="vanished">Найдено проблем: &lt;b&gt;%1&lt;/b&gt; (Физический BSP: %2, Статическая сетка: %3). Двойной клик перемещает камеру к плитке.</translation>
+    </message>
+</context>
+<context>
+    <name>SegmentEditorDialog</name>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="276" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1095" />
+        <source>No Map</source>
+        <translation>Нет карты</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="277" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1096" />
+        <source>%1 — Segment Inspector &amp; Conflict Resolver — %2</source>
+        <translation>%1 — Инспектор сегментов и устранение конфликтов — %2</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="297" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1104" />
+        <source>&lt;b&gt;⚠️ Double-Wall Boundary Conflict Detected&lt;/b&gt;</source>
+        <translation>&lt;b&gt;⚠️ Обнаружен конфликт двойных стен на стыке комнат&lt;/b&gt;</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="301" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1107" />
+        <source>Two adjacent rooms place solid walls on the exact same shared border without a doorway.
+In the game engine, this creates severe texture flickering (Z-fighting) and PVS portal leaks.
+Choose how you want to resolve this boundary below:</source>
+        <translation>Две смежные комнаты имеют сплошные стены на одной и той же границе без дверного проёма.
+В движке игры это вызывает мерцание текстур (Z-fighting) и утечки порталов PVS.
+Выберите способ устранения конфликта:</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="332" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1112" />
+        <source>🔧 Switch to Manual Tile Inspector</source>
+        <translation>🔧 Перейти в ручной инспектор тайла</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="339" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1099" />
+        <source>⚡ Resolve Clash</source>
+        <translation>⚡ Устранение конфликта</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="350" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1115" />
+        <source>Floor:</source>
+        <translation>Этаж:</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="357" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1116" />
+        <source>X:</source>
+        <translation>X:</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="364" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1117" />
+        <source>Y:</source>
+        <translation>Y:</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="379" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1118" />
+        <source>Segment Asset:</source>
+        <translation>Ассет сегмента:</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="397" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1121" />
+        <source>&lt;b&gt;Interactive 4-Wall Topology:&lt;/b&gt;&lt;br/&gt;&lt;span style='color:#8c9dae;font-size:10px;'&gt;Click on any wall to toggle it on/off&lt;/span&gt;</source>
+        <translation>&lt;b&gt;Интерактивная топология 4 стен:&lt;/b&gt;&lt;br/&gt;&lt;span style='color:#8c9dae;font-size:10px;'&gt;Нажмите на любую стену, чтобы включить/выключить её&lt;/span&gt;</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="410" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1123" />
+        <source>Wall Toggles:</source>
+        <translation>Переключатели стен:</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="415" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1124" />
+        <source>North Wall (Z+)</source>
+        <translation>Северная стена (Z+)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="416" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1125" />
+        <source>East Wall (X+)</source>
+        <translation>Восточная стена (X+)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="417" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1126" />
+        <source>South Wall (Z-)</source>
+        <translation>Южная стена (Z-)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="418" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1127" />
+        <source>West Wall (X-)</source>
+        <translation>Западная стена (X-)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="427" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1129" />
+        <source>Quick Presets:</source>
+        <translation>Быстрые пресеты:</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="431" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1134" />
+        <source>-- Choose Preset --</source>
+        <translation>-- Выберите пресет --</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="432" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1135" />
+        <source>🔲 All 4 Walls (Enclosed Room)</source>
+        <translation>🔲 Все 4 стены (Замкнутая комната)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="433" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1136" />
+        <source>🔲 3 Walls (U-Shape)</source>
+        <translation>🔲 3 стены (П-образная)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="434" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1137" />
+        <source>🔲 Corner (2 Walls)</source>
+        <translation>🔲 Угол (2 стены)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="435" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1138" />
+        <source>🔲 Opposite (2 Walls)</source>
+        <translation>🔲 Напротив друг друга (2 стены)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="436" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1139" />
+        <source>🔲 1 Wall Divider</source>
+        <translation>🔲 1 стена-перегородка</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="437" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1140" />
+        <source>🔲 Open Floor (No Walls)</source>
+        <translation>🔲 Открытый пол (Без стен)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="438" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1141" />
+        <source>🗑️ Clear Tile (Empty Void)</source>
+        <translation>🗑️ Очистить тайл (Пустота)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="442" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1146" />
+        <source>Advanced Engine Parameters</source>
+        <translation>Расширенные параметры движка</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="445" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1147" />
+        <source>Ground Mode:</source>
+        <translation>Режим пола (ground):</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="449" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1152" />
+        <source>0: Room Floor</source>
+        <translation>0: Пол комнаты</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="450" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1153" />
+        <source>1: Interior 2</source>
+        <translation>1: Интерьер 2</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="451" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1154" />
+        <source>2: Roof/Ceiling Slab</source>
+        <translation>2: Плита крыши / потолка</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="452" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1155" />
+        <source>3: Exterior Ground</source>
+        <translation>3: Внешний грунт</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="455" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1161" />
+        <source>Symbol (Hole):</source>
+        <translation>Символ / Проём (symbol):</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="462" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1162" />
+        <source>maptile:</source>
+        <translation>Тип тайла (maptile):</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="469" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1163" />
+        <source>maprotate:</source>
+        <translation>Поворот (maprotate):</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="473" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="483" />
+        <source>0°</source>
+        <translation>0°</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="474" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="484" />
+        <source>90°</source>
+        <translation>90°</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="475" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="485" />
+        <source>180°</source>
+        <translation>180°</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="476" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="486" />
+        <source>270°</source>
+        <translation>270°</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="479" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1164" />
+        <source>maporient:</source>
+        <translation>Ориентация (maporient):</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="497" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1166" />
+        <source>Live Auto-Apply</source>
+        <translation>Авто-применение</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="502" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1167" />
+        <source>✔ Apply Changes</source>
+        <translation>✔ Применить изменения</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="508" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1100" />
+        <source>🧱 Tile Inspector</source>
+        <translation>🧱 Инспектор тайла</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="514" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1168" />
+        <source>Close</source>
+        <translation>Закрыть</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="563" />
+        <source>(0) None / Empty Air</source>
+        <translation>(0) Нет / Пустота</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="634" />
+        <source>North</source>
+        <translation>северную</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="635" />
+        <source>East</source>
+        <translation>восточную</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="636" />
+        <source>South</source>
+        <translation>южную</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="637" />
+        <source>West</source>
+        <translation>западную</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="655" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="656" />
+        <source>Unzoned</source>
+        <translation>Без зоны</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="678" />
+        <source>🟢 Keep Room A Wall — Remove %1 Wall from '%2' (%3, %4)
+   (Eliminates clashing wall from Room B, keeping Room A enclosed)</source>
+        <translation>🟢 Сохранить стену Комнаты A — Убрать %1 стену у '%2' (%3, %4)
+   (Устраняет конфликтную стену в Комнате B, сохраняя Комнату A замкнутой)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="681" />
+        <source>🟢 Keep Room B Wall — Remove %1 Wall from '%2' (%3, %4)
+   (Eliminates clashing wall from Room A, keeping Room B enclosed)</source>
+        <translation>🟢 Сохранить стену Комнаты B — Убрать %1 стену у '%2' (%3, %4)
+   (Устраняет конфликтную стену в Комнате A, сохраняя Комнату B замкнутой)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="684" />
+        <source>🚪 Make Open Passage — Remove Shared Walls from BOTH Rooms
+   (Seamlessly connects Room A and Room B without any divider wall)</source>
+        <translation>🚪 Сделать сквозной проход — Убрать смежные стены из ОБЕИХ комнат
+   (Соединяет Комнату A и Комнату B единым проходом без разделительной стены)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="705" />
+        <source>PVS: %1</source>
+        <translation>PVS: %1</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="707" />
+        <source>PVS: Void / Exterior</source>
+        <translation>PVS: Пустота / Экстерьер</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="722" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="900" />
+        <source>Empty</source>
+        <translation>Пусто</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="727" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="905" />
+        <source>No segment placed</source>
+        <translation>Сегмент не назначен</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="986" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1025" />
+        <location filename="../src/SegmentEditorDialog.cpp" line="1080" />
+        <source>Resolved</source>
+        <translation>Конфликт решён</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="986" />
+        <source>Conflict resolved! Wall removed from Room B at (%1, %2).</source>
+        <translation>Конфликт устранён! Стена убрана из Комнаты B в (%1, %2).</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="1025" />
+        <source>Conflict resolved! Wall removed from Room A at (%1, %2).</source>
+        <translation>Конфликт устранён! Стена убрана из Комнаты A в (%1, %2).</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="1080" />
+        <source>Passage opened! Boundary walls removed from both rooms.</source>
+        <translation>Проход открыт! Смежные стены убраны из обеих комнат.</translation>
+    </message>
+</context>
+<context>
+    <name>TileInteractiveWidget</name>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="115" />
+        <source>Floor</source>
+        <translation>Пол</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="144" />
+        <source>Open</source>
+        <translation>Проход</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="149" />
+        <source>North (Z+)</source>
+        <translation>Север (Z+)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="151" />
+        <source>East (X+)</source>
+        <translation>Восток (X+)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="153" />
+        <source>South (Z-)</source>
+        <translation>Юг (Z-)</translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="155" />
+        <source>West (X-)</source>
+        <translation>Запад (X-)</translation>
     </message>
 </context>
 <context>

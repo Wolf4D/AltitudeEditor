@@ -106,6 +106,10 @@ protected:
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void leaveEvent(QEvent* event) override;
+    void changeEvent(QEvent* event) override {
+        if (event->type() == QEvent::LanguageChange) update();
+        QWidget::changeEvent(event);
+    }
 
 private:
     int hitTestSide(const QPoint& pt) const;
@@ -132,6 +136,10 @@ public:
 
 protected:
     void paintEvent(QPaintEvent* event) override;
+    void changeEvent(QEvent* event) override {
+        if (event->type() == QEvent::LanguageChange) update();
+        QWidget::changeEvent(event);
+    }
 
 private:
     int m_layer = 0;
@@ -213,31 +221,45 @@ private:
     QPushButton* m_btnGoManual = nullptr;
 
     // Manual Tab UI
+    QLabel* m_lblFloor = nullptr;
+    QLabel* m_lblX = nullptr;
+    QLabel* m_lblY = nullptr;
     QSpinBox* m_spnLayer = nullptr;
     QSpinBox* m_spnX = nullptr;
     QSpinBox* m_spnY = nullptr;
     QLabel* m_lblZoneInfo = nullptr;
 
+    QLabel* m_lblSegmentAsset = nullptr;
+    QComboBox* m_cmbSegment = nullptr;
+    QLabel* m_lblSegmentPath = nullptr;
+
+    QLabel* m_lblTileHint = nullptr;
     TileInteractiveWidget* m_tileWidget = nullptr;
+    QLabel* m_lblCheckboxes = nullptr;
     QCheckBox* m_chkWallN = nullptr;
     QCheckBox* m_chkWallE = nullptr;
     QCheckBox* m_chkWallS = nullptr;
     QCheckBox* m_chkWallW = nullptr;
 
+    QLabel* m_lblPresets = nullptr;
     QComboBox* m_cmbPreset = nullptr;
-    QComboBox* m_cmbSegment = nullptr;
-    QLabel* m_lblSegmentPath = nullptr;
 
     // Technical collapsible group
     QGroupBox* m_grpTechnical = nullptr;
+    QLabel* m_lblGround = nullptr;
     QComboBox* m_cmbGround = nullptr;
+    QLabel* m_lblSymbol = nullptr;
     QSpinBox* m_spnSymbol = nullptr;
+    QLabel* m_lblTileType = nullptr;
     QSpinBox* m_spnTileType = nullptr;
+    QLabel* m_lblRotation = nullptr;
     QComboBox* m_cmbRotation = nullptr;
+    QLabel* m_lblOrientation = nullptr;
     QComboBox* m_cmbOrientation = nullptr;
 
     QCheckBox* m_chkLiveUpdate = nullptr;
     QPushButton* m_btnApply = nullptr;
+    QPushButton* m_btnClose = nullptr;
 
     bool m_updatingUi = false;
 };

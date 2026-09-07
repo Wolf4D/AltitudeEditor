@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Incremented application version to **0.9.1**.
 - Redesigned `SegmentEditorDialog` into a tabbed layout separating **Conflict Resolution** (with dedicated 2D visual collision diagram) from **Manual Tile Inspector** (with interactive 4-wall canvas widget).
 - Installed `NoWheelFilter` on all numeric spinboxes and dropdowns across the editor, completely preventing accidental value changes when scrolling with the mouse wheel.
+- Added full Russian localization for all new components (`SegmentEditorDialog`, `TileInteractiveWidget`, `ConflictDiagramWidget`, `PortalLeakDialog` zone filters, context menus), compiled into `altitude_editor_ru.qm`.
+- Fixed tab title clipping in `SegmentEditorDialog` tab bar and expanded dialog dimensions to 780x640 for comfortable label readability.
 - Reused cached `VisZoneManager` instances across static leak detection passes, improving leak analysis execution speed.
 
 ---

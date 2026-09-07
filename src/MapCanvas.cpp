@@ -1270,7 +1270,7 @@ void MapCanvas::mouseReleaseEvent(QMouseEvent* event) {
                 if (segId > 0) {
                     QMenu menu(this);
                     QString segName = m_map->segments.contains(segId) ? m_map->segments[segId]->name : QString("Segment #%1").arg(segId);
-                    QAction* titleAct = menu.addAction(QString("Tile (%1, %2): %3").arg(tileX).arg(tileY).arg(segName));
+                    QAction* titleAct = menu.addAction(tr("Tile (%1, %2): %3").arg(tileX).arg(tileY).arg(segName));
                     titleAct->setEnabled(false);
                     menu.addSeparator();
                     QAction* actInspectSeg = menu.addAction(tr("🧱 Inspect & Edit Segment..."));

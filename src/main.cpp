@@ -5,6 +5,8 @@
 #include "PortalLeakAnalyzer.h"
 #include "Version.h"
 #include "LanguageManager.h"
+#include "SegmentEditorDialog.h"
+#include "VisZoneManager.h"
 #include <QApplication>
 #include <QStyleFactory>
 #include <QPalette>
@@ -100,6 +102,18 @@ int main(int argc, char* argv[]) {
 
     // Check for CLI options
     QStringList args = app.arguments();
+
+    if (args.contains("--lang")) {
+        int lIdx = args.indexOf("--lang");
+        if (args.size() > lIdx + 1) {
+            QString l = args.value(lIdx + 1).toLower();
+            if (l == QStringLiteral("ru") || l == QStringLiteral("russian")) {
+                LanguageManager::instance().setLanguage(LanguageManager::Language::Russian);
+            } else if (l == QStringLiteral("en") || l == QStringLiteral("english")) {
+                LanguageManager::instance().setLanguage(LanguageManager::Language::English);
+            }
+        }
+    }
 
 #ifdef ALTITUDE_CLI_TOOL
     if (args.size() <= 1 || args.contains("--help") || args.contains("-h")) {
@@ -308,6 +322,45 @@ int main(int argc, char* argv[]) {
                 dlg.render(&pix);
                 bool ok = pix.save(outPath);
                 fprintf(stdout, "Saved memory snapshot to: %s (Result: %d)\n", qPrintable(outPath), ok ? 1 : 0);
+                fflush(stdout);
+                std::exit(ok ? 0 : 1);
+            }
+        }
+    }
+
+    if (args.contains("--snapshot-segment")) {
+        int idx = args.indexOf("--snapshot-segment");
+        if (args.size() >= idx + 3) {
+            QString mapPath = args.value(idx + 1);
+            QString outPath = args.value(idx + 2);
+
+            auto map = FPMReader::loadMap(mapPath, "mypassword");
+            if (map) {
+                auto zm = std::make_shared<VisZoneManager>();
+                zm->buildFromMap(map);
+
+                SegmentEditorDialog dlg(map, zm);
+                dlg.resize(780, 640);
+                if (args.size() >= idx + 8) {
+                    int fl = args.value(idx + 3).toInt();
+                    int x1 = args.value(idx + 4).toInt();
+                    int y1 = args.value(idx + 5).toInt();
+                    int x2 = args.value(idx + 6).toInt();
+                    int y2 = args.value(idx + 7).toInt();
+                    dlg.inspectConflict(fl, x1, y1, x2, y2);
+                } else if (args.size() >= idx + 6) {
+                    int fl = args.value(idx + 3).toInt();
+                    int x = args.value(idx + 4).toInt();
+                    int y = args.value(idx + 5).toInt();
+                    dlg.inspectCell(fl, x, y);
+                }
+                dlg.show();
+                app.processEvents();
+
+                QPixmap pix(dlg.size());
+                dlg.render(&pix);
+                bool ok = pix.save(outPath);
+                fprintf(stdout, "Saved segment snapshot to: %s (Result: %d)\n", qPrintable(outPath), ok ? 1 : 0);
                 fflush(stdout);
                 std::exit(ok ? 0 : 1);
             }

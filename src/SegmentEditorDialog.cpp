@@ -228,7 +228,7 @@ void ConflictDiagramWidget::paintEvent(QPaintEvent* /*event*/) {
     fontTitle.setBold(true);
     p.setFont(fontTitle);
     p.drawText(QRect(rA.x() + 8, rA.y() + 8, rA.width() - 16, 20), Qt::AlignLeft,
-               QString("🏠 Room A: %1 (%2, %3)").arg(m_nameA).arg(m_x1).arg(m_y1));
+               tr("🏠 Room A: %1 (%2, %3)").arg(m_nameA).arg(m_x1).arg(m_y1));
 
     QFont fontSub = p.font();
     fontSub.setPointSize(9);
@@ -236,7 +236,7 @@ void ConflictDiagramWidget::paintEvent(QPaintEvent* /*event*/) {
     p.setFont(fontSub);
     p.setPen(QColor(160, 185, 210));
     p.drawText(QRect(rA.x() + 8, rA.y() + 30, rA.width() - 16, 20), Qt::AlignLeft,
-               QString("Zone: %1").arg(m_zoneA.isEmpty() ? tr("None") : m_zoneA));
+               tr("Zone: %1").arg(m_zoneA.isEmpty() ? tr("None") : m_zoneA));
 
     // Draw Room B
     p.fillRect(rB, QColor(36, 46, 38));
@@ -246,12 +246,12 @@ void ConflictDiagramWidget::paintEvent(QPaintEvent* /*event*/) {
     p.setPen(QColor(114, 240, 123));
     p.setFont(fontTitle);
     p.drawText(QRect(rB.x() + 8, rB.y() + 8, rB.width() - 16, 20), Qt::AlignLeft,
-               QString("🏠 Room B: %1 (%2, %3)").arg(m_nameB).arg(m_x2).arg(m_y2));
+               tr("🏠 Room B: %1 (%2, %3)").arg(m_nameB).arg(m_x2).arg(m_y2));
 
     p.setFont(fontSub);
     p.setPen(QColor(180, 215, 185));
     p.drawText(QRect(rB.x() + 8, rB.y() + 30, rB.width() - 16, 20), Qt::AlignLeft,
-               QString("Zone: %1").arg(m_zoneB.isEmpty() ? tr("None") : m_zoneB));
+               tr("Zone: %1").arg(m_zoneB.isEmpty() ? tr("None") : m_zoneB));
 
     // Clashing Barrier Highlight
     p.fillRect(clashLine, QColor(220, 40, 40, 220));
@@ -275,7 +275,7 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
 {
     QString mapName = m_map ? m_map->mapName : tr("No Map");
     setWindowTitle(tr("%1 — Segment Inspector & Conflict Resolver — %2").arg(VersionInfo::shortTitle(), mapName));
-    resize(740, 620);
+    resize(780, 640);
 
     NoWheelFilter* wheelFilter = new NoWheelFilter(this);
 
@@ -284,7 +284,7 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
 
     m_tabs = new QTabWidget(this);
     m_tabs->setStyleSheet(QStringLiteral("QTabWidget::pane { border: 1px solid #364858; background: #182028; border-radius: 4px; }"
-                                         "QTabBar::tab { background: #222d38; color: #a0b8cc; padding: 8px 18px; font-weight: bold; border-top-left-radius: 4px; border-top-right-radius: 4px; }"
+                                         "QTabBar::tab { background: #222d38; color: #a0b8cc; padding: 8px 20px; font-weight: bold; border-top-left-radius: 4px; border-top-right-radius: 4px; min-width: 140px; }"
                                          "QTabBar::tab:selected { background: #2c3e50; color: #ffffff; border-bottom: 2px solid #00b4d8; }"));
 
     // ==========================================
@@ -347,19 +347,22 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
 
     // Coordinate picker row
     QHBoxLayout* coordRow = new QHBoxLayout();
-    coordRow->addWidget(new QLabel(tr("Floor:"), m_tabManual));
+    m_lblFloor = new QLabel(tr("Floor:"), m_tabManual);
+    coordRow->addWidget(m_lblFloor);
     m_spnLayer = new QSpinBox(m_tabManual);
     m_spnLayer->setRange(0, m_map ? m_map->header.layerMax : 20);
     m_spnLayer->installEventFilter(wheelFilter);
     coordRow->addWidget(m_spnLayer);
 
-    coordRow->addWidget(new QLabel(tr("X:"), m_tabManual));
+    m_lblX = new QLabel(tr("X:"), m_tabManual);
+    coordRow->addWidget(m_lblX);
     m_spnX = new QSpinBox(m_tabManual);
     m_spnX->setRange(0, m_map ? m_map->header.maxX : 40);
     m_spnX->installEventFilter(wheelFilter);
     coordRow->addWidget(m_spnX);
 
-    coordRow->addWidget(new QLabel(tr("Y:"), m_tabManual));
+    m_lblY = new QLabel(tr("Y:"), m_tabManual);
+    coordRow->addWidget(m_lblY);
     m_spnY = new QSpinBox(m_tabManual);
     m_spnY->setRange(0, m_map ? m_map->header.maxY : 40);
     m_spnY->installEventFilter(wheelFilter);
@@ -373,7 +376,8 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
 
     // Segment selector
     QHBoxLayout* segRow = new QHBoxLayout();
-    segRow->addWidget(new QLabel(tr("Segment Asset:"), m_tabManual));
+    m_lblSegmentAsset = new QLabel(tr("Segment Asset:"), m_tabManual);
+    segRow->addWidget(m_lblSegmentAsset);
     m_cmbSegment = new QComboBox(m_tabManual);
     m_cmbSegment->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_cmbSegment->installEventFilter(wheelFilter);
@@ -390,9 +394,9 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
 
     // Visual interactive tile widget
     QVBoxLayout* tileWidgetBox = new QVBoxLayout();
-    QLabel* lblTileHint = new QLabel(tr("<b>Interactive 4-Wall Topology:</b><br/><span style='color:#8c9dae;font-size:10px;'>Click on any wall to toggle it on/off</span>"), m_tabManual);
-    lblTileHint->setTextFormat(Qt::RichText);
-    tileWidgetBox->addWidget(lblTileHint);
+    m_lblTileHint = new QLabel(tr("<b>Interactive 4-Wall Topology:</b><br/><span style='color:#8c9dae;font-size:10px;'>Click on any wall to toggle it on/off</span>"), m_tabManual);
+    m_lblTileHint->setTextFormat(Qt::RichText);
+    tileWidgetBox->addWidget(m_lblTileHint);
 
     m_tileWidget = new TileInteractiveWidget(m_tabManual);
     tileWidgetBox->addWidget(m_tileWidget);
@@ -403,9 +407,9 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
     QVBoxLayout* rightBox = new QVBoxLayout();
     rightBox->setSpacing(8);
 
-    QLabel* lblCheckboxes = new QLabel(tr("Wall Toggles:"), m_tabManual);
-    lblCheckboxes->setStyleSheet(QStringLiteral("font-weight: bold;"));
-    rightBox->addWidget(lblCheckboxes);
+    m_lblCheckboxes = new QLabel(tr("Wall Toggles:"), m_tabManual);
+    m_lblCheckboxes->setStyleSheet(QStringLiteral("font-weight: bold;"));
+    rightBox->addWidget(m_lblCheckboxes);
 
     QGridLayout* checkGrid = new QGridLayout();
     m_chkWallN = new QCheckBox(tr("North Wall (Z+)"), m_tabManual);
@@ -420,7 +424,8 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
     rightBox->addLayout(checkGrid);
 
     rightBox->addSpacing(6);
-    rightBox->addWidget(new QLabel(tr("Quick Presets:"), m_tabManual));
+    m_lblPresets = new QLabel(tr("Quick Presets:"), m_tabManual);
+    rightBox->addWidget(m_lblPresets);
     m_cmbPreset = new QComboBox(m_tabManual);
     m_cmbPreset->installEventFilter(wheelFilter);
     m_cmbPreset->addItem(tr("-- Choose Preset --"));
@@ -437,7 +442,8 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
     m_grpTechnical = new QGroupBox(tr("Advanced Engine Parameters"), m_tabManual);
     QGridLayout* techGrid = new QGridLayout(m_grpTechnical);
 
-    techGrid->addWidget(new QLabel(tr("Ground Mode:"), m_grpTechnical), 0, 0);
+    m_lblGround = new QLabel(tr("Ground Mode:"), m_grpTechnical);
+    techGrid->addWidget(m_lblGround, 0, 0);
     m_cmbGround = new QComboBox(m_grpTechnical);
     m_cmbGround->installEventFilter(wheelFilter);
     m_cmbGround->addItem(tr("0: Room Floor"), 0);
@@ -446,19 +452,22 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
     m_cmbGround->addItem(tr("3: Exterior Ground"), 3);
     techGrid->addWidget(m_cmbGround, 0, 1);
 
-    techGrid->addWidget(new QLabel(tr("Symbol (Hole):"), m_grpTechnical), 0, 2);
+    m_lblSymbol = new QLabel(tr("Symbol (Hole):"), m_grpTechnical);
+    techGrid->addWidget(m_lblSymbol, 0, 2);
     m_spnSymbol = new QSpinBox(m_grpTechnical);
     m_spnSymbol->setRange(0, 63);
     m_spnSymbol->installEventFilter(wheelFilter);
     techGrid->addWidget(m_spnSymbol, 0, 3);
 
-    techGrid->addWidget(new QLabel(tr("maptile:"), m_grpTechnical), 1, 0);
+    m_lblTileType = new QLabel(tr("maptile:"), m_grpTechnical);
+    techGrid->addWidget(m_lblTileType, 1, 0);
     m_spnTileType = new QSpinBox(m_grpTechnical);
     m_spnTileType->setRange(0, 15);
     m_spnTileType->installEventFilter(wheelFilter);
     techGrid->addWidget(m_spnTileType, 1, 1);
 
-    techGrid->addWidget(new QLabel(tr("maprotate:"), m_grpTechnical), 1, 2);
+    m_lblRotation = new QLabel(tr("maprotate:"), m_grpTechnical);
+    techGrid->addWidget(m_lblRotation, 1, 2);
     m_cmbRotation = new QComboBox(m_grpTechnical);
     m_cmbRotation->installEventFilter(wheelFilter);
     m_cmbRotation->addItem(tr("0°"), 0);
@@ -467,7 +476,8 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
     m_cmbRotation->addItem(tr("270°"), 3);
     techGrid->addWidget(m_cmbRotation, 1, 3);
 
-    techGrid->addWidget(new QLabel(tr("maporient:"), m_grpTechnical), 2, 0);
+    m_lblOrientation = new QLabel(tr("maporient:"), m_grpTechnical);
+    techGrid->addWidget(m_lblOrientation, 2, 0);
     m_cmbOrientation = new QComboBox(m_grpTechnical);
     m_cmbOrientation->installEventFilter(wheelFilter);
     m_cmbOrientation->addItem(tr("0°"), 0);
@@ -501,9 +511,9 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
     // Bottom close button
     QHBoxLayout* bottomBar = new QHBoxLayout();
     bottomBar->addStretch();
-    QPushButton* btnClose = new QPushButton(tr("Close"), this);
-    connect(btnClose, &QPushButton::clicked, this, &QDialog::accept);
-    bottomBar->addWidget(btnClose);
+    m_btnClose = new QPushButton(tr("Close"), this);
+    connect(m_btnClose, &QPushButton::clicked, this, &QDialog::accept);
+    bottomBar->addWidget(m_btnClose);
     mainLayout->addLayout(bottomBar);
 
     // ==========================================
@@ -536,6 +546,7 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
     connect(m_btnGoManual, &QPushButton::clicked, this, &SegmentEditorDialog::onSwitchToManualEditor);
 
     setMap(m_map);
+    retranslateUi();
 }
 
 void SegmentEditorDialog::setMap(std::shared_ptr<FPSCMap> map) {
@@ -618,10 +629,18 @@ void SegmentEditorDialog::updateConflictView() {
     int x2 = m_conflictX2, y2 = m_conflictY2;
 
     int side1 = SegmentMath::getSideFacingNeighbor(x1, y1, x2, y2);
-    static const char* sideNames[4] = {"North", "East", "South", "West"};
-    QString side1Name = (side1 >= 0) ? sideNames[side1] : "?";
+    auto getSideName = [this](int s) -> QString {
+        switch (s) {
+            case 0: return tr("North");
+            case 1: return tr("East");
+            case 2: return tr("South");
+            case 3: return tr("West");
+            default: return QStringLiteral("?");
+        }
+    };
+    QString side1Name = (side1 >= 0) ? getSideName(side1) : QStringLiteral("?");
     int side2 = (side1 >= 0) ? (side1 + 2) % 4 : -1;
-    QString side2Name = (side2 >= 0) ? sideNames[side2] : "?";
+    QString side2Name = (side2 >= 0) ? getSideName(side2) : QStringLiteral("?");
 
     int seg1 = (l < m_map->gridBlocks.size() && y1 < m_map->gridBlocks[l].size() && x1 < m_map->gridBlocks[l][y1].size())
                ? m_map->gridBlocks[l][y1][x1] : 0;
@@ -1081,13 +1100,72 @@ void SegmentEditorDialog::retranslateUi() {
         m_tabs->setTabText(1, tr("🧱 Tile Inspector"));
     }
 
+    if (m_lblConflictTitle) {
+        m_lblConflictTitle->setText(tr("<b>⚠️ Double-Wall Boundary Conflict Detected</b>"));
+    }
+    if (m_lblConflictExplanation) {
+        m_lblConflictExplanation->setText(tr("Two adjacent rooms place solid walls on the exact same shared border without a doorway.\n"
+                                             "In the game engine, this creates severe texture flickering (Z-fighting) and PVS portal leaks.\n"
+                                             "Choose how you want to resolve this boundary below:"));
+    }
+    if (m_btnGoManual) {
+        m_btnGoManual->setText(tr("🔧 Switch to Manual Tile Inspector"));
+    }
+
+    if (m_lblFloor) m_lblFloor->setText(tr("Floor:"));
+    if (m_lblX) m_lblX->setText(tr("X:"));
+    if (m_lblY) m_lblY->setText(tr("Y:"));
+    if (m_lblSegmentAsset) m_lblSegmentAsset->setText(tr("Segment Asset:"));
+
+    if (m_lblTileHint) {
+        m_lblTileHint->setText(tr("<b>Interactive 4-Wall Topology:</b><br/><span style='color:#8c9dae;font-size:10px;'>Click on any wall to toggle it on/off</span>"));
+    }
+    if (m_lblCheckboxes) m_lblCheckboxes->setText(tr("Wall Toggles:"));
     if (m_chkWallN) m_chkWallN->setText(tr("North Wall (Z+)"));
     if (m_chkWallE) m_chkWallE->setText(tr("East Wall (X+)"));
     if (m_chkWallS) m_chkWallS->setText(tr("South Wall (Z-)"));
     if (m_chkWallW) m_chkWallW->setText(tr("West Wall (X-)"));
+
+    if (m_lblPresets) m_lblPresets->setText(tr("Quick Presets:"));
+    if (m_cmbPreset) {
+        int curIdx = m_cmbPreset->currentIndex();
+        m_cmbPreset->blockSignals(true);
+        m_cmbPreset->clear();
+        m_cmbPreset->addItem(tr("-- Choose Preset --"));
+        m_cmbPreset->addItem(tr("🔲 All 4 Walls (Enclosed Room)"));
+        m_cmbPreset->addItem(tr("🔲 3 Walls (U-Shape)"));
+        m_cmbPreset->addItem(tr("🔲 Corner (2 Walls)"));
+        m_cmbPreset->addItem(tr("🔲 Opposite (2 Walls)"));
+        m_cmbPreset->addItem(tr("🔲 1 Wall Divider"));
+        m_cmbPreset->addItem(tr("🔲 Open Floor (No Walls)"));
+        m_cmbPreset->addItem(tr("🗑️ Clear Tile (Empty Void)"));
+        m_cmbPreset->setCurrentIndex(curIdx >= 0 && curIdx < m_cmbPreset->count() ? curIdx : 0);
+        m_cmbPreset->blockSignals(false);
+    }
+
+    if (m_grpTechnical) m_grpTechnical->setTitle(tr("Advanced Engine Parameters"));
+    if (m_lblGround) m_lblGround->setText(tr("Ground Mode:"));
+    if (m_cmbGround) {
+        int curG = m_cmbGround->currentData().toInt();
+        m_cmbGround->blockSignals(true);
+        m_cmbGround->clear();
+        m_cmbGround->addItem(tr("0: Room Floor"), 0);
+        m_cmbGround->addItem(tr("1: Interior 2"), 1);
+        m_cmbGround->addItem(tr("2: Roof/Ceiling Slab"), 2);
+        m_cmbGround->addItem(tr("3: Exterior Ground"), 3);
+        int idx = m_cmbGround->findData(curG);
+        m_cmbGround->setCurrentIndex(idx >= 0 ? idx : 0);
+        m_cmbGround->blockSignals(false);
+    }
+
+    if (m_lblSymbol) m_lblSymbol->setText(tr("Symbol (Hole):"));
+    if (m_lblTileType) m_lblTileType->setText(tr("maptile:"));
+    if (m_lblRotation) m_lblRotation->setText(tr("maprotate:"));
+    if (m_lblOrientation) m_lblOrientation->setText(tr("maporient:"));
+
     if (m_chkLiveUpdate) m_chkLiveUpdate->setText(tr("Live Auto-Apply"));
     if (m_btnApply) m_btnApply->setText(tr("✔ Apply Changes"));
-    if (m_btnGoManual) m_btnGoManual->setText(tr("🔧 Switch to Manual Tile Inspector"));
+    if (m_btnClose) m_btnClose->setText(tr("Close"));
 
     loadCellData();
     if (m_hasConflict) {
