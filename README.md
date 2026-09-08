@@ -39,7 +39,10 @@ Level geometry issues can easily disrupt the **PVS portal generation** performed
   * **Logical Analysis**: Examines the raw segment structure, boundaries, and bitfields directly from `.fpm` / `.fps` files.
   * **Physical Analysis**: Reads the compiled universe (`universe.dbu`) after a test run in FPS Creator to verify actual BSP portals in 3D world space.
 * **Smart Heuristics**: Pinpoints open ceiling/floor gaps into the void, inverted exterior walls facing outside, disconnected zones, and coplanar overlapping faces.
-* **Interactive Viewport Highlighting**: Highlights problematic tiles with red warning overlays directly on the 2D grid; double-clicking any error in the list instantly centers the camera on the fault.
+* **Originating Zone Attribution**: Automatically traces exterior leaks (such as missing ceiling slabs on roof layers or perimeter wall breaches) to the interior room/zone they leaked from, eliminating ambiguous unassigned errors.
+* **Interactive Zone Filtering**: Isolate warnings by specific Vis Zones (`Filter by Vis Zone`) with dynamic per-room issue counters (`Zone X — N issues`).
+* **Live On-Canvas Hazard Markers**: Real-time animated hazard frames directly on the 2D grid for the active floor (red dashed `⚠️` for leaks/errors, amber `⚡` for clashes and warnings).
+* **Instant Reticle Navigation**: Selecting any error in the list instantly centers the camera on the fault tile with precision corner reticles (`[ ]`).
 
 <p align="center">
   <img src="docs/3.jpg" alt="Portal & CSG Leak Detector" width="850" />
@@ -47,7 +50,17 @@ Level geometry issues can easily disrupt the **PVS portal generation** performed
 
 ---
 
-### 2. 📊 RAM Analyzer & Memory Budget Inspector
+### 2. 🧱 Segment Inspector & Conflict Resolver (`Ctrl+E`)
+Directly inspect, edit, and repair segment tiles on the 2D grid without needing to switch back and forth to the heavy 3D editor:
+
+* **Interactive 4-Wall Configuration Widget**: Checkboxes for North, East, South, and West walls with mathematical bi-directional auto-tiling presets (*All 4 Walls*, *U-Shape*, *Corner*, *Opposite*, *Single Divider*, *Open Interior*, *Clear Tile*).
+* **Segment Bank Switcher & Filter**: Instant search filter (`🔍 Filter...`) to swap segment meshes and textures on the fly with scrollable, constrained dropdown popups.
+* **Floor & Ceiling Flags**: Configure `mapground` modes (Standard Room Floor, Interior 2, Roof / Ceiling Slab, Exterior Ground) and toggle `mapsymbol` hole/void flags.
+* **1-Click Double-Wall Conflict Resolver**: Automatically detects when adjacent rooms place solid boundary walls on the same shared edge (causing severe in-game Z-fighting flickering and degenerate BSP portal bleeding). Features a dedicated 2D collision diagram and 1-click fixes (`Keep Room A Wall` / `Keep Room B Wall`) that automatically clean the redundant wall, recalculate PVS connectivity, and update the map live.
+
+---
+
+### 3. 📊 RAM Analyzer & Memory Budget Inspector
 Due to the 32-bit architecture and DirectX 9 memory management of the classic FPS Creator engine, levels that exceed ~1.85 GB of RAM will crash with Out Of Memory (OOM) errors.
 
 * **Precise Footprint Breakdown**: Asynchronously calculates memory allocations across mesh geometries (`.x`), textures (`.dds`, `.tga`, `.bmp`), sound effects (`.wav`, `.mp3`), segments, and universe data.
@@ -61,7 +74,7 @@ Due to the 32-bit architecture and DirectX 9 memory management of the classic FP
 
 ---
 
-### 3. 👁️ Visibility Zone Manager (PVS)
+### 4. 👁️ Visibility Zone Manager (PVS)
 Visualizes visibility sectors, generated portals, and doorways, letting you see exactly how the engine divides your map into distinct rooms.
 
 * Replicates the engine's portal-cutting algorithm (modeled loosely after the classic BSP/PVS compiler to give practical visibility boundaries without 3D compile delays).
@@ -73,7 +86,7 @@ Visualizes visibility sectors, generated portals, and doorways, letting you see 
 
 ---
 
-### 4. 🔍 Instant Entity Search & Palette
+### 5. 🔍 Instant Entity Search & Palette
 The built-in dock panel allows you to quickly locate any placed item across the entire map:
 * Search by entity name, category, script (`.fpi`), sound, or custom parameters.
 * Filter by the current active floor or view map-wide totals.
@@ -81,12 +94,12 @@ The built-in dock panel allows you to quickly locate any placed item across the 
 
 ---
 
-### 5. 🔄 Smart Reload from Disk (`F5`)
+### 6. 🔄 Smart Reload from Disk (`F5`)
 Working on dual monitors? Keep **Altitude Editor** open alongside the official FPS Creator editor. Whenever you save changes in FPS Creator, press **`F5`** in Altitude Editor to instantly reload the map from disk, giving you continuous live feedback on memory budgets, portal integrity, and entity placement.
 
 ---
 
-### 6. 💻 Headless Console Mode (CLI)
+### 7. 💻 Headless Console Mode (CLI)
 For build pipelines, batch verification, or automated map diagnostics, `AltitudeEditor-cli.exe` can inspect maps without ever opening a GUI window.
 * Automatically validate maps and detect leaks in batch scripts.
 * Compute exact memory footprints and produce tabular reports.
@@ -156,6 +169,8 @@ AltitudeEditor-cli.exe --export-png "Files/mapbank/1.fpm" "minimap_floor0.png" 0
 | Key / Shortcut | Action |
 | :--- | :--- |
 | **`F5`** | **Smart Reload**: Reload active map from disk |
+| **`Ctrl + S`** | **Save Map**: Write changes back to `.fpm` with backup creation |
+| **`Ctrl + E`** | **Segment Inspector**: Open Segment Inspector & Conflict Resolver |
 | **`+`** / **`=`** | Move one floor up (`Floor Up`) |
 | **`-`** / **`_`** | Move one floor down (`Floor Down`) |
 | **`PageUp`** / **`PageDown`** | Navigate floors sequentially |
@@ -163,8 +178,10 @@ AltitudeEditor-cli.exe --export-png "Files/mapbank/1.fpm" "minimap_floor0.png" 0
 | **`[`** / **`]`** | Zoom out / Zoom in |
 | **`0`** | Reset zoom to 100% |
 | **`Home`** | Fit entire level in viewport (`Zoom Fit`) |
+| **Right-click on tile** | Context menu: **Inspect & Edit Segment** (`🧱 Inspect & Edit Segment...`) |
 | **Right-click / Middle-click Drag** | Pan canvas |
-| **Left-click** | Select entity / Clear selection |
+| **Left-click** | Select entity / Clear selection / Highlight tile |
+| **`Escape`** | Clear active tile selection and hazard reticles |
 
 ---
 
