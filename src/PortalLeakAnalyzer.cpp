@@ -118,10 +118,44 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::analyze() {
         checkDoubleWallClashes();
     }
 
-    // Populate zone details on all warnings
+    // Populate zone details on all warnings (attributing leaks to the originating zone)
     for (auto& w : m_warnings) {
         if (w.zoneId < 0 && m_visZoneManager) {
             w.zoneId = m_visZoneManager->getZoneAt(w.layer, w.x, w.y);
+        }
+        if (w.zoneId < 0 && m_visZoneManager) {
+            // 1. Search downwards (e.g. ceiling leaks on roof layer above an interior room)
+            for (int l = w.layer - 1; l >= 0; --l) {
+                int zid = m_visZoneManager->getZoneAt(l, w.x, w.y);
+                if (zid >= 0) {
+                    w.zoneId = zid;
+                    break;
+                }
+            }
+        }
+        if (w.zoneId < 0 && m_visZoneManager) {
+            // 2. Search upwards (e.g. floor gaps below an interior room)
+            for (int l = w.layer + 1; l <= m_map->header.layerMax; ++l) {
+                int zid = m_visZoneManager->getZoneAt(l, w.x, w.y);
+                if (zid >= 0) {
+                    w.zoneId = zid;
+                    break;
+                }
+            }
+        }
+        if (w.zoneId < 0 && m_visZoneManager) {
+            // 3. Search 4-neighbors on same layer (e.g. perimeter boundary wall leaks facing void)
+            const int dx[4] = {0, 1, 0, -1};
+            const int dy[4] = {-1, 0, 1, 0};
+            for (int d = 0; d < 4; ++d) {
+                int nx = w.x + dx[d];
+                int ny = w.y + dy[d];
+                int zid = m_visZoneManager->getZoneAt(w.layer, nx, ny);
+                if (zid >= 0) {
+                    w.zoneId = zid;
+                    break;
+                }
+            }
         }
         if (w.zoneName.isEmpty() && w.zoneId >= 0 && m_visZoneManager) {
             const VisZone* z = m_visZoneManager->getZone(w.zoneId);
@@ -467,6 +501,8 @@ void PortalLeakAnalyzer::checkVerticalGaps() {
                 w.layer = missingRoofFloor;
                 w.x = hole.x();
                 w.y = hole.y();
+                w.zoneId = z.id;
+                w.zoneName = z.name;
                 w.description = QString("Missing ceiling slab at Floor %1 over enclosed room at (%2, %3) (Room top: Floor %4)%5. Camera will leak visibility into the void.")
                                     .arg(missingRoofFloor).arg(hole.x()).arg(hole.y()).arg(topRoomLayer).arg(propNote);
                 m_warnings.push_back(w);
@@ -662,6 +698,8 @@ void PortalLeakAnalyzer::checkWallHolesToVoid() {
                                     w.layer = fl;
                                     w.x = pt.x();
                                     w.y = pt.y();
+                                    w.zoneId = z.id;
+                                    w.zoneName = z.name;
                                     w.description = QString("Exterior window cutout at Floor %1 (%2, %3) side %4 opens into open sky / universe void. Causes PVS Visibility Bleed in BSP compiler.")
                                                         .arg(fl).arg(pt.x()).arg(pt.y()).arg(sideNames[s]);
                                     m_warnings.push_back(w);
@@ -676,6 +714,8 @@ void PortalLeakAnalyzer::checkWallHolesToVoid() {
                                     w.layer = fl;
                                     w.x = pt.x();
                                     w.y = pt.y();
+                                    w.zoneId = z.id;
+                                    w.zoneName = z.name;
                                     w.description = QString("Exterior doorway at Floor %1 (%2, %3) side %4 opens into universe void with no ground or platform below. Player will fall into the abyss.")
                                                         .arg(fl).arg(pt.x()).arg(pt.y()).arg(sideNames[s]);
                                     m_warnings.push_back(w);
@@ -695,6 +735,8 @@ void PortalLeakAnalyzer::checkWallHolesToVoid() {
                     w.layer = fl;
                     w.x = pt.x();
                     w.y = pt.y();
+                    w.zoneId = z.id;
+                    w.zoneName = z.name;
                     w.description = QString("Perimeter wall missing at Floor %1 (%2, %3) side %4 facing universe void. Camera may leak into void.")
                                         .arg(fl).arg(pt.x()).arg(pt.y()).arg(sideNames[s]);
                     m_warnings.push_back(w);
@@ -771,6 +813,8 @@ void PortalLeakAnalyzer::checkInvertedWalls() {
                 w.layer = z.floor;
                 w.x = pt.x();
                 w.y = pt.y();
+                w.zoneId = z.id;
+                w.zoneName = z.name;
                 w.description = QString("Exterior segment \"%1\" (groundmode=3) is placed inside an interior room at Floor %2 (%3, %4). Exterior facade faces inward into the room.")
                                     .arg(s->name).arg(z.floor).arg(pt.x()).arg(pt.y());
                 m_warnings.push_back(w);

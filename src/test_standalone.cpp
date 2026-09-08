@@ -61,6 +61,34 @@ int main(int argc, char* argv[]) {
     std::cout << "[TEST] 2_Vault Atrium Floors 5..7 unified in one zone: "
               << (atriumUnified ? "PASS" : "FAIL") << " (Zone " << (zm->getZoneAt(5, 10, 10) + 1) << ")" << std::endl;
 
+    std::cout << "=== 2_Vault Floor 13 Warnings ===" << std::endl;
+    int f13WarningCount = 0;
+    for (const auto& w : warnings) {
+        if (w.layer == 13) {
+            f13WarningCount++;
+            std::cout << "  F13 Warning #" << f13WarningCount << ": [" << w.type.toStdString() << "] (" << w.x << "," << w.y << ") zid=" << w.zoneId
+                      << " desc: " << w.description.toStdString() << std::endl;
+        }
+    }
+    std::cout << "Total Floor 13 warnings: " << f13WarningCount << std::endl;
+
+    std::cout << "=== 2_Vault Full Zone 6 Box on Floor 12, 13, 14 ===" << std::endl;
+    for (int l = 12; l <= 14; ++l) {
+        std::cout << "--- Layer " << l << " ---" << std::endl;
+        for (int y = 24; y <= 33; ++y) {
+            std::string row;
+            for (int x = 3; x <= 9; ++x) {
+                int b = (l < map->gridBlocks.size() && y < map->gridBlocks[l].size() && x < map->gridBlocks[l][y].size()) ? map->gridBlocks[l][y][x] : 0;
+                int g = (l < map->gridGround.size() && y < map->gridGround[l].size() && x < map->gridGround[l][y].size()) ? map->gridGround[l][y][x] : 0;
+                int zid = zm->getZoneAt(l, x, y);
+                if (b > 0) row += std::to_string(b) + (g == 2 ? "R " : "  ");
+                else if (zid >= 0) row += ".  ";
+                else row += "   ";
+            }
+            if (!row.empty()) std::cout << "  y=" << y << ": " << row << std::endl;
+        }
+    }
+
     std::cout << "=== Zone 2 Floor 6 and 7 Diagnostics ===" << std::endl;
     bool z2Floor7Closed = true;
     int z2Id = zm->getZoneAt(6, 26, 5);
@@ -179,8 +207,25 @@ int main(int argc, char* argv[]) {
         std::cout << "[TEST] CloseContacts Floor 8 open sky at (14,38) has no phantom zone: "
                   << (ccF8SkyUnzoned ? "PASS" : "FAIL") << std::endl;
 
-        PortalLeakAnalyzer ccPla(ccMap, ccZm);
-        auto ccWarnings = ccPla.analyze();
+        std::cout << "=== CloseContacts Diagnostics at (2,34) and (4,34) ===" << std::endl;
+        for (int l = 5; l <= 8; ++l) {
+            std::cout << "  Layer " << l << ":" << std::endl;
+            for (int x : {2, 3, 4}) {
+                int y = 34;
+                int b = (l < ccMap->gridBlocks.size() && y < ccMap->gridBlocks[l].size() && x < ccMap->gridBlocks[l][y].size()) ? ccMap->gridBlocks[l][y][x] : 0;
+                int g = (l < ccMap->gridGround.size() && y < ccMap->gridGround[l].size() && x < ccMap->gridGround[l][y].size()) ? ccMap->gridGround[l][y][x] : 0;
+                auto s = ccMap->segments.value(b);
+                std::cout << "    (" << x << "," << y << ") b=" << b << " (" << (s ? s->name.toStdString() : "none")
+                          << ") gnd=" << g << " visF=" << (s ? s->visFloor : -1) << " visR=" << (s ? s->visRoof : -1)
+                          << " zid=" << ccZm->getZoneAt(l, x, y) << std::endl;
+            }
+        }
+        PortalLeakAnalyzer ccLeakAnalyzer(ccMap, ccZm);
+        auto ccWarnings = ccLeakAnalyzer.analyze();
+        for (const auto& w : ccWarnings) {
+            std::cout << "  CC Warning: [" << w.type.toStdString() << "] L" << w.layer << " (" << w.x << "," << w.y << "): "
+                      << w.description.toStdString() << std::endl;
+        }
         bool ccF8NoLeaks = true;
         for (const auto& w : ccWarnings) {
             if (w.layer == 8) {
@@ -230,6 +275,17 @@ int main(int argc, char* argv[]) {
     std::cout << "[TEST] PortalLeakAnalyzer Floor 8 ceiling_window leaks count: " << f8CeilingWindowLeaks 
               << " (Expected: 66 = 4 from Zone 2 + 62 from Zone 6) -> " 
               << (f8CeilingWindowLeaks == 66 ? "PASS" : "FAIL") << std::endl;
+
+    bool f8AllLeaksAssigned = true;
+    for (const auto& w : warnings) {
+        if (w.layer == 8 && w.zoneId < 0) {
+            f8AllLeaksAssigned = false;
+            std::cout << "Unassigned leak on Floor 8 at (" << w.x << "," << w.y << "): " << w.description.toStdString() << std::endl;
+        }
+    }
+    std::cout << "[TEST] All Floor 8 ceiling leaks assigned to originating zones: "
+              << (f8AllLeaksAssigned ? "PASS" : "FAIL") << std::endl;
+
     std::cout << "[TEST] PortalLeakAnalyzer detects Missing Ceiling Leak at (29,2) on Floor 8: "
               << (found29_2 ? "PASS" : "FAIL") << std::endl;
     bool allWindowsDetected = found26_4 && found26_6 && found28_4 && found28_6;
@@ -291,7 +347,7 @@ int main(int argc, char* argv[]) {
               << (canvasHighlightedRow2 ? "PASS" : "FAIL") << " (Canvas highlighted: Floor "
               << canvas.highlightedLayer() << " at (" << canvas.highlightedX() << "," << canvas.highlightedY() << "))" << std::endl;
 
-    if (!found29_2 || !allWindowsDetected || !f7WindowsDetected || !fakeClassified || !realWinClassified || !map1ExtPortalPass || !atriumUnified || !z2Floor7Closed || !canvasHasWarnings || !canvasHighlightedRow2) {
+    if (!found29_2 || !allWindowsDetected || !f7WindowsDetected || !fakeClassified || !realWinClassified || !map1ExtPortalPass || !atriumUnified || !z2Floor7Closed || !canvasHasWarnings || !canvasHighlightedRow2 || !f8AllLeaksAssigned) {
         return 1;
     }
     return 0;
