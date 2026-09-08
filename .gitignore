@@ -54,3 +54,7 @@ test_*.exe
 *.bak
 cmds.gdb
 debug.bat
+
+# Architecture Decision Records (local documentation)
+ADR.md
+ADR/

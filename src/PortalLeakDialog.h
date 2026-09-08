@@ -20,17 +20,23 @@ public:
 
     void setMap(std::shared_ptr<FPSCMap> map);
     void setVisZoneManager(std::shared_ptr<VisZoneManager> mgr);
+    const std::vector<PortalLeakWarning>& currentWarnings() const { return m_currentWarnings; }
 
 protected:
     void changeEvent(QEvent* event) override;
 
 signals:
     void cellSelected(int layer, int x, int y);
+    void warningsUpdated(const std::vector<PortalLeakWarning>& warnings);
     void resolveConflictRequested(int layer, int x1, int y1, int x2, int y2);
     void editSegmentRequested(int layer, int x, int y);
 
 public slots:
     void runAnalysis();
+
+    int selectedZoneFilterId() const { return m_selectedZoneFilterId; }
+    class QComboBox* zoneFilterCombo() const { return m_cmbZoneFilter; }
+    class QTableWidget* tableWidget() const { return m_table; }
 
 private slots:
     void onCellDoubleClicked(int row, int column);

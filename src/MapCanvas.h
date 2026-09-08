@@ -4,6 +4,7 @@
 #include "FPSCData.h"
 #include "UniverseDBUParser.h"
 #include "VisZoneManager.h"
+#include "PortalLeakAnalyzer.h"
 #include <QWidget>
 #include <QPointF>
 #include <QTimer>
@@ -54,6 +55,9 @@ public slots:
     void selectEntity(int index);
     void focusOnEntity(int index);
     void highlightCell(int layer, int x, int y);
+    void clearHighlight();
+    void setLeakWarnings(const std::vector<PortalLeakWarning>& warnings);
+    void clearLeakWarnings();
 
     void zoomIn();
     void zoomOut();
@@ -81,6 +85,10 @@ public slots:
     bool colorAllVisZones() const { return m_colorAllVisZones; }
     void setVisZoneManager(std::shared_ptr<VisZoneManager> mgr);
     std::shared_ptr<VisZoneManager> visZoneManager() const { return m_visZoneManager; }
+    int highlightedLayer() const { return m_highlightedLayer; }
+    int highlightedX() const { return m_highlightedX; }
+    int highlightedY() const { return m_highlightedY; }
+    const std::vector<PortalLeakWarning>& leakWarnings() const { return m_leakWarnings; }
 
 signals:
     void floorChanged(int floor);
@@ -116,6 +124,7 @@ private:
     void drawEntities(QPainter& p);
     void drawCSGCutouts(QPainter& p);
     void drawPortals(QPainter& p);
+    void drawLeakWarnings(QPainter& p);
     void drawGizmo(QPainter& p);
     void drawHUD(QPainter& p);
 
@@ -131,6 +140,7 @@ private:
     int m_highlightedLayer = -1;
     int m_highlightedX = -1;
     int m_highlightedY = -1;
+    std::vector<PortalLeakWarning> m_leakWarnings;
 
     // Viewport logic
     GizmoHandle m_hoveredGizmo = GizmoHandle::None;
@@ -153,7 +163,7 @@ private:
     bool m_showZones = true;
     bool m_showWaypoints = true;
     bool m_showGhostLayer = true;
-    bool m_showPortals = false;
+    bool m_showPortals = true;
     std::vector<DBUPortal> m_portals;
     std::vector<DBUVisZone> m_zones;
 

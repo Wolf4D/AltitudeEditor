@@ -5,6 +5,7 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QPushButton>
+#include <QLineEdit>
 #include <QLabel>
 #include <QGroupBox>
 #include <QTabWidget>
@@ -184,12 +185,15 @@ private slots:
     // Conflict action slots
     void onResolveRemoveWallA();
     void onResolveRemoveWallB();
-    void onResolveOpenBoth();
     void onSwitchToManualEditor();
+
+    // Segment filter slot
+    void onSegmentFilterChanged(const QString& filter);
 
 private:
     void retranslateUi();
     void loadCellData();
+    void populateSegmentCombo(const QString& filter = QString());
     void syncUiFromWallBools();
     void updateConflictView();
 
@@ -217,7 +221,6 @@ private:
     QLabel* m_lblConflictExplanation = nullptr;
     QPushButton* m_btnRemoveWallA = nullptr;
     QPushButton* m_btnRemoveWallB = nullptr;
-    QPushButton* m_btnOpenBoth = nullptr;
     QPushButton* m_btnGoManual = nullptr;
 
     // Manual Tab UI
@@ -230,6 +233,7 @@ private:
     QLabel* m_lblZoneInfo = nullptr;
 
     QLabel* m_lblSegmentAsset = nullptr;
+    QLineEdit* m_txtSegmentFilter = nullptr;
     QComboBox* m_cmbSegment = nullptr;
     QLabel* m_lblSegmentPath = nullptr;
 

@@ -352,39 +352,52 @@ void PortalLeakAnalyzer::checkVerticalGaps() {
         const int dy[4] = {-1, 0, 1, 0};
 
         for (const auto& pt : z.tiles) {
-            // Find top occupied layer of this column in the structure
+            // Find highest floor where this column is part of the zone volume or occupied by room blocks
+            int topRoomLayer = z.floor;
             int colTop = z.floor;
             for (int l = z.floor; l <= m_map->header.layerMax; ++l) {
+                if (zm.getZoneAt(l, pt.x(), pt.y()) == z.id) {
+                    topRoomLayer = std::max(topRoomLayer, l);
+                }
                 if (m_map->gridBlocks[l][pt.y()][pt.x()] > 0) {
                     colTop = l;
+                    if (l <= z.maxFloor) {
+                        topRoomLayer = std::max(topRoomLayer, l);
+                    }
                 }
             }
 
             bool covered = false;
-            for (int l = colTop; l <= m_map->header.layerMax; ++l) {
-                int seg = m_map->gridBlocks[l][pt.y()][pt.x()];
-                if (seg > 0) {
-                    int g = mapGround(l, pt.x(), pt.y());
-                    // Segment with roof or ceiling slab (ground == 2 or isCeilingAt)
-                    if (g == 2 || isCeilingAt(l, pt.x(), pt.y())) {
-                        covered = true;
-                        break;
-                    }
-                    // A solid floor of another room directly on a higher floor also caps this column
-                    if (l > colTop && isFloorAt(l, pt.x(), pt.y())) {
-                        covered = true;
-                        break;
+            // 1. Check if the segment directly at topRoomLayer has a ceiling/roof
+            // Only valid if the zone does not have a higher roofline (zoneMaxCeilingFloor <= topRoomLayer)
+            if (zoneMaxCeilingFloor <= topRoomLayer && m_map->gridBlocks[topRoomLayer][pt.y()][pt.x()] > 0) {
+                int g = mapGround(topRoomLayer, pt.x(), pt.y());
+                if (g == 2 || isCeilingAt(topRoomLayer, pt.x(), pt.y())) {
+                    covered = true;
+                }
+            }
+            // 2. Check layers above topRoomLayer up to layerMax
+            if (!covered) {
+                for (int l = topRoomLayer + 1; l <= m_map->header.layerMax; ++l) {
+                    int seg = m_map->gridBlocks[l][pt.y()][pt.x()];
+                    if (seg > 0) {
+                        int g = mapGround(l, pt.x(), pt.y());
+                        // Segment with roof or ceiling slab (ground == 2 or isCeilingAt)
+                        if (g == 2 || isCeilingAt(l, pt.x(), pt.y())) {
+                            covered = true;
+                            break;
+                        }
+                        // A solid floor of another room directly on a higher floor also caps this column
+                        if (isFloorAt(l, pt.x(), pt.y())) {
+                            covered = true;
+                            break;
+                        }
                     }
                 }
             }
 
-            // If the zone has no ceiling slabs above colTop, then colTop is already at or above the room's roofline
+            // 3. Wall mesh at or above the room's roofline
             if (!covered && zoneMaxCeilingFloor > 0 && colTop >= zoneMaxCeilingFloor) {
-                covered = true;
-            }
-
-            // Wall segments at the top of a column (perimeter and exterior walls) do not require ceiling slabs
-            if (!covered) {
                 int segId = m_map->gridBlocks[colTop][pt.y()][pt.x()];
                 if (segId > 0 && m_map->segments.contains(segId)) {
                     const auto& seg = m_map->segments[segId];
@@ -404,8 +417,8 @@ void PortalLeakAnalyzer::checkVerticalGaps() {
 
         float coverage = static_cast<float>(coveredCount) / static_cast<float>(z.tiles.size());
 
-        // If room is predominantly roofed (> 75%), but has missing ceiling tiles -> TRUE CEILING LEAK
-        if (coverage >= 0.75f && coverage < 1.0f) {
+        // If room is predominantly roofed (>= 50%), but has missing ceiling tiles -> TRUE CEILING LEAK
+        if (coverage >= 0.50f && coverage < 1.0f) {
             for (const auto& hole : missingTiles) {
                 quint32 colKey = (static_cast<quint32>(hole.y()) << 16) | (static_cast<quint32>(hole.x()) & 0xFFFF);
                 if (reportedCeilingColumns.contains(colKey)) continue;
@@ -414,21 +427,48 @@ void PortalLeakAnalyzer::checkVerticalGaps() {
                 // Find highest occupied room layer in this column
                 int topRoomLayer = z.floor;
                 for (int l = z.floor; l <= m_map->header.layerMax; ++l) {
-                    if (m_map->gridBlocks[l][hole.y()][hole.x()] > 0) {
-                        topRoomLayer = l;
+                    if (zm.getZoneAt(l, hole.x(), hole.y()) == z.id) {
+                        topRoomLayer = std::max(topRoomLayer, l);
+                    }
+                    if (m_map->gridBlocks[l][hole.y()][hole.x()] > 0 && l <= z.maxFloor) {
+                        topRoomLayer = std::max(topRoomLayer, l);
                     }
                 }
-                int missingRoofFloor = topRoomLayer + 1;
+                int missingRoofFloor = (zoneMaxCeilingFloor > topRoomLayer) ? zoneMaxCeilingFloor : (topRoomLayer + 1);
+                if (missingRoofFloor > m_map->header.layerMax) missingRoofFloor = topRoomLayer;
+
+                // Check if there is an entity prop placed at this hole (e.g. ceiling_window)
+                QString propNote;
+                QString bestEntName;
+                for (const auto& ent : m_map->placedEntities) {
+                    int ex = static_cast<int>(std::floor(ent.x / 100.0f));
+                    int ey = static_cast<int>(std::floor(-ent.z / 100.0f));
+                    if (ex == hole.x() && ey == hole.y()) {
+                        int entFloor = static_cast<int>(std::floor(ent.y / 100.0f));
+                        if (std::abs(entFloor - missingRoofFloor) <= 1) {
+                            auto prof = m_map->entityProfiles.value(ent.bankIndex);
+                            QString entName = prof ? prof->name : ent.instanceName;
+                            if (!entName.isEmpty()) {
+                                if (bestEntName.isEmpty() || entName.contains("window", Qt::CaseInsensitive)) {
+                                    bestEntName = entName;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!bestEntName.isEmpty()) {
+                    propNote = QString(" (Entity '%1' placed here does not seal BSP portals)").arg(bestEntName);
+                }
 
                 PortalLeakWarning w;
                 w.severity = PortalLeakWarning::ERROR;
                 w.type = "Missing Ceiling Leak";
                 // Report on the layer where the ceiling tile is missing
-                w.layer = (missingRoofFloor <= m_map->header.layerMax) ? missingRoofFloor : topRoomLayer;
+                w.layer = missingRoofFloor;
                 w.x = hole.x();
                 w.y = hole.y();
-                w.description = QString("Missing ceiling slab at Floor %1 over enclosed room at (%2, %3) (Room top: Floor %4). Camera will leak visibility into the void.")
-                                    .arg(missingRoofFloor).arg(hole.x()).arg(hole.y()).arg(topRoomLayer);
+                w.description = QString("Missing ceiling slab at Floor %1 over enclosed room at (%2, %3) (Room top: Floor %4)%5. Camera will leak visibility into the void.")
+                                    .arg(missingRoofFloor).arg(hole.x()).arg(hole.y()).arg(topRoomLayer).arg(propNote);
                 m_warnings.push_back(w);
             }
         }
@@ -586,15 +626,64 @@ void PortalLeakAnalyzer::checkWallHolesToVoid() {
                         if (hasWallMesh) continue;
                     }
 
-                    // Check if there is a door entity placed on this edge
-                    bool hasDoor = false;
+                    // Check overlay for fake (sealed) segments
+                    if (fl < m_map->gridOverlays.size() && pt.y() < m_map->gridOverlays[fl].size() && pt.x() < m_map->gridOverlays[fl][pt.y()].size()) {
+                        int oId = m_map->gridOverlays[fl][pt.y()][pt.x()];
+                        if (oId > 0 && m_map->segments.contains(oId)) {
+                            const auto& oSeg = m_map->segments[oId];
+                            int oRot = m_map->gridOverlayRotation[fl][pt.y()][pt.x()] & 3;
+                            if (oRot == s && oSeg->isFake) {
+                                // Sealed solid decorative wall plate
+                                continue;
+                            }
+                        }
+                    }
+
+                    // Check if there is a portal on this edge
+                    const MapPortal* edgePortal = nullptr;
                     for (const auto& p : zm.portals()) {
-                        if (p.floor == fl && (p.tileA == pt || p.tileB == pt)) {
-                            hasDoor = true;
+                        if (p.floor == fl &&
+                            ((p.tileA == pt && p.tileB == QPoint(nx, ny)) ||
+                             (p.tileB == pt && p.tileA == QPoint(nx, ny)))) {
+                            edgePortal = &p;
                             break;
                         }
                     }
-                    if (hasDoor) continue;
+
+                    if (edgePortal) {
+                        if (edgePortal->isExterior) {
+                            if (edgePortal->type == PortalType::ExteriorWindow) {
+                                quint64 winKey = (quint64(fl) << 36) | (quint64(pt.y()) << 20) | (quint64(pt.x()) << 4) | quint64(s);
+                                if (!reportedWallLeaks.contains(winKey)) {
+                                    reportedWallLeaks.insert(winKey);
+                                    PortalLeakWarning w;
+                                    w.severity = PortalLeakWarning::WARNING;
+                                    w.type = QStringLiteral("Exterior Window Leak (Visibility Bleed)");
+                                    w.layer = fl;
+                                    w.x = pt.x();
+                                    w.y = pt.y();
+                                    w.description = QString("Exterior window cutout at Floor %1 (%2, %3) side %4 opens into open sky / universe void. Causes PVS Visibility Bleed in BSP compiler.")
+                                                        .arg(fl).arg(pt.x()).arg(pt.y()).arg(sideNames[s]);
+                                    m_warnings.push_back(w);
+                                }
+                            } else {
+                                quint64 doorKey = (quint64(fl) << 36) | (quint64(pt.y()) << 20) | (quint64(pt.x()) << 4) | quint64(s);
+                                if (!reportedWallLeaks.contains(doorKey)) {
+                                    reportedWallLeaks.insert(doorKey);
+                                    PortalLeakWarning w;
+                                    w.severity = PortalLeakWarning::WARNING;
+                                    w.type = QStringLiteral("Exterior Doorway to Void");
+                                    w.layer = fl;
+                                    w.x = pt.x();
+                                    w.y = pt.y();
+                                    w.description = QString("Exterior doorway at Floor %1 (%2, %3) side %4 opens into universe void with no ground or platform below. Player will fall into the abyss.")
+                                                        .arg(fl).arg(pt.x()).arg(pt.y()).arg(sideNames[s]);
+                                    m_warnings.push_back(w);
+                                }
+                            }
+                        }
+                        continue;
+                    }
 
                     quint64 wallKey = (quint64(fl) << 36) | (quint64(pt.y()) << 20) | (quint64(pt.x()) << 4) | quint64(s);
                     if (reportedWallLeaks.contains(wallKey)) continue;

@@ -9,6 +9,7 @@
 #include <QMessageBox>
 #include <QApplication>
 #include <QFile>
+#include <QAbstractItemView>
 
 PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, std::shared_ptr<VisZoneManager> visZoneMgr, QWidget* parent)
     : QDialog(parent), m_map(map), m_visZoneManager(visZoneMgr)
@@ -74,8 +75,10 @@ PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, std::shared_ptr
 
     m_cmbZoneFilter = new QComboBox(this);
     m_cmbZoneFilter->setMinimumWidth(240);
-    m_cmbZoneFilter->setStyleSheet(QStringLiteral("QComboBox { background-color: #1e2630; color: #cad8e6; border: 1px solid #3d4f61; border-radius: 4px; padding: 5px 8px; }"
-                                                 "QComboBox QAbstractItemView { background-color: #1e2630; color: #cad8e6; selection-background-color: #2e537a; }"));
+    m_cmbZoneFilter->setMaxVisibleItems(15);
+    m_cmbZoneFilter->view()->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    m_cmbZoneFilter->setStyleSheet(QStringLiteral("QComboBox { combobox-popup: 0; background-color: #1e2630; color: #cad8e6; border: 1px solid #3d4f61; border-radius: 4px; padding: 5px 8px; }"
+                                                 "QComboBox QAbstractItemView { max-height: 280px; background-color: #1e2630; color: #cad8e6; selection-background-color: #2e537a; }"));
     ctrlLayout->addWidget(m_cmbZoneFilter);
 
     ctrlLayout->addSpacing(10);
@@ -186,6 +189,7 @@ void PortalLeakDialog::onMethodToggled() {
         m_cmbZoneFilter->clear();
         m_lblStats->setText(tr("Enable at least one detection method to run analysis."));
         m_btnResolve->setEnabled(false);
+        emit warningsUpdated(m_currentWarnings);
     }
 }
 
@@ -208,9 +212,12 @@ void PortalLeakDialog::runAnalysis() {
 
     populateZoneFilter();
     updateTableRows();
+    emit warningsUpdated(m_currentWarnings);
 }
 
 void PortalLeakDialog::populateZoneFilter() {
+    int prevFilterId = m_selectedZoneFilterId;
+
     m_cmbZoneFilter->blockSignals(true);
     m_cmbZoneFilter->clear();
 
@@ -231,15 +238,30 @@ void PortalLeakDialog::populateZoneFilter() {
 
     m_cmbZoneFilter->addItem(tr("All Vis Zones (%1 issues)").arg(m_currentWarnings.size()), -1);
 
-    if (unassignedCount > 0) {
-        m_cmbZoneFilter->addItem(tr("Outside / Void / Unzoned (%1)").arg(unassignedCount), -2);
+    if (unassignedCount > 0 || prevFilterId == -2) {
+        if (unassignedCount == 0) {
+            m_cmbZoneFilter->addItem(tr("Outside / Void / Unzoned (0 — Resolved)"), -2);
+        } else {
+            m_cmbZoneFilter->addItem(tr("Outside / Void / Unzoned (%1)").arg(unassignedCount), -2);
+        }
     }
 
-    QList<int> sortedZones = zoneCounts.keys();
+    // Collect all zones that have issues (>0), OR that were previously selected by user
+    QSet<int> zidsToShow;
+    for (auto it = zoneCounts.constBegin(); it != zoneCounts.constEnd(); ++it) {
+        if (it.value() > 0) {
+            zidsToShow.insert(it.key());
+        }
+    }
+    if (prevFilterId >= 0) {
+        zidsToShow.insert(prevFilterId);
+    }
+
+    QList<int> sortedZones = zidsToShow.values();
     std::sort(sortedZones.begin(), sortedZones.end());
 
     for (int zid : sortedZones) {
-        int count = zoneCounts[zid];
+        int count = zoneCounts.value(zid, 0);
         QString zName = QString("Zone %1").arg(zid + 1);
         if (m_visZoneManager) {
             const VisZone* vz = m_visZoneManager->getZone(zid);
@@ -247,13 +269,17 @@ void PortalLeakDialog::populateZoneFilter() {
                 zName = vz->name;
             }
         }
-        m_cmbZoneFilter->addItem(tr("%1 — %2 issues").arg(zName).arg(count), zid);
+        if (count == 0) {
+            m_cmbZoneFilter->addItem(tr("%1 — 0 issues (Resolved)").arg(zName), zid);
+        } else {
+            m_cmbZoneFilter->addItem(tr("%1 — %2 issues").arg(zName).arg(count), zid);
+        }
     }
 
     // Restore selected filter if still present
     int selectIdx = 0;
     for (int i = 0; i < m_cmbZoneFilter->count(); ++i) {
-        if (m_cmbZoneFilter->itemData(i).toInt() == m_selectedZoneFilterId) {
+        if (m_cmbZoneFilter->itemData(i).toInt() == prevFilterId) {
             selectIdx = i;
             break;
         }
@@ -272,6 +298,7 @@ void PortalLeakDialog::onZoneFilterChanged(int index) {
 }
 
 void PortalLeakDialog::updateTableRows() {
+    int prevSelectedRow = m_table->currentRow();
     m_visibleWarningIndices.clear();
 
     int bspCount = 0;
@@ -333,6 +360,11 @@ void PortalLeakDialog::updateTableRows() {
         m_table->setItem(row, 4, descItem);
     }
 
+    if (m_table->rowCount() > 0) {
+        int newRow = qBound(0, prevSelectedRow >= 0 ? prevSelectedRow : 0, m_table->rowCount() - 1);
+        m_table->selectRow(newRow);
+    }
+
     QString filterNotice;
     if (m_selectedZoneFilterId != -1) {
         filterNotice = tr(" [Filtered by: %1]").arg(m_cmbZoneFilter->currentText());
@@ -367,6 +399,7 @@ void PortalLeakDialog::onTableSelectionChanged() {
         } else {
             m_btnResolve->setText(tr("🧱 Edit Segment..."));
         }
+        emit cellSelected(w.layer, w.x, w.y);
     } else {
         m_btnResolve->setEnabled(false);
         m_btnResolve->setText(tr("⚡ Resolve Clash / Edit..."));

@@ -477,14 +477,30 @@ void VisZoneDock::updateActiveZoneDetails() {
         const MapPortal* p = m_mgr->getPortal(pId);
         if (!p) continue;
         int otherZone = (p->zoneA == m_activeZoneId) ? p->zoneB : p->zoneA;
-        QListWidgetItem* item = new QListWidgetItem(
-            tr("Portal #%1 ➔ Zone %2 (at tile %3, %4)")
-                .arg(p->id + 1)
-                .arg(otherZone + 1)
-                .arg(p->tileA.x())
-                .arg(p->tileA.y())
-        );
-        item->setData(Qt::UserRole, otherZone);
+        QListWidgetItem* item = nullptr;
+        if (p->isExterior) {
+            QString label;
+            if (p->type == PortalType::ExteriorWindow) {
+                label = tr("🪟 Ext. Window #%1 ➔ Sky (at tile %2, %3)")
+                            .arg(p->id + 1).arg(p->tileA.x()).arg(p->tileA.y());
+            } else {
+                label = tr("🚪 Ext. Door #%1 ➔ Outdoors (at tile %2, %3)")
+                            .arg(p->id + 1).arg(p->tileA.x()).arg(p->tileA.y());
+            }
+            item = new QListWidgetItem(label);
+            item->setData(Qt::UserRole, -1);
+        } else {
+            QString label;
+            if (p->type == PortalType::InterZoneWindow) {
+                label = tr("🪟 Window #%1 ➔ Zone %2 (at tile %3, %4)")
+                            .arg(p->id + 1).arg(otherZone + 1).arg(p->tileA.x()).arg(p->tileA.y());
+            } else {
+                label = tr("Portal #%1 ➔ Zone %2 (at tile %3, %4)")
+                            .arg(p->id + 1).arg(otherZone + 1).arg(p->tileA.x()).arg(p->tileA.y());
+            }
+            item = new QListWidgetItem(label);
+            item->setData(Qt::UserRole, otherZone);
+        }
         m_listPortals->addItem(item);
     }
 

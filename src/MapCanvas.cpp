@@ -22,7 +22,7 @@ MapCanvas::MapCanvas(QWidget* parent)
     connect(&m_animTimer, &QTimer::timeout, this, [this]() {
         m_animPhase += 0.1f;
         if (m_animPhase > 6.28318f) m_animPhase -= 6.28318f;
-        if (m_selectedEntityIndex >= 0) {
+        if (m_selectedEntityIndex >= 0 || m_highlightedLayer >= 0 || !m_leakWarnings.empty()) {
             update();
         }
     });
@@ -92,8 +92,21 @@ void MapCanvas::setFloor(int floor) {
     }
 }
 
+void MapCanvas::clearHighlight() {
+    if (m_highlightedLayer != -1 || m_highlightedX != -1 || m_highlightedY != -1) {
+        m_highlightedLayer = -1;
+        m_highlightedX = -1;
+        m_highlightedY = -1;
+        update();
+    }
+}
+
 void MapCanvas::highlightCell(int layer, int x, int y) {
     if (!m_map) return;
+    if (layer < 0 || x < 0 || y < 0) {
+        clearHighlight();
+        return;
+    }
     setFloor(layer);
     m_highlightedLayer = layer;
     m_highlightedX = x;
@@ -111,6 +124,18 @@ void MapCanvas::highlightCell(int layer, int x, int y) {
     m_panOffset = QPointF(width() / 2.0f - cellWorldX * m_zoom, height() / 2.0f - cellWorldY * m_zoom);
 
     update();
+}
+
+void MapCanvas::setLeakWarnings(const std::vector<PortalLeakWarning>& warnings) {
+    m_leakWarnings = warnings;
+    update();
+}
+
+void MapCanvas::clearLeakWarnings() {
+    if (!m_leakWarnings.empty()) {
+        m_leakWarnings.clear();
+        update();
+    }
 }
 
 void MapCanvas::floorUp() {
@@ -266,17 +291,40 @@ void MapCanvas::renderMap(QPainter& p) {
         drawPortals(p);
     }
 
-    // 7. Interactive Translation Gizmo on selected entity
+    // 7b. CSG / Portal Leak Warnings (when leak detector is active)
+    if (!m_leakWarnings.empty()) {
+        drawLeakWarnings(p);
+    }
+
+    // 7c. Interactive Translation Gizmo on selected entity
     drawGizmo(p);
 
     if (m_highlightedLayer == m_currentFloor && m_highlightedX >= 0 && m_highlightedY >= 0) {
         QRectF hlRect = getCellRectScreen(m_highlightedX, m_highlightedY);
-        p.setPen(QPen(Qt::red, 3));
+        float pulse = 0.5f + 0.5f * std::sin(m_animPhase * 3.0f);
+        QColor outlineColor = QColor::fromRgbF(1.0f, 0.2f * (1.0f - pulse), 0.1f);
+        p.setPen(QPen(outlineColor, 3.5f, Qt::SolidLine));
         
         QColor fill = Qt::red;
-        fill.setAlphaF(0.2f + 0.2f * std::sin(m_animPhase * 2.0f));
+        fill.setAlphaF(0.20f + 0.15f * pulse);
         p.setBrush(fill);
         p.drawRect(hlRect);
+
+        // Corner target reticle markers
+        p.setPen(QPen(Qt::yellow, 2.5f));
+        float arm = qMin(hlRect.width(), hlRect.height()) * 0.28f;
+        // TL
+        p.drawLine(hlRect.topLeft(), hlRect.topLeft() + QPointF(arm, 0));
+        p.drawLine(hlRect.topLeft(), hlRect.topLeft() + QPointF(0, arm));
+        // TR
+        p.drawLine(hlRect.topRight(), hlRect.topRight() - QPointF(arm, 0));
+        p.drawLine(hlRect.topRight(), hlRect.topRight() + QPointF(0, arm));
+        // BL
+        p.drawLine(hlRect.bottomLeft(), hlRect.bottomLeft() + QPointF(arm, 0));
+        p.drawLine(hlRect.bottomLeft(), hlRect.bottomLeft() - QPointF(0, arm));
+        // BR
+        p.drawLine(hlRect.bottomRight(), hlRect.bottomRight() - QPointF(arm, 0));
+        p.drawLine(hlRect.bottomRight(), hlRect.bottomRight() - QPointF(0, arm));
     }
 
     // 8. HUD Overlays
@@ -1335,6 +1383,7 @@ void MapCanvas::wheelEvent(QWheelEvent* event) {
 void MapCanvas::keyPressEvent(QKeyEvent* event) {
     switch (event->key()) {
         case Qt::Key_Escape:
+            clearHighlight();
             if (m_activeVisZoneId >= 0 || m_cullInactiveVisZones) {
                 setActiveVisZone(-1);
                 setVisZoneCulling(false, 0.0f);
@@ -1523,7 +1572,7 @@ void MapCanvas::drawPortals(QPainter& p) {
     }
 
     // 0b. Render Topo Portals from VisZoneManager
-    if (m_visZoneManager) {
+    if (m_visZoneManager && (m_showPortals || m_activeVisZoneId >= 0)) {
         for (const auto& portal : m_visZoneManager->portals()) {
             if (portal.floor != m_currentFloor) continue;
 
@@ -1544,10 +1593,19 @@ void MapCanvas::drawPortals(QPainter& p) {
                 p.setOpacity(1.0f);
             }
 
-            QColor pColor = isConnectedToActive ? QColor(0, 255, 180, 240) : QColor(0, 185, 255, 180);
+            QColor pColor;
+            Qt::PenStyle pStyle = Qt::SolidLine;
+            if (portal.isExterior) {
+                pStyle = Qt::DashLine;
+                pColor = (portal.type == PortalType::ExteriorWindow) ? QColor(0, 220, 255, 240) : QColor(255, 175, 40, 240);
+            } else if (portal.type == PortalType::InterZoneWindow) {
+                pColor = isConnectedToActive ? QColor(0, 255, 230, 240) : QColor(0, 200, 255, 200);
+            } else {
+                pColor = isConnectedToActive ? QColor(0, 255, 180, 240) : QColor(0, 185, 255, 180);
+            }
             float pWidth = isConnectedToActive ? 4.5f : 2.5f;
 
-            p.setPen(QPen(pColor, pWidth, Qt::SolidLine, Qt::RoundCap));
+            p.setPen(QPen(pColor, pWidth, pStyle, Qt::RoundCap));
             p.drawLine(p1, p2);
 
             // Perpendicular ticks
@@ -1562,18 +1620,23 @@ void MapCanvas::drawPortals(QPainter& p) {
             // Portal Label
             QPointF centerScreen = (p1 + p2) * 0.5f;
             p.setFont(QFont("Segoe UI", 8, QFont::Bold));
-            p.setPen(isConnectedToActive ? QColor(50, 255, 200) : QColor(150, 220, 255));
-            if (m_activeVisZoneId >= 0) {
+            p.setPen(pColor);
+            if (portal.isExterior) {
+                QString extName = (portal.type == PortalType::ExteriorWindow) ? QString("Ext Window (Z%1 -> Sky)").arg(portal.zoneA + 1) : QString("Ext Door (Z%1 -> Out)").arg(portal.zoneA + 1);
+                p.drawText(centerScreen + QPointF(6, -6), extName);
+            } else if (m_activeVisZoneId >= 0) {
                 int otherZone = (portal.zoneA == m_activeVisZoneId) ? portal.zoneB : portal.zoneA;
-                p.drawText(centerScreen + QPointF(6, -6), QString("Portal -> Zone %1").arg(otherZone + 1));
+                QString pName = (portal.type == PortalType::InterZoneWindow) ? QString("Window -> Zone %1").arg(otherZone + 1) : QString("Portal -> Zone %1").arg(otherZone + 1);
+                p.drawText(centerScreen + QPointF(6, -6), pName);
             } else {
-                p.drawText(centerScreen + QPointF(6, -6), QString("Portal (Z%1 <-> Z%2)").arg(portal.zoneA + 1).arg(portal.zoneB + 1));
+                QString pName = (portal.type == PortalType::InterZoneWindow) ? QString("Window (Z%1 <-> Z%2)").arg(portal.zoneA + 1).arg(portal.zoneB + 1) : QString("Portal (Z%1 <-> Z%2)").arg(portal.zoneA + 1).arg(portal.zoneB + 1);
+                p.drawText(centerScreen + QPointF(6, -6), pName);
             }
         }
     }
     
     // 1. Render Doorway Portals on current floor (if VisZoneManager not active)
-    if (!m_visZoneManager) {
+    if (!m_visZoneManager && m_showPortals) {
         for (const auto& ent : m_map->placedEntities) {
             if (ent.floorLayer != m_currentFloor) continue;
 
@@ -1637,25 +1700,6 @@ void MapCanvas::drawPortals(QPainter& p) {
     }
     }
 
-    // 3. Render Real Leaks from PortalLeakAnalyzer on current floor
-    PortalLeakAnalyzer analyzer(m_map);
-    auto warnings = analyzer.analyze();
-    for (const auto& w : warnings) {
-        if (w.layer == m_currentFloor && w.severity == PortalLeakWarning::ERROR) {
-            QRectF cellRect = getCellRectScreen(w.x, w.y);
-            
-            // Draw red glowing leak box
-            p.setPen(QPen(QColor(255, 45, 75, 240), 2.5f, Qt::DashLine));
-            p.setBrush(QColor(255, 0, 50, 60));
-            p.drawRect(cellRect);
-
-            // Center Tag
-            p.setPen(QColor(255, 120, 140));
-            p.setFont(QFont("Segoe UI", 7, QFont::Bold));
-            p.drawText(cellRect, Qt::AlignCenter, QStringLiteral("LEAK (Void)"));
-        }
-    }
-    
     p.restore();
 }
 
@@ -1755,39 +1799,66 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
                         cutoutRect = QRectF(leftX, cellRect.top() + cellRect.height() * 0.18f, w, cellRect.height() * 0.64f);
                     }
 
-                    // 1. Draw Void / Cutout Hole Fill
-                    p.fillRect(cutoutRect, QColor(22, 25, 34, 220));
+                    if (seg->isFake) {
+                        // 1. Draw solid dark plate backing
+                        p.fillRect(cutoutRect, QColor(40, 44, 52, 230));
 
-                    // 2. Draw Vibrant Green Glowing Overlay Fill
-                    QColor fillGreen(46, 204, 113, 85);
-                    p.fillRect(cutoutRect, fillGreen);
+                        // 2. Draw Slate-Gray decorative border
+                        QColor fakeBorder(120, 135, 150, 220);
+                        p.setPen(QPen(fakeBorder, 2.0f, Qt::SolidLine, Qt::SquareCap));
+                        p.drawRect(cutoutRect);
 
-                    // 3. Draw BOLD Glowing Emerald-Green Border spanning full wall thickness
-                    QColor cutoutGreen(46, 204, 113, 255);
-                    p.setPen(QPen(cutoutGreen, 2.5f, Qt::SolidLine, Qt::SquareCap));
-                    p.drawRect(cutoutRect);
+                        // 3. Draw blind crosshatch pattern
+                        p.setPen(QPen(QColor(90, 105, 120, 160), 1.0f));
+                        p.drawLine(cutoutRect.topLeft(), cutoutRect.bottomRight());
+                        p.drawLine(cutoutRect.bottomLeft(), cutoutRect.topRight());
 
-                    // 4. Center division line across the wall thickness
-                    p.setPen(QPen(cutoutGreen, 1.5f, Qt::DashLine));
-                    if (effectiveRot == 0 || effectiveRot == 2) {
-                        float midX = cutoutRect.center().x();
-                        p.drawLine(QPointF(midX, cutoutRect.top()), QPointF(midX, cutoutRect.bottom()));
+                        // Decorative Label
+                        p.setPen(QColor(180, 195, 210));
+                        p.setFont(QFont("Segoe UI", 8, QFont::Bold));
+                        QString label = seg->isWindow ? QStringLiteral("Fake Window (Blind)") : QStringLiteral("Fake Door (Static)");
+                        if (effectiveRot == 0) {
+                            p.drawText(cutoutRect.bottomLeft() + QPointF(0, 14), label);
+                        } else if (effectiveRot == 2) {
+                            p.drawText(cutoutRect.topLeft() + QPointF(0, -6), label);
+                        } else {
+                            p.drawText(cutoutRect.topRight() + QPointF(6, 12), label);
+                        }
                     } else {
-                        float midY = cutoutRect.center().y();
-                        p.drawLine(QPointF(cutoutRect.left(), midY), QPointF(cutoutRect.right(), midY));
-                    }
+                        // 1. Draw Void / Cutout Hole Fill
+                        p.fillRect(cutoutRect, QColor(22, 25, 34, 220));
 
-                    // Cutout Label
-                    p.setPen(QColor(160, 255, 180));
-                    p.setFont(QFont("Segoe UI", 8, QFont::Bold));
-                    bool isWindow = (oId == 1) || seg->name.contains("window", Qt::CaseInsensitive) || seg->relPath.contains("window", Qt::CaseInsensitive);
-                    QString label = isWindow ? QStringLiteral("CSG Cutout (Window)") : QStringLiteral("CSG Cutout (Doorway)");
-                    if (effectiveRot == 0) {
-                        p.drawText(cutoutRect.bottomLeft() + QPointF(0, 14), label);
-                    } else if (effectiveRot == 2) {
-                        p.drawText(cutoutRect.topLeft() + QPointF(0, -6), label);
-                    } else {
-                        p.drawText(cutoutRect.topRight() + QPointF(6, 12), label);
+                        // 2. Draw Vibrant Green Glowing Overlay Fill
+                        QColor fillGreen(46, 204, 113, 85);
+                        p.fillRect(cutoutRect, fillGreen);
+
+                        // 3. Draw BOLD Glowing Emerald-Green Border spanning full wall thickness
+                        QColor cutoutGreen(46, 204, 113, 255);
+                        p.setPen(QPen(cutoutGreen, 2.5f, Qt::SolidLine, Qt::SquareCap));
+                        p.drawRect(cutoutRect);
+
+                        // 4. Center division line across the wall thickness
+                        p.setPen(QPen(cutoutGreen, 1.5f, Qt::DashLine));
+                        if (effectiveRot == 0 || effectiveRot == 2) {
+                            float midX = cutoutRect.center().x();
+                            p.drawLine(QPointF(midX, cutoutRect.top()), QPointF(midX, cutoutRect.bottom()));
+                        } else {
+                            float midY = cutoutRect.center().y();
+                            p.drawLine(QPointF(cutoutRect.left(), midY), QPointF(cutoutRect.right(), midY));
+                        }
+
+                        // Cutout Label
+                        p.setPen(QColor(160, 255, 180));
+                        p.setFont(QFont("Segoe UI", 8, QFont::Bold));
+                        bool isWindow = (oId == 1) || seg->isWindow || seg->name.contains("window", Qt::CaseInsensitive) || seg->relPath.contains("window", Qt::CaseInsensitive);
+                        QString label = isWindow ? QStringLiteral("CSG Cutout (Window)") : QStringLiteral("CSG Cutout (Doorway)");
+                        if (effectiveRot == 0) {
+                            p.drawText(cutoutRect.bottomLeft() + QPointF(0, 14), label);
+                        } else if (effectiveRot == 2) {
+                            p.drawText(cutoutRect.topLeft() + QPointF(0, -6), label);
+                        } else {
+                            p.drawText(cutoutRect.topRight() + QPointF(6, 12), label);
+                        }
                     }
                 } else if (seg->isPlatformOrGantry || seg->isStairs) {
                     int orient = olay.orient & 3;
@@ -1876,3 +1947,60 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
     }
     p.restore();
 }
+
+void MapCanvas::drawLeakWarnings(QPainter& p) {
+    if (m_leakWarnings.empty() || !m_map) return;
+
+    QRectF viewBounds(0, 0, width(), height());
+    p.save();
+    QFont font = p.font();
+    font.setBold(true);
+    font.setPointSize(9);
+    p.setFont(font);
+
+    // Filter unique warnings for the current floor
+    QMap<QPair<int, int>, const PortalLeakWarning*> floorWarnings;
+    for (const auto& w : m_leakWarnings) {
+        if (w.layer == m_currentFloor) {
+            floorWarnings.insert({w.x, w.y}, &w);
+        }
+    }
+
+    float pulse = 0.5f + 0.5f * std::sin(m_animPhase * 2.0f);
+
+    for (auto it = floorWarnings.constBegin(); it != floorWarnings.constEnd(); ++it) {
+        int x = it.key().first;
+        int y = it.key().second;
+        const auto* w = it.value();
+
+        QRectF rect = getCellRectScreen(x, y);
+        if (!rect.intersects(viewBounds)) continue;
+
+        if (w->isClash) {
+            // Amber clash indicator
+            QColor fill(255, 170, 0, static_cast<int>(35 + 20 * pulse));
+            QColor border(255, 180, 20, 220);
+            p.setPen(QPen(border, 2.0f, Qt::DashLine));
+            p.setBrush(fill);
+            p.drawRect(rect);
+
+            // Icon
+            p.setPen(border);
+            p.drawText(rect.adjusted(2, 2, -2, -2), Qt::AlignTop | Qt::AlignRight, QStringLiteral("⚡"));
+        } else {
+            // Red leak indicator (missing ceiling, exterior breach, etc.)
+            QColor fill(255, 40, 40, static_cast<int>(35 + 25 * pulse));
+            QColor border(255, 50, 50, 220);
+            p.setPen(QPen(border, 2.0f, Qt::DashLine));
+            p.setBrush(fill);
+            p.drawRect(rect);
+
+            // Icon
+            p.setPen(border);
+            p.drawText(rect.adjusted(2, 2, -2, -2), Qt::AlignTop | Qt::AlignRight, QStringLiteral("⚠️"));
+        }
+    }
+
+    p.restore();
+}
+

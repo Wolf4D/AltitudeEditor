@@ -41,41 +41,111 @@ bool VisZoneManager::isMaptileWallPresent(int l, int x, int y, int side) const {
         {1, 0, 0, 1}  // 15: corner
     };
     int unrotatedSide = (side - (rot & 3) + 4) % 4;
-    if (!seg->hasWall[unrotatedSide]) return false;
-
     if (maptile >= 0 && maptile < 16) {
         return baseWalls[maptile][unrotatedSide];
     }
     return false;
 }
 
-bool VisZoneManager::hasDoorwayOnEdge(int l, int x1, int y1, int x2, int y2, int sideFrom1) const {
+bool VisZoneManager::isDoorOrWindowOnEdge(int l, int x1, int y1, int x2, int y2, int sideFrom1, bool* isWindowOut) const {
     if (!m_map) return false;
-    // Overlay punch check (doors, windows, cutouts)
-    if (l >= 0 && l < m_map->gridOverlays.size()) {
-        if (y1 >= 0 && y1 < m_map->gridOverlays[l].size() && x1 >= 0 && x1 < m_map->gridOverlays[l][y1].size()) {
-            int o1 = m_map->gridOverlays[l][y1][x1];
-            if (o1 > 0) {
-                auto it = m_map->segments.find(o1);
-                if (it != m_map->segments.end() && it.value()->hasPunch) {
-                    int rot1 = m_map->gridOverlayRotation[l][y1][x1] & 3;
-                    if (rot1 == sideFrom1) return true;
-                }
+    if (isWindowOut) *isWindowOut = false;
+
+    // 1. Overlay punch check (doors, windows, cutouts)
+    auto checkOverlay = [&](int segId, int rot, int side) -> bool {
+        if (segId <= 0) return false;
+        auto it = m_map->segments.find(segId);
+        if (it != m_map->segments.end() && it.value()->hasPunch && !it.value()->isFake) {
+            if ((rot & 3) == side) {
+                if (isWindowOut) *isWindowOut = it.value()->isWindow;
+                return true;
             }
         }
-        int sideFrom2 = (sideFrom1 + 2) % 4;
+        return false;
+    };
+
+    if (l >= 0 && l < m_map->gridTileOverlays.size()) {
+        if (y1 >= 0 && y1 < m_map->gridTileOverlays[l].size() && x1 >= 0 && x1 < m_map->gridTileOverlays[l][y1].size()) {
+            for (const auto& o : m_map->gridTileOverlays[l][y1][x1]) {
+                if (checkOverlay(o.segmentId, o.rotate, sideFrom1)) return true;
+            }
+        }
+    } else if (l >= 0 && l < m_map->gridOverlays.size()) {
+        if (y1 >= 0 && y1 < m_map->gridOverlays[l].size() && x1 >= 0 && x1 < m_map->gridOverlays[l][y1].size()) {
+            int o1 = m_map->gridOverlays[l][y1][x1];
+            int rot1 = m_map->gridOverlayRotation[l][y1][x1];
+            if (checkOverlay(o1, rot1, sideFrom1)) return true;
+        }
+    }
+
+    int sideFrom2 = (sideFrom1 + 2) % 4;
+    if (l >= 0 && l < m_map->gridTileOverlays.size()) {
+        if (y2 >= 0 && y2 < m_map->gridTileOverlays[l].size() && x2 >= 0 && x2 < m_map->gridTileOverlays[l][y2].size()) {
+            for (const auto& o : m_map->gridTileOverlays[l][y2][x2]) {
+                if (checkOverlay(o.segmentId, o.rotate, sideFrom2)) return true;
+            }
+        }
+    } else if (l >= 0 && l < m_map->gridOverlays.size()) {
         if (y2 >= 0 && y2 < m_map->gridOverlays[l].size() && x2 >= 0 && x2 < m_map->gridOverlays[l][y2].size()) {
             int o2 = m_map->gridOverlays[l][y2][x2];
-            if (o2 > 0) {
-                auto it = m_map->segments.find(o2);
-                if (it != m_map->segments.end() && it.value()->hasPunch) {
-                    int rot2 = m_map->gridOverlayRotation[l][y2][x2] & 3;
-                    if (rot2 == sideFrom2) return true;
+            int rot2 = m_map->gridOverlayRotation[l][y2][x2];
+            if (checkOverlay(o2, rot2, sideFrom2)) return true;
+        }
+    }
+
+    // 2. Placed entity check (doors, gates, windows on the shared border)
+    float midX = 0, midZ = 0;
+    if (sideFrom1 == 0) {
+        midX = (x1 + 0.5f) * 100.0f;
+        midZ = -y1 * 100.0f;
+    } else if (sideFrom1 == 1) {
+        midX = (x1 + 1.0f) * 100.0f;
+        midZ = -(y1 + 0.5f) * 100.0f;
+    } else if (sideFrom1 == 2) {
+        midX = (x1 + 0.5f) * 100.0f;
+        midZ = -(y1 + 1.0f) * 100.0f;
+    } else if (sideFrom1 == 3) {
+        midX = x1 * 100.0f;
+        midZ = -(y1 + 0.5f) * 100.0f;
+    }
+
+    for (const auto& ent : m_map->placedEntities) {
+        if (ent.floorLayer == l) {
+            bool nearEdge = false;
+            if (sideFrom1 == 0 || sideFrom1 == 2) {
+                // Horizontal edge at midZ, spanning along X
+                nearEdge = (std::abs(ent.z - midZ) <= 20.0f && std::abs(ent.x - midX) <= 50.0f);
+            } else {
+                // Vertical edge at midX, spanning along Z
+                nearEdge = (std::abs(ent.x - midX) <= 20.0f && std::abs(ent.z - midZ) <= 50.0f);
+            }
+
+            if (nearEdge) {
+                auto prof = m_map->entityProfiles.value(ent.bankIndex);
+                QString name = (prof ? prof->name : ent.instanceName).toLower();
+                QString path = (prof ? prof->relPath : QString()).toLower();
+                path.replace("slipgate", "");
+                path.replace("outdoor", "");
+
+                bool isWin = name.contains("window") || name.contains("glass") ||
+                             path.contains("window") || path.contains("glass");
+                bool isDr = (prof && prof->category == EntityCategory::Door) ||
+                            name.contains("door") || (name.contains("gate") && !name.contains("slipgate")) ||
+                            path.contains("doors") || path.contains("\\gate") || path.contains("/gate");
+
+                if (isWin || isDr) {
+                    if (isWindowOut) *isWindowOut = isWin;
+                    return true;
                 }
             }
         }
     }
+
     return false;
+}
+
+bool VisZoneManager::hasDoorwayOnEdge(int l, int x1, int y1, int x2, int y2, int sideFrom1) const {
+    return isDoorOrWindowOnEdge(l, x1, y1, x2, y2, sideFrom1, nullptr);
 }
 
 void VisZoneManager::buildFromMap(std::shared_ptr<FPSCMap> map, const QString& /*dbuPath*/) {
@@ -110,6 +180,26 @@ void VisZoneManager::partitionRooms() {
     if (rows == 0) return;
     int cols = m_map->gridBlocks[0][0].size();
 
+    auto isExplicitCeilingSlab = [&](int l, int x, int y) -> bool {
+        if (l < 0 || l >= layers || y < 0 || y >= rows || x < 0 || x >= cols) return false;
+        int b = m_map->gridBlocks[l][y][x];
+        if (b <= 0) return false;
+        auto seg = m_map->segments.value(b);
+        if (!seg || seg->isScenery) return false;
+
+        // If the tile has walls, it is a wall segment of the room, NOT a flat ceiling slab!
+        int maptile = (l < m_map->gridTileType.size() && y < m_map->gridTileType[l].size() && x < m_map->gridTileType[l][y].size())
+                      ? m_map->gridTileType[l][y][x] : 0;
+        if (maptile > 0 && maptile != 6) return false;
+
+        int gnd = (l < m_map->gridGround.size() && y < m_map->gridGround[l].size() && x < m_map->gridGround[l][y].size())
+                  ? m_map->gridGround[l][y][x] : 0;
+        if (gnd > 1 && (!seg->hasFloorOnThisLayer || seg->visFloor == -1)) return true;
+
+        return (seg->groundMode == 2 && seg->hasRoofOnThisLayer && !seg->hasFloorOnThisLayer) ||
+               (seg->visFloor == -1 && seg->visRoof >= 0);
+    };
+
     auto hasCeilingBarrier = [&](int l, int x, int y) -> bool {
         if (l < 0 || l >= layers || y < 0 || y >= rows || x < 0 || x >= cols) return true;
         int b = m_map->gridBlocks[l][y][x];
@@ -129,9 +219,72 @@ void VisZoneManager::partitionRooms() {
         int sym = (l < m_map->gridSymbol.size() && y < m_map->gridSymbol[l].size() && x < m_map->gridSymbol[l][y].size())
                   ? m_map->gridSymbol[l][y][x] : 0;
         if (sym == 1) return false; // mapsymbol == 1 hides vis.f in FPS Creator
+
+        // If the layer below has an explicit ceiling slab, that ceiling acts as the floor!
+        if (l > 0 && isExplicitCeilingSlab(l - 1, x, y)) return true;
+
         auto seg = m_map->segments.value(b);
         if (!seg || seg->isScenery) return false;
         return (seg->visFloor >= 0 || seg->hasFloorOnThisLayer);
+    };
+
+    auto hasCeilingEntityAt = [&](int l, int x, int y) -> bool {
+        for (const auto& e : m_map->placedEntities) {
+            if (e.floorLayer == l && int(e.x / 100.0f) == x && int(std::abs(e.z) / 100.0f) == y) {
+                auto prof = m_map->entityProfiles.value(e.bankIndex);
+                QString entName = (prof ? prof->name : e.instanceName).toLower();
+                if (entName.contains("skylight") ||
+                    entName.contains("ceiling_window") ||
+                    entName.contains("roof_window") ||
+                    (entName.contains("ceiling") && entName.contains("window"))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
+    auto hasCeilingCappingColumn = [&](int startL, int x, int y) -> bool {
+        // Ceiling capping this room column must be directly overhead within the building
+        int maxL = layers;
+        for (int k = startL; k < maxL; ++k) {
+            int b = m_map->gridBlocks[k][y][x];
+            if (b > 0) {
+                auto seg = m_map->segments.value(b);
+                if (seg && !seg->isScenery) {
+                    if (seg->visRoof >= 0 || seg->hasRoofOnThisLayer || isExplicitCeilingSlab(k, x, y)) {
+                        return true;
+                    }
+                    if (seg->visFloor >= 0 || seg->hasFloorOnThisLayer) {
+                        return true;
+                    }
+                }
+            }
+            // Check if there is an entity capping this tile (e.g. ceiling window)
+            if (hasCeilingEntityAt(k, x, y)) {
+                return true;
+            }
+            // Check if k is a ceiling slab layer covering this room (at least 2 adjacent ceiling slabs)
+            int roofNeighbors = 0;
+            const int ddx[4] = {0, 1, 0, -1};
+            const int ddy[4] = {-1, 0, 1, 0};
+            for (int d = 0; d < 4; ++d) {
+                int nx = x + ddx[d], ny = y + ddy[d];
+                if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
+                    int nb = m_map->gridBlocks[k][ny][nx];
+                    if (nb > 0) {
+                        auto nseg = m_map->segments.value(nb);
+                        if (nseg && !nseg->isScenery) {
+                            if (nseg->visRoof >= 0 || nseg->hasRoofOnThisLayer || isExplicitCeilingSlab(k, nx, ny)) {
+                                roofNeighbors++;
+                            }
+                        }
+                    }
+                }
+            }
+            if (roofNeighbors >= 2) return true;
+        }
+        return false;
     };
 
     auto canPassVertical = [&](int lFrom, int lTo, int x, int y) -> bool {
@@ -142,23 +295,46 @@ void VisZoneManager::partitionRooms() {
         // Vertical pass is ONLY valid between actual placed segment blocks!
         if (bFrom <= 0 || bTo <= 0) return false;
 
-        if (lTo == lFrom + 1) {
-            if (hasCeilingBarrier(lFrom, x, y)) return false;
-            if (hasFloorBarrier(lTo, x, y)) return false;
-            return true;
-        } else if (lTo == lFrom - 1) {
-            if (hasCeilingBarrier(lTo, x, y)) return false;
-            if (hasFloorBarrier(lFrom, x, y)) return false;
-            return true;
-        }
-        return false;
-    };
+        int symFrom = (lFrom < m_map->gridSymbol.size() && y < m_map->gridSymbol[lFrom].size() && x < m_map->gridSymbol[lFrom][y].size())
+                      ? m_map->gridSymbol[lFrom][y][x] : 0;
+        int symTo = (lTo < m_map->gridSymbol.size() && y < m_map->gridSymbol[lTo].size() && x < m_map->gridSymbol[lTo][y].size())
+                    ? m_map->gridSymbol[lTo][y][x] : 0;
 
-    auto hasStructureAbove = [&](int startL, int x, int y) -> bool {
-        for (int k = startL; k < layers; ++k) {
-            if (m_map->gridBlocks[k][y][x] > 0) return true;
+        auto segFrom = m_map->segments.value(bFrom);
+        auto segTo = m_map->segments.value(bTo);
+
+        int lowerL = qMin(lFrom, lTo);
+        int upperL = qMax(lFrom, lTo);
+        auto segUpper = (lTo > lFrom) ? segTo : segFrom;
+        auto segLower = (lTo > lFrom) ? segFrom : segTo;
+        int symUpper = (lTo > lFrom) ? symTo : symFrom;
+
+        // A ceiling slab terminates the room from above; cannot step through it!
+        if (isExplicitCeilingSlab(upperL, x, y)) return false;
+
+        // An exterior roof slab (gridGround == 2 or groundMode == 2) under open sky terminates the interior from above!
+        int gndUpper = (upperL < m_map->gridGround.size() && y < m_map->gridGround[upperL].size() && x < m_map->gridGround[upperL][y].size())
+                       ? m_map->gridGround[upperL][y][x] : 0;
+        if (gndUpper > 1 || (segUpper && segUpper->groundMode == 2)) {
+            if (!hasCeilingCappingColumn(upperL + 1, x, y)) {
+                return false;
+            }
         }
-        return false;
+
+        // Check solid ceiling on lower layer: cannot pass up through a solid ceiling unless connected by stairs or upper has open floor (symUpper == 1)
+        if (hasCeilingBarrier(lowerL, x, y)) {
+            bool hasStairs = (segUpper && segUpper->isStairs) || (segLower && segLower->isStairs);
+            if (!hasStairs && symUpper != 1) return false;
+        }
+
+        // Check solid floor on upper layer: cannot pass down through a solid floor unless open floor/stairs/platform
+        if (hasFloorBarrier(upperL, x, y)) {
+            bool hasStairs = (segUpper && (segUpper->isStairs || segUpper->isPlatformOrGantry)) ||
+                             (segLower && segLower->isStairs);
+            if (!hasStairs && symUpper != 1) return false;
+        }
+
+        return true;
     };
 
     auto canPassHorizontal = [&](int l, int x1, int y1, int x2, int y2, int sideFrom1) -> bool {
@@ -214,11 +390,27 @@ void VisZoneManager::partitionRooms() {
                         bool validTile = false;
                         if (nb > 0) {
                             auto nseg = m_map->segments.value(nb);
-                            if (nseg && !nseg->isScenery) validTile = true;
-                        } else if (c.l > 0 && m_tileZoneMap[c.l - 1][ny][nx] == currentZoneId) {
-                            // Empty air tile directly above our room floor that is capped by a structure above
-                            if (!hasCeilingBarrier(c.l - 1, nx, ny) && hasStructureAbove(c.l, nx, ny)) {
-                                validTile = true;
+                            if (nseg && !nseg->isScenery && !isExplicitCeilingSlab(c.l, nx, ny)) validTile = true;
+                        } else if (c.l > 0) {
+                            // Empty air tile inside the room:
+                            // 1) Not a ceiling entity or ceiling slab on this layer
+                            // 2) Has a ceiling capping the column above (indoors under a roof)
+                            // 3) Has an indoor floor/story below (either continuing this zone, or a lower floor/room slab)
+                            if (!hasCeilingEntityAt(c.l, nx, ny) && !isExplicitCeilingSlab(c.l, nx, ny) && hasCeilingCappingColumn(c.l + 1, nx, ny)) {
+                                if (m_tileZoneMap[c.l - 1][ny][nx] == currentZoneId) {
+                                    if (!isExplicitCeilingSlab(c.l - 1, nx, ny)) {
+                                        validTile = true;
+                                    }
+                                } else if (m_tileZoneMap[c.l - 1][ny][nx] >= 0 || m_map->gridBlocks[c.l - 1][ny][nx] > 0) {
+                                    int gndBelow = (c.l - 1 < m_map->gridGround.size() && ny < m_map->gridGround[c.l - 1].size() && nx < m_map->gridGround[c.l - 1][ny].size())
+                                                   ? m_map->gridGround[c.l - 1][ny][nx] : 0;
+                                    int bBelow = m_map->gridBlocks[c.l - 1][ny][nx];
+                                    auto segBelow = m_map->segments.value(bBelow);
+                                    bool isExteriorRoofBelow = (gndBelow > 1 || (segBelow && segBelow->groundMode == 2)) && !hasCeilingCappingColumn(c.l, nx, ny);
+                                    if (!isExteriorRoofBelow) {
+                                        validTile = true;
+                                    }
+                                }
                             }
                         }
                         if (validTile && canPassHorizontal(c.l, c.x, c.y, nx, ny, d)) {
@@ -235,8 +427,16 @@ void VisZoneManager::partitionRooms() {
                 bool allowUp = false;
                 if (nbUp > 0) {
                     allowUp = canPassVertical(c.l, c.l + 1, c.x, c.y);
-                } else if (!hasCeilingBarrier(c.l, c.x, c.y) && hasStructureAbove(c.l + 1, c.x, c.y)) {
-                    allowUp = true;
+                } else if (!hasCeilingEntityAt(c.l + 1, c.x, c.y) && !isExplicitCeilingSlab(c.l + 1, c.x, c.y)) {
+                    // Empty air above: can step up ONLY IF layer c.l + 1 does not contain the ceiling entity itself,
+                    // layer c.l is not an explicit ceiling slab, layer c.l is not an exterior roof slab,
+                    // and there is a ceiling directly capping the room column!
+                    int gndL = (c.l < m_map->gridGround.size() && c.y < m_map->gridGround[c.l].size() && c.x < m_map->gridGround[c.l][c.y].size())
+                               ? m_map->gridGround[c.l][c.y][c.x] : 0;
+                    bool isExteriorRoof = (gndL > 1) && !hasCeilingCappingColumn(c.l + 1, c.x, c.y);
+                    if (!isExteriorRoof && !isExplicitCeilingSlab(c.l, c.x, c.y) && hasCeilingCappingColumn(c.l + 1, c.x, c.y)) {
+                        allowUp = true;
+                    }
                 }
                 if (allowUp) {
                     m_tileZoneMap[c.l + 1][c.y][c.x] = currentZoneId;
@@ -246,7 +446,17 @@ void VisZoneManager::partitionRooms() {
 
             // Vertical down neighbor
             if (c.l - 1 >= 0 && m_tileZoneMap[c.l - 1][c.y][c.x] < 0) {
-                if (canPassVertical(c.l, c.l - 1, c.x, c.y)) {
+                int nbDown = m_map->gridBlocks[c.l - 1][c.y][c.x];
+                bool allowDown = false;
+                if (nbDown > 0 && m_map->gridBlocks[c.l][c.y][c.x] > 0) {
+                    allowDown = canPassVertical(c.l, c.l - 1, c.x, c.y);
+                } else if (m_map->gridBlocks[c.l][c.y][c.x] == 0 && nbDown == 0) {
+                    // Empty air stepping down into empty air under higher ceiling
+                    if (hasCeilingCappingColumn(c.l, c.x, c.y)) {
+                        allowDown = true;
+                    }
+                }
+                if (allowDown) {
                     m_tileZoneMap[c.l - 1][c.y][c.x] = currentZoneId;
                     q.push_back({c.l - 1, c.x, c.y});
                 }
@@ -275,7 +485,32 @@ void VisZoneManager::partitionRooms() {
                 if (b <= 0 || m_tileZoneMap[l][y][x] >= 0) continue;
                 auto seg = m_map->segments.value(b);
                 if (!seg || seg->isScenery) continue;
+                if (seg->visFloor == -1 && seg->visRoof >= 0 && !seg->hasFloorOnThisLayer) continue; // Pure ceiling slabs never seed rooms
+                int gnd = (l < m_map->gridGround.size() && y < m_map->gridGround[l].size() && x < m_map->gridGround[l][y].size())
+                          ? m_map->gridGround[l][y][x] : 0;
+                if (gnd > 1 && !seg->hasFloorOnThisLayer && !seg->isPlatformOrGantry && !seg->isStairs) continue; // Skip roof/ceiling slabs
+                if ((gnd > 1 || seg->groundMode == 2) && !hasCeilingCappingColumn(l + 1, x, y)) continue; // Exterior roof under open sky
                 if (!hasFloorBarrier(l, x, y)) continue;
+
+                floodFillZone(l, x, y);
+            }
+        }
+    }
+
+    // Pass 2: Seed any remaining placed room segments (e.g. upper mezzanines, gantries, open shafts)
+    for (int l = 0; l < layers; ++l) {
+        for (int y = 0; y < rows; ++y) {
+            for (int x = 0; x < cols; ++x) {
+                int b = m_map->gridBlocks[l][y][x];
+                if (b <= 0 || m_tileZoneMap[l][y][x] >= 0) continue;
+                auto seg = m_map->segments.value(b);
+                if (!seg || seg->isScenery) continue;
+                if (seg->visFloor == -1 && seg->visRoof >= 0 && !seg->hasFloorOnThisLayer) continue; // Pure ceiling slabs never seed rooms
+                if (seg->visFloor == -1 && !seg->hasFloorOnThisLayer && !seg->isPlatformOrGantry && !seg->isStairs) continue; // Pure walls never seed rooms
+                int gnd = (l < m_map->gridGround.size() && y < m_map->gridGround[l].size() && x < m_map->gridGround[l][y].size())
+                          ? m_map->gridGround[l][y][x] : 0;
+                if (gnd > 1 && !seg->hasFloorOnThisLayer && !seg->isPlatformOrGantry && !seg->isStairs) continue; // Skip roof/ceiling slabs
+                if ((gnd > 1 || seg->groundMode == 2) && !hasCeilingCappingColumn(l + 1, x, y)) continue; // Exterior roof under open sky
 
                 floodFillZone(l, x, y);
             }
@@ -289,74 +524,126 @@ void VisZoneManager::buildPortals() {
     int rows = m_map->gridBlocks[0].size();
     int cols = m_map->gridBlocks[0][0].size();
 
-    auto addPortal = [&](int l, int x1, int y1, int x2, int y2, int sideFrom1, bool isHorizontal) {
-        int z1 = m_tileZoneMap[l][y1][x1];
-        int z2 = m_tileZoneMap[l][y2][x2];
-        if (z1 >= 0 && z2 >= 0 && z1 != z2) {
-            // A portal between two adjacent zones can ONLY exist if:
-            // 1. There is an actual doorway / window / cutout on this edge, OR
-            // 2. There is NO solid wall between them (open archway / open passage connecting two rooms)
-            bool doorway = hasDoorwayOnEdge(l, x1, y1, x2, y2, sideFrom1);
-            int sideFrom2 = (sideFrom1 + 2) % 4;
-            bool wall1 = isMaptileWallPresent(l, x1, y1, sideFrom1);
-            bool wall2 = isMaptileWallPresent(l, x2, y2, sideFrom2);
-            bool solidWall = (wall1 || wall2);
+    auto addPortal = [&](int l, int x1, int y1, int x2, int y2, int sideFrom1) {
+        int z1 = (y1 >= 0 && y1 < rows && x1 >= 0 && x1 < cols) ? m_tileZoneMap[l][y1][x1] : -1;
+        int z2 = (y2 >= 0 && y2 < rows && x2 >= 0 && x2 < cols) ? m_tileZoneMap[l][y2][x2] : -1;
 
-            // If there is a solid wall and NO doorway/punch, this wall OCCLUDES visibility; it is NOT a portal!
-            if (solidWall && !doorway) {
+        if (z1 < 0 && z2 < 0) return;
+        if (z1 == z2) return;
+
+        // Standardize: z1 is always the room (>= 0), z2 is the neighbor (room or -1)
+        int rx1 = x1, ry1 = y1, rx2 = x2, ry2 = y2, rside = sideFrom1;
+        if (z1 < 0) {
+            std::swap(z1, z2);
+            std::swap(rx1, rx2);
+            std::swap(ry1, ry2);
+            rside = (rside + 2) % 4;
+        }
+
+        int b1 = (ry1 >= 0 && ry1 < rows && rx1 >= 0 && rx1 < cols) ? m_map->gridBlocks[l][ry1][rx1] : 0;
+        if (b1 <= 0) return;
+
+        bool isWindow = false;
+        bool hasAperture = isDoorOrWindowOnEdge(l, rx1, ry1, rx2, ry2, rside, &isWindow);
+
+        // Deduplication check: only one portal between (rx1, ry1) and (rx2, ry2)
+        for (const auto& existing : m_portals) {
+            if (existing.floor == l &&
+                ((existing.tileA == QPoint(rx1, ry1) && existing.tileB == QPoint(rx2, ry2)) ||
+                 (existing.tileA == QPoint(rx2, ry2) && existing.tileB == QPoint(rx1, ry1)))) {
                 return;
             }
+        }
 
-            // Check if portal already exists between these two tiles
-            for (const auto& existing : m_portals) {
-                if (existing.floor == l &&
-                    ((existing.tileA == QPoint(x1, y1) && existing.tileB == QPoint(x2, y2)) ||
-                     (existing.tileA == QPoint(x2, y2) && existing.tileB == QPoint(x1, y1)))) {
-                    return;
-                }
-            }
+        if (z2 >= 0) {
+            // Case 1: Inter-zone portal between two indoor rooms
+            int b2 = (ry2 >= 0 && ry2 < rows && rx2 >= 0 && rx2 < cols) ? m_map->gridBlocks[l][ry2][rx2] : 0;
+            if (b2 <= 0) return;
+
+            int sideFrom2 = (rside + 2) % 4;
+            bool wall1 = isMaptileWallPresent(l, rx1, ry1, rside);
+            bool wall2 = isMaptileWallPresent(l, rx2, ry2, sideFrom2);
+            bool solidWall = (wall1 || wall2);
+
+            // If solid wall and NO aperture, occluded!
+            if (solidWall && !hasAperture) return;
 
             MapPortal portal;
             portal.id = static_cast<int>(m_portals.size());
             portal.floor = l;
-            portal.tileA = QPoint(x1, y1);
-            portal.tileB = QPoint(x2, y2);
+            portal.tileA = QPoint(rx1, ry1);
+            portal.tileB = QPoint(rx2, ry2);
             portal.zoneA = z1;
             portal.zoneB = z2;
+            portal.isExterior = false;
+            portal.type = isWindow ? PortalType::InterZoneWindow : PortalType::InterZoneDoorway;
 
-            if (isHorizontal) {
-                // Separates (x1, y1) and (x1, y1+1)
-                float wy = (y1 + 1) * 100.0f; // POSITIVE Y in MapCanvas
-                portal.lineWorld = QLineF(x1 * 100.0f, wy, (x1 + 1) * 100.0f, wy);
+            if (rside == 0) {
+                portal.lineWorld = QLineF(rx1 * 100.0f, ry1 * 100.0f, (rx1 + 1) * 100.0f, ry1 * 100.0f);
+            } else if (rside == 1) {
+                portal.lineWorld = QLineF((rx1 + 1) * 100.0f, ry1 * 100.0f, (rx1 + 1) * 100.0f, (ry1 + 1) * 100.0f);
+            } else if (rside == 2) {
+                portal.lineWorld = QLineF(rx1 * 100.0f, (ry1 + 1) * 100.0f, (rx1 + 1) * 100.0f, (ry1 + 1) * 100.0f);
             } else {
-                // Separates (x1, y1) and (x1+1, y1)
-                float wx = (x1 + 1) * 100.0f;
-                portal.lineWorld = QLineF(wx, y1 * 100.0f, wx, (y1 + 1) * 100.0f); // POSITIVE Y in MapCanvas
+                portal.lineWorld = QLineF(rx1 * 100.0f, ry1 * 100.0f, rx1 * 100.0f, (ry1 + 1) * 100.0f);
             }
 
-            portal.name = QString("Portal #%1: Zone %2 <-> Zone %3")
-                          .arg(portal.id + 1).arg(z1 + 1).arg(z2 + 1);
+            if (isWindow) {
+                portal.name = QString("Window #%1: Zone %2 <-> Zone %3").arg(portal.id + 1).arg(z1 + 1).arg(z2 + 1);
+            } else {
+                portal.name = QString("Portal #%1: Zone %2 <-> Zone %3").arg(portal.id + 1).arg(z1 + 1).arg(z2 + 1);
+            }
 
             m_zones[z1].portalIndices.push_back(portal.id);
             m_zones[z2].portalIndices.push_back(portal.id);
             m_portals.push_back(portal);
+
+        } else {
+            // Case 2: Exterior portal from indoor room to outside / sky (z2 == -1)
+            if (!hasAperture) return;
+
+            MapPortal portal;
+            portal.id = static_cast<int>(m_portals.size());
+            portal.floor = l;
+            portal.tileA = QPoint(rx1, ry1);
+            portal.tileB = QPoint(rx2, ry2);
+            portal.zoneA = z1;
+            portal.zoneB = -1;
+            portal.isExterior = true;
+            portal.type = isWindow ? PortalType::ExteriorWindow : PortalType::ExteriorDoorway;
+
+            if (rside == 0) {
+                portal.lineWorld = QLineF(rx1 * 100.0f, ry1 * 100.0f, (rx1 + 1) * 100.0f, ry1 * 100.0f);
+            } else if (rside == 1) {
+                portal.lineWorld = QLineF((rx1 + 1) * 100.0f, ry1 * 100.0f, (rx1 + 1) * 100.0f, (ry1 + 1) * 100.0f);
+            } else if (rside == 2) {
+                portal.lineWorld = QLineF(rx1 * 100.0f, (ry1 + 1) * 100.0f, (rx1 + 1) * 100.0f, (ry1 + 1) * 100.0f);
+            } else {
+                portal.lineWorld = QLineF(rx1 * 100.0f, ry1 * 100.0f, rx1 * 100.0f, (ry1 + 1) * 100.0f);
+            }
+
+            if (isWindow) {
+                portal.name = QString("Exterior Window #%1: Zone %2 ➔ Sky").arg(portal.id + 1).arg(z1 + 1);
+            } else {
+                portal.name = QString("Exterior Door #%1: Zone %2 ➔ Outdoors").arg(portal.id + 1).arg(z1 + 1);
+            }
+
+            m_zones[z1].portalIndices.push_back(portal.id);
+            m_portals.push_back(portal);
         }
     };
 
-    // 1. Grid boundary portals between adjacent rooms
+    const int dx[4] = {0, 1, 0, -1};
+    const int dy[4] = {-1, 0, 1, 0};
+
     for (int l = 0; l < layers; ++l) {
         for (int y = 0; y < rows; ++y) {
             for (int x = 0; x < cols; ++x) {
                 if (m_tileZoneMap[l][y][x] < 0) continue;
-
-                // Check East edge (sideFrom1 = 1)
-                if (x + 1 < cols && m_tileZoneMap[l][y][x + 1] >= 0) {
-                    addPortal(l, x, y, x + 1, y, 1, false);
-                }
-
-                // Check South edge (sideFrom1 = 2)
-                if (y + 1 < rows && m_tileZoneMap[l][y + 1][x] >= 0) {
-                    addPortal(l, x, y, x, y + 1, 2, true);
+                for (int s = 0; s < 4; ++s) {
+                    int nx = x + dx[s];
+                    int ny = y + dy[s];
+                    addPortal(l, x, y, nx, ny, s);
                 }
             }
         }
@@ -448,13 +735,27 @@ void VisZoneManager::pruneOpenRoofZones() {
     std::vector<VisZone> cleanZones;
     int nextId = 0;
 
+    int layers = m_map ? static_cast<int>(m_map->gridBlocks.size()) : 0;
+    int rows = (layers > 0) ? static_cast<int>(m_map->gridBlocks[0].size()) : 0;
+    int cols = (rows > 0) ? static_cast<int>(m_map->gridBlocks[0][0].size()) : 0;
+
     for (size_t i = 0; i < m_zones.size(); ++i) {
         auto& z = m_zones[i];
-        // Count open exterior edges (edges facing outside the zone with no wall)
+        // Count open exterior edges (edges facing outside the zone with no wall on either side)
         int openEdges = 0;
+        int coveredTiles = 0;
+        bool hasAnyWalls = false;
         for (const auto& pair : z.floorTiles) {
             int fl = pair.first;
             for (const auto& pt : pair.second) {
+                int mt = (fl < static_cast<int>(m_map->gridTileType.size()) &&
+                          pt.y() < static_cast<int>(m_map->gridTileType[fl].size()) &&
+                          pt.x() < static_cast<int>(m_map->gridTileType[fl][pt.y()].size()))
+                         ? m_map->gridTileType[fl][pt.y()][pt.x()] : 0;
+                if (mt > 0 && mt != 6) {
+                    hasAnyWalls = true;
+                }
+
                 const int dx[4] = {0, 1, 0, -1};
                 const int dy[4] = {-1, 0, 1, 0};
                 for (int s = 0; s < 4; ++s) {
@@ -467,19 +768,43 @@ void VisZoneManager::pruneOpenRoofZones() {
                         }
                     }
                     if (!inZone) {
-                        if (!isMaptileWallPresent(fl, pt.x(), pt.y(), s)) {
+                        bool myWall = isMaptileWallPresent(fl, pt.x(), pt.y(), s);
+                        int oppSide = (s + 2) % 4;
+                        bool neighborWall = (nx >= 0 && nx < cols && ny >= 0 && ny < rows) &&
+                                            isMaptileWallPresent(fl, nx, ny, oppSide);
+                        if (!myWall && !neighborWall) {
                             openEdges++;
                         }
                     }
                 }
+                bool tileCovered = false;
+                if (fl + 1 < layers && pt.y() < rows && pt.x() < cols) {
+                    if (m_map->gridBlocks[fl + 1][pt.y()][pt.x()] > 0) {
+                        tileCovered = true;
+                    }
+                }
+                int b = m_map->gridBlocks[fl][pt.y()][pt.x()];
+                if (b > 0) {
+                    int gnd = (fl < static_cast<int>(m_map->gridGround.size()) &&
+                               pt.y() < static_cast<int>(m_map->gridGround[fl].size()) &&
+                               pt.x() < static_cast<int>(m_map->gridGround[fl][pt.y()].size()))
+                              ? m_map->gridGround[fl][pt.y()][pt.x()] : 0;
+                    auto seg = m_map->segments.value(b);
+                    // Standard room block on this layer with roof
+                    if (seg && gnd != 2 && (seg->visRoof >= 0 || seg->hasRoofOnThisLayer)) {
+                        tileCovered = true;
+                    }
+                }
+                if (tileCovered) {
+                    coveredTiles++;
+                }
             }
         }
 
-        // A valid room or column MUST either:
-        // 1) Be connected via doorways/portals (portalIndices > 0)
-        // 2) Be a fully enclosed geometry (openEdges == 0, e.g. standalone enclosed room or solid pillar)
-        // If it has NO portals and has open edges to the void, it is an unenclosed exterior roof/ledge!
-        if (z.portalIndices.empty() && openEdges > 0) {
+        bool hasCeilingAbove = (coveredTiles > static_cast<int>(z.tiles.size() * 0.5f));
+
+        // An unenclosed exterior roof has NO portals, NO ceiling above, and open edges to the void!
+        if (z.portalIndices.empty() && !hasCeilingAbove && openEdges > 0) {
             for (const auto& pair : z.floorTiles) {
                 int fl = pair.first;
                 for (const auto& pt : pair.second) {
@@ -517,13 +842,47 @@ void VisZoneManager::pruneOpenRoofZones() {
         }
     }
 
-    // Update portal zone IDs
+    // Update portal zone IDs and remove dead portals connected to pruned zones
+    std::vector<MapPortal> cleanPortals;
     for (auto& portal : m_portals) {
-        if (portal.zoneA >= 0 && portal.zoneA < static_cast<int>(oldToNew.size())) {
-            portal.zoneA = oldToNew[portal.zoneA];
+        int newA = (portal.zoneA >= 0 && portal.zoneA < static_cast<int>(oldToNew.size())) ? oldToNew[portal.zoneA] : -1;
+        if (portal.isExterior) {
+            if (newA >= 0) {
+                portal.id = static_cast<int>(cleanPortals.size());
+                portal.zoneA = newA;
+                portal.zoneB = -1;
+                if (portal.type == PortalType::ExteriorWindow) {
+                    portal.name = QString("Exterior Window #%1: Zone %2 ➔ Sky").arg(portal.id + 1).arg(newA + 1);
+                } else {
+                    portal.name = QString("Exterior Door #%1: Zone %2 ➔ Outdoors").arg(portal.id + 1).arg(newA + 1);
+                }
+                cleanPortals.push_back(portal);
+            }
+        } else {
+            int newB = (portal.zoneB >= 0 && portal.zoneB < static_cast<int>(oldToNew.size())) ? oldToNew[portal.zoneB] : -1;
+            if (newA >= 0 && newB >= 0 && newA != newB) {
+                portal.id = static_cast<int>(cleanPortals.size());
+                portal.zoneA = newA;
+                portal.zoneB = newB;
+                if (portal.type == PortalType::InterZoneWindow) {
+                    portal.name = QString("Window #%1: Zone %2 <-> Zone %3").arg(portal.id + 1).arg(newA + 1).arg(newB + 1);
+                } else {
+                    portal.name = QString("Portal #%1: Zone %2 <-> Zone %3").arg(portal.id + 1).arg(newA + 1).arg(newB + 1);
+                }
+                cleanPortals.push_back(portal);
+            }
         }
-        if (portal.zoneB >= 0 && portal.zoneB < static_cast<int>(oldToNew.size())) {
-            portal.zoneB = oldToNew[portal.zoneB];
+    }
+    m_portals = std::move(cleanPortals);
+    for (auto& cz : cleanZones) {
+        cz.portalIndices.clear();
+    }
+    for (size_t pid = 0; pid < m_portals.size(); ++pid) {
+        if (m_portals[pid].zoneA >= 0 && m_portals[pid].zoneA < static_cast<int>(cleanZones.size())) {
+            cleanZones[m_portals[pid].zoneA].portalIndices.push_back(static_cast<int>(pid));
+        }
+        if (m_portals[pid].zoneB >= 0 && m_portals[pid].zoneB < static_cast<int>(cleanZones.size())) {
+            cleanZones[m_portals[pid].zoneB].portalIndices.push_back(static_cast<int>(pid));
         }
     }
 

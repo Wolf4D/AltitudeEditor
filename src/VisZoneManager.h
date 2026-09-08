@@ -10,6 +10,13 @@
 #include "FPSCData.h"
 #include "UniverseDBUParser.h"
 
+enum class PortalType {
+    InterZoneDoorway,
+    InterZoneWindow,
+    ExteriorDoorway,
+    ExteriorWindow
+};
+
 struct MapPortal {
     int id = 0;
     int floor = 0;
@@ -20,6 +27,8 @@ struct MapPortal {
     QLineF lineWorld;  // 2D world line (X, -Z)
     QString name;
     bool isVertical = false;
+    bool isExterior = false;
+    PortalType type = PortalType::InterZoneDoorway;
 };
 
 #include <map>
@@ -71,6 +80,7 @@ public:
 
     bool isMaptileWallPresent(int l, int x, int y, int side) const;
     bool hasDoorwayOnEdge(int l, int x1, int y1, int x2, int y2, int sideFrom1) const;
+    bool isDoorOrWindowOnEdge(int l, int x1, int y1, int x2, int y2, int sideFrom1, bool* isWindowOut = nullptr) const;
 
 private:
     std::shared_ptr<FPSCMap> m_map;

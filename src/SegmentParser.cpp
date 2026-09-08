@@ -160,21 +160,69 @@ std::shared_ptr<FPSCSegment> SegmentParser::parse(const QString& relPath, int se
     seg->hasFloorOnThisLayer = (seg->visFloor >= 0);
     seg->hasRoofOnThisLayer = (seg->visRoof >= 0);
 
-    bool isGantryPath = seg->relPath.contains("gantry", Qt::CaseInsensitive) ||
-                        seg->name.contains("gantry", Qt::CaseInsensitive) ||
-                        seg->relPath.contains("platform", Qt::CaseInsensitive) ||
-                        seg->name.contains("platform", Qt::CaseInsensitive) ||
-                        seg->relPath.contains("catwalk", Qt::CaseInsensitive) ||
-                        seg->name.contains("catwalk", Qt::CaseInsensitive) ||
-                        seg->relPath.contains("walkway", Qt::CaseInsensitive) ||
-                        seg->name.contains("walkway", Qt::CaseInsensitive);
-    bool isStairsPath = seg->relPath.contains("stair", Qt::CaseInsensitive) ||
-                        seg->name.contains("stair", Qt::CaseInsensitive) ||
-                        seg->relPath.contains("step", Qt::CaseInsensitive) ||
-                        seg->name.contains("step", Qt::CaseInsensitive);
+    // Check if fake window or fake door (has "fake" in name/relPath, or has a blank mesh backing)
+    seg->isFake = seg->name.contains("fake", Qt::CaseInsensitive) ||
+                  seg->relPath.contains("fake", Qt::CaseInsensitive);
 
-    if (isGantryPath || isStairsPath) {
-        if (isStairsPath) {
+    for (const auto& p : seg->parts) {
+        if (p.meshName.contains("blank", Qt::CaseInsensitive)) {
+            seg->isFake = true;
+            break;
+        }
+    }
+
+    seg->isWindow = seg->name.contains("window", Qt::CaseInsensitive) ||
+                    seg->relPath.contains("window", Qt::CaseInsensitive);
+    if (!seg->isWindow) {
+        for (const auto& p : seg->parts) {
+            if (p.meshName.contains("window", Qt::CaseInsensitive) ||
+                p.meshName.contains("win_", Qt::CaseInsensitive) ||
+                p.meshName.contains("glass", Qt::CaseInsensitive) ||
+                p.meshName.contains("fullview", Qt::CaseInsensitive)) {
+                seg->isWindow = true;
+                break;
+            }
+        }
+    }
+
+    // Structural type classification from .fps specification:
+    // A. Door / Window: has CSG punch cutout or door naming (real opening only, not fake!)
+    bool isDoor = !seg->isFake && (seg->hasPunch ||
+                  seg->name.contains("door", Qt::CaseInsensitive) ||
+                  seg->name.contains("gate", Qt::CaseInsensitive));
+
+    // B. Enclosed Room / Ceiling Cap / Shaft: standard room block with floor/roof/wall limbs (visoverlay == 0)
+    bool isRoomOrCeiling = (seg->visOverlay == 0 && (seg->visRoof >= 0 || (seg->visFloor >= 0 && seg->visWallB >= 0))) ||
+                           seg->name.contains("(top)", Qt::CaseInsensitive) ||
+                           seg->name.contains("(base)", Qt::CaseInsensitive) ||
+                           seg->name.contains("(roof)", Qt::CaseInsensitive) ||
+                           seg->name.endsWith(" top", Qt::CaseInsensitive) ||
+                           seg->name.endsWith(" roof", Qt::CaseInsensitive);
+
+    bool isGantry = false;
+    bool isStairs = false;
+
+    if (!isDoor && !isRoomOrCeiling) {
+        // Physical geometry check: stairs flights have parts with stepping vertical heights (offY)
+        float minY = 9999.0f, maxY = -9999.0f;
+        for (const auto& p : seg->parts) {
+            minY = qMin(minY, p.offY);
+            maxY = qMax(maxY, p.offY);
+        }
+        bool hasSteppedGeometry = (seg->parts.size() >= 4 && (maxY - minY) >= 40.0f);
+
+        QString lowerName = seg->name.trimmed().toLower();
+        if (hasSteppedGeometry || lowerName.contains("stairs") || lowerName.contains("staircase") ||
+            lowerName.contains("step") || (lowerName.contains("stair") && !lowerName.contains("stairwell"))) {
+            isStairs = true;
+        } else if (lowerName.contains("gantry") || lowerName.contains("platform") ||
+                   lowerName.contains("catwalk") || lowerName.contains("walkway")) {
+            isGantry = true;
+        }
+    }
+
+    if (isGantry || isStairs) {
+        if (isStairs) {
             seg->isStairs = true;
         } else {
             seg->isPlatformOrGantry = true;

@@ -10,6 +10,7 @@
 #include <QFont>
 #include <QPen>
 #include <QBrush>
+#include <QAbstractItemView>
 
 // =========================================================================
 // TileInteractiveWidget Implementation
@@ -308,7 +309,7 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
     m_conflictDiagram = new ConflictDiagramWidget(m_tabConflict);
     confLayout->addWidget(m_conflictDiagram);
 
-    // 3 Action Buttons / Cards
+    // 2 Action Buttons / Cards
     QVBoxLayout* actionsLayout = new QVBoxLayout();
     actionsLayout->setSpacing(8);
 
@@ -321,11 +322,6 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
     m_btnRemoveWallB->setStyleSheet(QStringLiteral("QPushButton { font-weight: bold; background-color: #243d26; color: #72f07b; border: 1px solid #3b6b3e; border-radius: 6px; padding: 10px 16px; text-align: left; font-size: 12px; }"
                                                    "QPushButton:hover { background-color: #2f5432; color: #94ff9c; }"));
     actionsLayout->addWidget(m_btnRemoveWallB);
-
-    m_btnOpenBoth = new QPushButton(m_tabConflict);
-    m_btnOpenBoth->setStyleSheet(QStringLiteral("QPushButton { font-weight: bold; background-color: #1e3f52; color: #5bc4ff; border: 1px solid #2f5f7a; border-radius: 6px; padding: 10px 16px; text-align: left; font-size: 12px; }"
-                                                "QPushButton:hover { background-color: #26536b; color: #8dd7ff; }"));
-    actionsLayout->addWidget(m_btnOpenBoth);
     confLayout->addLayout(actionsLayout);
 
     QHBoxLayout* confBottom = new QHBoxLayout();
@@ -374,13 +370,31 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
     coordRow->addStretch();
     manLayout->addLayout(coordRow);
 
-    // Segment selector
+    // Segment selector with search filter
     QHBoxLayout* segRow = new QHBoxLayout();
     m_lblSegmentAsset = new QLabel(tr("Segment Asset:"), m_tabManual);
     segRow->addWidget(m_lblSegmentAsset);
+
+    m_txtSegmentFilter = new QLineEdit(m_tabManual);
+    m_txtSegmentFilter->setPlaceholderText(tr("🔍 Filter..."));
+    m_txtSegmentFilter->setClearButtonEnabled(true);
+    m_txtSegmentFilter->setMaximumWidth(150);
+    m_txtSegmentFilter->setStyleSheet(QStringLiteral(
+        "QLineEdit { background-color: #1a232c; color: #cad8e6; border: 1px solid #364858; border-radius: 4px; padding: 4px 8px; font-size: 11px; }"
+        "QLineEdit:focus { border-color: #00b4d8; }"
+    ));
+    segRow->addWidget(m_txtSegmentFilter);
+
     m_cmbSegment = new QComboBox(m_tabManual);
     m_cmbSegment->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_cmbSegment->installEventFilter(wheelFilter);
+    m_cmbSegment->setMaxVisibleItems(10);
+    m_cmbSegment->view()->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    m_cmbSegment->setStyleSheet(QStringLiteral(
+        "QComboBox { combobox-popup: 0; background-color: #1a232c; color: #cad8e6; border: 1px solid #364858; border-radius: 4px; padding: 5px 8px; }"
+        "QComboBox QAbstractItemView { max-height: 240px; background-color: #182028; color: #cad8e6; selection-background-color: #2e537a; outline: none; border: 1px solid #364858; }"
+        "QComboBox QAbstractItemView::item { min-height: 22px; padding: 2px 6px; }"
+    ));
     segRow->addWidget(m_cmbSegment);
     manLayout->addLayout(segRow);
 
@@ -428,6 +442,13 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
     rightBox->addWidget(m_lblPresets);
     m_cmbPreset = new QComboBox(m_tabManual);
     m_cmbPreset->installEventFilter(wheelFilter);
+    m_cmbPreset->setMaxVisibleItems(10);
+    m_cmbPreset->view()->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    m_cmbPreset->setStyleSheet(QStringLiteral(
+        "QComboBox { combobox-popup: 0; background-color: #1a232c; color: #cad8e6; border: 1px solid #364858; border-radius: 4px; padding: 5px 8px; }"
+        "QComboBox QAbstractItemView { max-height: 240px; background-color: #182028; color: #cad8e6; selection-background-color: #2e537a; outline: none; border: 1px solid #364858; }"
+        "QComboBox QAbstractItemView::item { min-height: 22px; padding: 2px 6px; }"
+    ));
     m_cmbPreset->addItem(tr("-- Choose Preset --"));
     m_cmbPreset->addItem(tr("🔲 All 4 Walls (Enclosed Room)"));
     m_cmbPreset->addItem(tr("🔲 3 Walls (U-Shape)"));
@@ -446,6 +467,8 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
     techGrid->addWidget(m_lblGround, 0, 0);
     m_cmbGround = new QComboBox(m_grpTechnical);
     m_cmbGround->installEventFilter(wheelFilter);
+    m_cmbGround->setMaxVisibleItems(10);
+    m_cmbGround->setStyleSheet(QStringLiteral("QComboBox { combobox-popup: 0; }"));
     m_cmbGround->addItem(tr("0: Room Floor"), 0);
     m_cmbGround->addItem(tr("1: Interior 2"), 1);
     m_cmbGround->addItem(tr("2: Roof/Ceiling Slab"), 2);
@@ -470,6 +493,8 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
     techGrid->addWidget(m_lblRotation, 1, 2);
     m_cmbRotation = new QComboBox(m_grpTechnical);
     m_cmbRotation->installEventFilter(wheelFilter);
+    m_cmbRotation->setMaxVisibleItems(10);
+    m_cmbRotation->setStyleSheet(QStringLiteral("QComboBox { combobox-popup: 0; }"));
     m_cmbRotation->addItem(tr("0°"), 0);
     m_cmbRotation->addItem(tr("90°"), 1);
     m_cmbRotation->addItem(tr("180°"), 2);
@@ -480,6 +505,8 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
     techGrid->addWidget(m_lblOrientation, 2, 0);
     m_cmbOrientation = new QComboBox(m_grpTechnical);
     m_cmbOrientation->installEventFilter(wheelFilter);
+    m_cmbOrientation->setMaxVisibleItems(10);
+    m_cmbOrientation->setStyleSheet(QStringLiteral("QComboBox { combobox-popup: 0; }"));
     m_cmbOrientation->addItem(tr("0°"), 0);
     m_cmbOrientation->addItem(tr("90°"), 1);
     m_cmbOrientation->addItem(tr("180°"), 2);
@@ -537,12 +564,12 @@ SegmentEditorDialog::SegmentEditorDialog(std::shared_ptr<FPSCMap> map, std::shar
     connect(m_cmbGround, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SegmentEditorDialog::onTechnicalParamChanged);
     connect(m_spnSymbol, QOverload<int>::of(&QSpinBox::valueChanged), this, &SegmentEditorDialog::onTechnicalParamChanged);
 
+    connect(m_txtSegmentFilter, &QLineEdit::textChanged, this, &SegmentEditorDialog::onSegmentFilterChanged);
     connect(m_cmbSegment, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SegmentEditorDialog::onSegmentComboChanged);
     connect(m_btnApply, &QPushButton::clicked, this, &SegmentEditorDialog::onApplyCell);
 
     connect(m_btnRemoveWallA, &QPushButton::clicked, this, &SegmentEditorDialog::onResolveRemoveWallA);
     connect(m_btnRemoveWallB, &QPushButton::clicked, this, &SegmentEditorDialog::onResolveRemoveWallB);
-    connect(m_btnOpenBoth, &QPushButton::clicked, this, &SegmentEditorDialog::onResolveOpenBoth);
     connect(m_btnGoManual, &QPushButton::clicked, this, &SegmentEditorDialog::onSwitchToManualEditor);
 
     setMap(m_map);
@@ -559,18 +586,50 @@ void SegmentEditorDialog::setMap(std::shared_ptr<FPSCMap> map) {
     m_spnX->setRange(0, m_map->header.maxX);
     m_spnY->setRange(0, m_map->header.maxY);
 
+    populateSegmentCombo(m_txtSegmentFilter ? m_txtSegmentFilter->text() : QString());
+
+    m_updatingUi = false;
+    loadCellData();
+}
+
+void SegmentEditorDialog::populateSegmentCombo(const QString& filter) {
+    if (!m_map) return;
+
+    int curSegId = m_cmbSegment->currentData().toInt();
+
+    m_cmbSegment->blockSignals(true);
     m_cmbSegment->clear();
-    m_cmbSegment->addItem(tr("(0) None / Empty Air"), 0);
+
+    QString f = filter.trimmed().toLower();
+
+    // Check if "(0) None / Empty Air" matches
+    QString noneLabel = tr("(0) None / Empty Air");
+    if (f.isEmpty() || noneLabel.toLower().contains(f) || QStringLiteral("0").contains(f)) {
+        m_cmbSegment->addItem(noneLabel, 0);
+    }
 
     for (int i = 0; i < m_map->segmentsBank.size(); ++i) {
         QString path = m_map->segmentsBank[i];
         QString name = QFileInfo(path).baseName();
         if (name.isEmpty()) name = path;
-        m_cmbSegment->addItem(QString("(%1) %2").arg(i + 1).arg(name), i + 1);
+        QString itemText = QString("(%1) %2").arg(i + 1).arg(name);
+
+        if (f.isEmpty() || itemText.toLower().contains(f) || path.toLower().contains(f)) {
+            m_cmbSegment->addItem(itemText, i + 1);
+        }
     }
 
-    m_updatingUi = false;
-    loadCellData();
+    int idx = m_cmbSegment->findData(curSegId);
+    if (idx >= 0) {
+        m_cmbSegment->setCurrentIndex(idx);
+    } else if (m_cmbSegment->count() > 0) {
+        m_cmbSegment->setCurrentIndex(0);
+    }
+    m_cmbSegment->blockSignals(false);
+}
+
+void SegmentEditorDialog::onSegmentFilterChanged(const QString& filter) {
+    populateSegmentCombo(filter);
 }
 
 void SegmentEditorDialog::setVisZoneManager(std::shared_ptr<VisZoneManager> mgr) {
@@ -680,8 +739,6 @@ void SegmentEditorDialog::updateConflictView() {
 
     m_btnRemoveWallB->setText(tr("🟢 Keep Room B Wall — Remove %1 Wall from '%2' (%3, %4)\n   (Eliminates clashing wall from Room A, keeping Room B enclosed)")
                                   .arg(side1Name).arg(name1).arg(x1).arg(y1));
-
-    m_btnOpenBoth->setText(tr("🚪 Make Open Passage — Remove Shared Walls from BOTH Rooms\n   (Seamlessly connects Room A and Room B without any divider wall)"));
 }
 
 void SegmentEditorDialog::loadCellData() {
@@ -713,6 +770,10 @@ void SegmentEditorDialog::loadCellData() {
     // Segment
     int segId = m_map->gridBlocks[l][y][x];
     int segIdx = m_cmbSegment->findData(segId);
+    if (segIdx < 0 && m_txtSegmentFilter && !m_txtSegmentFilter->text().isEmpty()) {
+        m_txtSegmentFilter->clear();
+        segIdx = m_cmbSegment->findData(segId);
+    }
     if (segIdx >= 0) {
         m_cmbSegment->setCurrentIndex(segIdx);
     } else {
@@ -977,13 +1038,9 @@ void SegmentEditorDialog::onResolveRemoveWallA() {
         m_visZoneManager->buildFromMap(m_map);
     }
 
-    emit segmentModified(l, x2, y2);
     m_hasConflict = false;
-    m_tabs->setTabVisible(0, false);
-    m_tabs->setCurrentIndex(1);
-    loadCellData();
-
-    QMessageBox::information(this, tr("Resolved"), tr("Conflict resolved! Wall removed from Room B at (%1, %2).").arg(x2).arg(y2));
+    emit segmentModified(l, x2, y2);
+    accept();
 }
 
 void SegmentEditorDialog::onResolveRemoveWallB() {
@@ -1016,68 +1073,9 @@ void SegmentEditorDialog::onResolveRemoveWallB() {
         m_visZoneManager->buildFromMap(m_map);
     }
 
-    emit segmentModified(l, x1, y1);
     m_hasConflict = false;
-    m_tabs->setTabVisible(0, false);
-    m_tabs->setCurrentIndex(1);
-    loadCellData();
-
-    QMessageBox::information(this, tr("Resolved"), tr("Conflict resolved! Wall removed from Room A at (%1, %2).").arg(x1).arg(y1));
-}
-
-void SegmentEditorDialog::onResolveOpenBoth() {
-    if (!m_map || !m_hasConflict) return;
-    int l = m_conflictLayer;
-    int x1 = m_conflictX1, y1 = m_conflictY1;
-    int x2 = m_conflictX2, y2 = m_conflictY2;
-
-    int side1 = SegmentMath::getSideFacingNeighbor(x1, y1, x2, y2);
-    int side2 = (side1 >= 0) ? (side1 + 2) % 4 : -1;
-
-    if (side1 >= 0) {
-        int tile1 = m_map->gridTileType[l][y1][x1];
-        int rot1 = m_map->gridRotation[l][y1][x1];
-        bool n, e, s, w;
-        SegmentMath::tileTypeAndRotToWallBools(tile1, rot1, n, e, s, w);
-        if (side1 == 0) n = false;
-        else if (side1 == 1) e = false;
-        else if (side1 == 2) s = false;
-        else if (side1 == 3) w = false;
-        int newTile, newRot;
-        SegmentMath::wallBoolsToTileTypeAndRot(n, e, s, w, newTile, newRot);
-        m_map->gridTileType[l][y1][x1] = newTile;
-        m_map->gridRotation[l][y1][x1] = newRot;
-    }
-
-    if (side2 >= 0) {
-        int tile2 = m_map->gridTileType[l][y2][x2];
-        int rot2 = m_map->gridRotation[l][y2][x2];
-        bool n, e, s, w;
-        SegmentMath::tileTypeAndRotToWallBools(tile2, rot2, n, e, s, w);
-        if (side2 == 0) n = false;
-        else if (side2 == 1) e = false;
-        else if (side2 == 2) s = false;
-        else if (side2 == 3) w = false;
-        int newTile, newRot;
-        SegmentMath::wallBoolsToTileTypeAndRot(n, e, s, w, newTile, newRot);
-        m_map->gridTileType[l][y2][x2] = newTile;
-        m_map->gridRotation[l][y2][x2] = newRot;
-    }
-
-    m_map->isModified = true;
-
-    if (m_visZoneManager) {
-        m_visZoneManager->buildFromMap(m_map);
-    }
-
     emit segmentModified(l, x1, y1);
-    emit segmentModified(l, x2, y2);
-    m_hasConflict = false;
-    m_tabs->setTabVisible(0, false);
-    m_tabs->setCurrentIndex(1);
-    loadCellData();
-
-    QMessageBox::information(this, tr("Resolved"), tr("Passage opened! Boundary walls removed from both rooms."));
+    accept();
 }
 
 void SegmentEditorDialog::onSwitchToManualEditor() {
@@ -1116,6 +1114,8 @@ void SegmentEditorDialog::retranslateUi() {
     if (m_lblX) m_lblX->setText(tr("X:"));
     if (m_lblY) m_lblY->setText(tr("Y:"));
     if (m_lblSegmentAsset) m_lblSegmentAsset->setText(tr("Segment Asset:"));
+    if (m_txtSegmentFilter) m_txtSegmentFilter->setPlaceholderText(tr("🔍 Filter..."));
+    populateSegmentCombo(m_txtSegmentFilter ? m_txtSegmentFilter->text() : QString());
 
     if (m_lblTileHint) {
         m_lblTileHint->setText(tr("<b>Interactive 4-Wall Topology:</b><br/><span style='color:#8c9dae;font-size:10px;'>Click on any wall to toggle it on/off</span>"));

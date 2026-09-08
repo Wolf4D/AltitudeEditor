@@ -15,6 +15,7 @@
 #include <QToolBar>
 #include <QAction>
 #include <QThread>
+#include <QSettings>
 
 static void printCliHelp() {
     fprintf(stdout,
@@ -36,9 +37,9 @@ static void printCliHelp() {
         "                                      Headless offscreen memory analyzer dialog snapshot\n\n"
         "Examples:\n"
         "  AltitudeEditor-cli --version\n"
-        "  AltitudeEditor-cli --analyze-memory \"Files/mapbank/1.fpm\"\n"
-        "  AltitudeEditor-cli --check-leaks \"Files/mapbank/1.fpm\"\n"
-        "  AltitudeEditor-cli --export-png \"Files/mapbank/1.fpm\" \"preview.png\" 0\n"
+        "  AltitudeEditor-cli --analyze-memory \"Files/mapbank/my_level.fpm\"\n"
+        "  AltitudeEditor-cli --check-leaks \"Files/mapbank/my_level.fpm\"\n"
+        "  AltitudeEditor-cli --export-png \"Files/mapbank/my_level.fpm\" \"preview.png\" 0\n"
     );
     fflush(stdout);
 }
@@ -209,7 +210,18 @@ int main(int argc, char* argv[]) {
             if (args.contains("--color-zones")) {
                 canvas.setColorAllVisZones(true);
             }
-            canvas.zoomFit();
+            if (args.contains("--show-leaks")) {
+                PortalLeakAnalyzer analyzer(map, canvas.visZoneManager());
+                canvas.setLeakWarnings(analyzer.analyze());
+            }
+            if (args.contains("--highlight")) {
+                int hIdx = args.indexOf("--highlight");
+                if (args.size() > hIdx + 3) {
+                    canvas.highlightCell(args.value(hIdx + 1).toInt(), args.value(hIdx + 2).toInt(), args.value(hIdx + 3).toInt());
+                }
+            } else {
+                canvas.zoomFit();
+            }
 
             QPixmap pix(canvas.size());
             pix.fill(QColor(22, 25, 34));
@@ -391,9 +403,14 @@ int main(int argc, char* argv[]) {
     if (args.size() > 1 && !args[1].startsWith('-')) {
         window.loadMapFile(args[1]);
     } else {
-        QString defaultMap = AssetManager::instance().engineRoot() + "/Files/mapbank/1.fpm";
-        if (QFileInfo::exists(defaultMap)) {
-            window.loadMapFile(defaultMap);
+        // Automatically open the last launched map from recent files if available
+        QSettings settings(QStringLiteral("TGC"), QStringLiteral("FPSCMapViewer"));
+        QStringList recent = settings.value(QStringLiteral("recentMaps")).toStringList();
+        for (const QString& f : recent) {
+            if (!f.isEmpty() && QFileInfo::exists(f)) {
+                window.loadMapFile(f);
+                break;
+            }
         }
     }
 

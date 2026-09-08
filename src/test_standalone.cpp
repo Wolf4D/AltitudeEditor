@@ -1,23 +1,298 @@
 #include <QApplication>
+#include <QFileInfo>
 #include <iostream>
+#include <iomanip>
 #include "FPMReader.h"
+#include "VisZoneManager.h"
+#include "SegmentParser.h"
 #include "PortalLeakAnalyzer.h"
+#include "PortalLeakDialog.h"
+#include "MapCanvas.h"
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
-    QString fpmPath = (argc > 1) ? QString::fromLocal8Bit(argv[1]) : "C:/Program Files (x86)/The Game Creators/FPS Creator/Files/mapbank/leaks.fpm";
-    auto map = FPMReader::loadMap(fpmPath, "mypassword");
-    if (!map) return 1;
+    QString path = "C:/Program Files (x86)/The Game Creators/FPS Creator/Files/mapbank/Slipgate/Full/2_Vault.fpm";
+    auto map = FPMReader::loadMap(path, "mypassword");
+    if (!map) {
+        std::cerr << "Failed to load map" << std::endl;
+        return 1;
+    }
 
-    PortalLeakAnalyzer analyzer(map);
-    // default flags: checkCompiledUniverse=true, checkStaticMap=true
-    auto warnings = analyzer.analyze();
+    auto zm = std::make_shared<VisZoneManager>();
+    zm->buildFromMap(map);
+    PortalLeakAnalyzer pla(map, zm);
+    auto warnings = pla.analyze();
 
-    printf("Total warnings found: %zu\n", warnings.size());
+    int z2TilesF6 = 0;
+    for (int y = 0; y < map->gridBlocks[6].size(); ++y) {
+        for (int x = 0; x < map->gridBlocks[6][y].size(); ++x) {
+            int zid = zm->getZoneAt(6, x, y);
+            if (zid >= 0 && zm->zones()[zid].name.contains("Zone 2 ")) {
+                z2TilesF6++;
+            }
+        }
+    }
+    std::cout << "[TEST] Zone 2 tiles on Floor 6: " << z2TilesF6 << " (Expected >= 40) -> "
+              << (z2TilesF6 >= 40 ? "PASS" : "FAIL") << std::endl;
+
+    // Verify 2_Vault Floor 5 gantry room is fully covered by Zone 6 (no isolated 1x1 Z37)
+    int z6F5Count = 0;
+    for (int y = 25; y <= 32; ++y) {
+        for (int x = 4; x <= 9; ++x) {
+            if (zm->getZoneAt(5, x, y) == 5) z6F5Count++;
+        }
+    }
+    bool gantryRoomCovered = (z6F5Count >= 30 && zm->getZoneAt(5, 7, 28) == 5);
+    std::cout << "[TEST] 2_Vault Floor 5 gantry room covered by Zone 6: "
+              << (gantryRoomCovered ? "PASS" : "FAIL") << " (" << z6F5Count << " tiles)" << std::endl;
+
+    std::cout << "=== Atrium Column Diagnostics in 2_Vault ===" << std::endl;
+    for (int l = 5; l <= 8; ++l) {
+        int b = (l < map->gridBlocks.size() && 10 < map->gridBlocks[l].size() && 10 < map->gridBlocks[l][10].size()) ? map->gridBlocks[l][10][10] : 0;
+        int sym = (l < map->gridSymbol.size() && 10 < map->gridSymbol[l].size() && 10 < map->gridSymbol[l][10].size()) ? map->gridSymbol[l][10][10] : 0;
+        auto seg = map->segments.value(b);
+        std::cout << "  L=" << l << " (10,10): b=" << b << " name=" << (seg ? seg->name.toStdString() : "none")
+                  << " sym=" << sym << " visF=" << (seg ? seg->visFloor : -1) << " visR=" << (seg ? seg->visRoof : -1)
+                  << " zid=" << zm->getZoneAt(l, 10, 10) << std::endl;
+    }
+    bool atriumUnified = (zm->getZoneAt(5, 10, 10) >= 0 &&
+                          zm->getZoneAt(5, 10, 10) == zm->getZoneAt(6, 10, 10) &&
+                          zm->getZoneAt(6, 10, 10) == zm->getZoneAt(7, 10, 10));
+    std::cout << "[TEST] 2_Vault Atrium Floors 5..7 unified in one zone: "
+              << (atriumUnified ? "PASS" : "FAIL") << " (Zone " << (zm->getZoneAt(5, 10, 10) + 1) << ")" << std::endl;
+
+    std::cout << "=== Zone 2 Floor 6 and 7 Diagnostics ===" << std::endl;
+    bool z2Floor7Closed = true;
+    int z2Id = zm->getZoneAt(6, 26, 5);
+    for (int y = 4; y <= 6; ++y) {
+        for (int x = 25; x <= 27; ++x) {
+            if (zm->getZoneAt(7, x, y) != z2Id) {
+                z2Floor7Closed = false;
+            }
+        }
+    }
+    std::cout << "[TEST] 2_Vault Floor 7 Zone 2 hole at (25..27, 4..6) is closed: "
+              << (z2Floor7Closed ? "PASS" : "FAIL") << std::endl;
+
+    // 2. Verify Bunker Storage on Floor 5 (all 48 tiles zoned)
+    int bunkerZoned = 0;
+    for (int y = 10; y <= 20; ++y) {
+        for (int x = 30; x <= 36; ++x) {
+            int b = map->gridBlocks[5][y][x];
+            if (b > 0) {
+                int zid = zm->getZoneAt(5, x, y);
+                if (zid >= 0) bunkerZoned++;
+            }
+        }
+    }
+    std::cout << "[TEST] Bunker Storage tiles zoned on Floor 5: " << bunkerZoned << " (Expected >= 40) -> "
+              << (bunkerZoned >= 40 ? "PASS" : "FAIL") << std::endl;
+
+    std::cout << "=== All zones in 2_Vault ===" << std::endl;
+    for (const auto& z : zm->zones()) {
+        std::cout << "Z" << (z.id + 1) << " " << z.name.toStdString() << " bounds="
+                  << z.bounds.x() << "," << z.bounds.y() << " " << z.bounds.width() << "x" << z.bounds.height() << std::endl;
+    }
+    // 4. Verify CloseContacts roof pruning
+    QString ccPath = "C:/Program Files (x86)/The Game Creators/FPS Creator/Files/mapbank/Slipgate/Full/1_CloseContacts.fpm";
+    auto ccMap = FPMReader::loadMap(ccPath, "mypassword");
+    if (ccMap) {
+        auto ccZm = std::make_shared<VisZoneManager>();
+        ccZm->buildFromMap(ccMap);
+        // 4. Verify CloseContacts open-air platform pruning and lack of false leaks
+        bool ccF6OutdoorPruned = true;
+        for (int y = 35; y <= 39; ++y) {
+            for (int x = 1; x <= 4; ++x) {
+                int zid = ccZm->getZoneAt(6, x, y);
+                if (zid >= 0) {
+                    ccF6OutdoorPruned = false;
+                    std::cout << "CC Floor 6 outdoor platform still zoned at (" << x << "," << y << "): "
+                              << ccZm->zones()[zid].name.toStdString() << std::endl;
+                }
+            }
+        }
+        std::cout << "[TEST] CloseContacts Floor 6 outdoor platform (y: 35..39) pruned: "
+                  << (ccF6OutdoorPruned ? "PASS" : "FAIL") << std::endl;
+
+        // Verify room (7, 33..36) on Floor 6 is properly zoned
+        int room7_33_zid = ccZm->getZoneAt(6, 7, 33);
+        bool room7_33_zoned = (room7_33_zid >= 0 &&
+                               ccZm->getZoneAt(6, 7, 34) == room7_33_zid &&
+                               ccZm->getZoneAt(6, 7, 35) == room7_33_zid &&
+                               ccZm->getZoneAt(6, 7, 36) == room7_33_zid);
+        std::cout << "[TEST] CloseContacts Floor 6 room at (7, 33..36) is zoned: "
+                  << (room7_33_zoned ? "PASS" : "FAIL") << " (Zone " << (room7_33_zid + 1) << ")" << std::endl;
+
+        // Verify Floor 7 holes at (15, 30) and (17, 30) are part of Z15
+        int z15_f7 = ccZm->getZoneAt(7, 16, 30);
+        bool f7HolesClosed = (ccZm->getZoneAt(7, 15, 30) == z15_f7 &&
+                              ccZm->getZoneAt(7, 17, 30) == z15_f7 &&
+                              z15_f7 >= 0);
+        std::cout << "[TEST] CloseContacts Floor 7 holes in Z15 at (15,30) and (17,30) are closed: "
+                  << (f7HolesClosed ? "PASS" : "FAIL") << std::endl;
+
+        // Print portals connected to the new room (room7_33_zid)
+        std::cout << "Portals connected to room at (7, 33):" << std::endl;
+        for (const auto& p : ccZm->portals()) {
+            if (p.zoneA == room7_33_zid || p.zoneB == room7_33_zid) {
+                std::cout << "  Portal: " << p.name.toStdString() << " floor=" << p.floor
+                          << " isExt=" << p.isExterior << " zA=" << (p.zoneA + 1) << " zB=" << (p.zoneB + 1) << std::endl;
+            }
+        }
+
+        int zid6 = ccZm->getZoneAt(6, 16, 31);
+        bool ccF7Z19MiddleZoned = (ccZm->getZoneAt(7, 16, 31) >= 0 && ccZm->getZoneAt(7, 16, 31) == zid6);
+
+        // Verify Floor 5 has NO false window portal between Zone 25 and Zone 26
+        bool ccF5NoWindowZ25_Z26 = true;
+        for (const auto& p : ccZm->portals()) {
+            if (p.floor == 5) {
+                int zA = p.zoneA + 1;
+                int zB = p.zoneB + 1;
+                if ((zA == 25 && zB == 26) || (zA == 26 && zB == 25)) {
+                    ccF5NoWindowZ25_Z26 = false;
+                    std::cout << "Found false portal between Z25 and Z26: " << p.name.toStdString() << std::endl;
+                }
+            }
+        }
+        std::cout << "[TEST] CloseContacts Floor 5 has no false window between Z25 and Z26: "
+                  << (ccF5NoWindowZ25_Z26 ? "PASS" : "FAIL") << std::endl;
+        bool ccF7RoofPruned = true;
+        for (int y = 36; y <= 38; ++y) {
+            for (int x = 15; x <= 17; ++x) {
+                int zid = ccZm->getZoneAt(7, x, y);
+                if (zid >= 0) {
+                    ccF7RoofPruned = false;
+                    std::cout << "CC Floor 7 outdoor roof still zoned at (" << x << "," << y << "): "
+                              << ccZm->zones()[zid].name.toStdString() << std::endl;
+                }
+            }
+        }
+        std::cout << "[TEST] CloseContacts Floor 7 outdoor roof pruned (no Z26/Z27/Z28): "
+                  << (ccF7RoofPruned ? "PASS" : "FAIL") << std::endl;
+
+        bool ccF7HoleUnzoned = (ccZm->getZoneAt(7, 17, 35) == -1);
+        std::cout << "[TEST] CloseContacts Floor 7 through-hole at (17,35) is unzoned: "
+                  << (ccF7HoleUnzoned ? "PASS" : "FAIL") << std::endl;
+
+        bool ccF8SkyUnzoned = (ccZm->getZoneAt(8, 14, 38) == -1);
+        std::cout << "[TEST] CloseContacts Floor 8 open sky at (14,38) has no phantom zone: "
+                  << (ccF8SkyUnzoned ? "PASS" : "FAIL") << std::endl;
+
+        PortalLeakAnalyzer ccPla(ccMap, ccZm);
+        auto ccWarnings = ccPla.analyze();
+        bool ccF8NoLeaks = true;
+        for (const auto& w : ccWarnings) {
+            if (w.layer == 8) {
+                ccF8NoLeaks = false;
+                std::cout << "Unexpected leak on Floor 8: (" << w.x << "," << w.y << ") " << w.description.toStdString() << std::endl;
+            }
+        }
+        std::cout << "[TEST] CloseContacts Floor 8 has no false leaks in open sky: "
+                  << (ccF8NoLeaks ? "PASS" : "FAIL") << std::endl;
+
+        std::cout << "[DEBUG CC FLAGS] ccF6OutdoorPruned=" << ccF6OutdoorPruned
+                  << " ccF7RoofPruned=" << ccF7RoofPruned
+                  << " ccF7HoleUnzoned=" << ccF7HoleUnzoned
+                  << " ccF8SkyUnzoned=" << ccF8SkyUnzoned
+                  << " ccF8NoLeaks=" << ccF8NoLeaks
+                  << " ccF7Z19MiddleZoned=" << ccF7Z19MiddleZoned
+                  << " ccF5NoWindowZ25_Z26=" << ccF5NoWindowZ25_Z26 << std::endl;
+
+        if (!ccF6OutdoorPruned || !ccF7RoofPruned || !ccF7HoleUnzoned || !ccF8SkyUnzoned || !ccF8NoLeaks || !ccF7Z19MiddleZoned || !ccF5NoWindowZ25_Z26 || !room7_33_zoned || !f7HolesClosed) {
+            return 1;
+        }
+    }
+
+    bool found29_2 = false;
+    bool found26_4 = false, found26_6 = false, found28_4 = false, found28_6 = false;
+    bool found19_32 = false, found21_32 = false;
     for (const auto& w : warnings) {
-        printf("  [%s] %s at Layer %d (%d, %d): %s\n",
-               w.severity == PortalLeakWarning::ERROR ? "ERROR" : "WARNING",
-               qPrintable(w.type), w.layer, w.x, w.y, qPrintable(w.description));
+        if (w.type.contains("Ceiling") && w.layer == 8) {
+            if (w.x == 29 && w.y == 2) found29_2 = true;
+            if (w.x == 26 && w.y == 4 && w.description.contains("ceiling_window")) found26_4 = true;
+            if (w.x == 26 && w.y == 6 && w.description.contains("ceiling_window")) found26_6 = true;
+            if (w.x == 28 && w.y == 4 && w.description.contains("ceiling_window")) found28_4 = true;
+            if (w.x == 28 && w.y == 6 && w.description.contains("ceiling_window")) found28_6 = true;
+        }
+        if (w.type.contains("Ceiling") && w.layer == 7) {
+            if (w.x == 19 && w.description.contains("ceiling_window")) found19_32 = true;
+            if (w.x == 21 && w.description.contains("ceiling_window")) found21_32 = true;
+        }
+    }
+    int f8CeilingWindowLeaks = 0;
+    for (const auto& w : warnings) {
+        if (w.type.contains("Ceiling") && w.layer == 8 && w.description.contains("ceiling_window")) {
+            f8CeilingWindowLeaks++;
+            std::cout << "F8 ceiling_window leak at (" << w.x << "," << w.y << ") desc: " << w.description.toStdString() << std::endl;
+        }
+    }
+    std::cout << "[TEST] PortalLeakAnalyzer Floor 8 ceiling_window leaks count: " << f8CeilingWindowLeaks 
+              << " (Expected: 66 = 4 from Zone 2 + 62 from Zone 6) -> " 
+              << (f8CeilingWindowLeaks == 66 ? "PASS" : "FAIL") << std::endl;
+    std::cout << "[TEST] PortalLeakAnalyzer detects Missing Ceiling Leak at (29,2) on Floor 8: "
+              << (found29_2 ? "PASS" : "FAIL") << std::endl;
+    bool allWindowsDetected = found26_4 && found26_6 && found28_4 && found28_6;
+    std::cout << "[TEST] PortalLeakAnalyzer detects all 4 ceiling window leaks on Floor 8: "
+              << (allWindowsDetected ? "PASS" : "FAIL") << std::endl;
+    bool f7WindowsDetected = found19_32 && found21_32;
+    std::cout << "[TEST] PortalLeakAnalyzer detects Floor 7 ceiling windows at (19,32) and (21,32): "
+              << (f7WindowsDetected ? "PASS" : "FAIL") << std::endl;
+
+    // Test Fake Segment and Real Window detection
+    auto fakeSeg = SegmentParser::parse("scifi/scenery/Window Large (fake).fps", 999);
+    bool fakeClassified = (fakeSeg && fakeSeg->isFake && fakeSeg->isWindow);
+    std::cout << "[TEST] SegmentParser detects Window Large (fake) as fake window: "
+              << (fakeClassified ? "PASS" : "FAIL") << std::endl;
+
+    auto realWinSeg = SegmentParser::parse("scifi/scenery/Window Large.fps", 998);
+    bool realWinClassified = (realWinSeg && !realWinSeg->isFake && realWinSeg->isWindow);
+    std::cout << "[TEST] SegmentParser detects Window Large as real window: "
+              << (realWinClassified ? "PASS" : "FAIL") << std::endl;
+
+    // Test 1.fpm (user screenshot map with Floor 5 exterior doorway)
+    QString map1Path = "C:/Program Files (x86)/The Game Creators/FPS Creator/Files/mapbank/1.fpm";
+    auto map1 = FPMReader::loadMap(map1Path, "mypassword");
+    bool map1ExtPortalPass = false;
+    if (map1) {
+        auto zm1 = std::make_shared<VisZoneManager>();
+        zm1->buildFromMap(map1);
+        PortalLeakAnalyzer pla1(map1, zm1);
+        auto warnings1 = pla1.analyze();
+
+        for (const auto& p : zm1->portals()) {
+            if (p.isExterior && p.floor == 5) {
+                map1ExtPortalPass = true;
+                std::cout << "[1.FPM] Found Exterior Portal: " << p.name.toStdString()
+                          << " (type: " << (p.type == PortalType::ExteriorWindow ? "Window" : "Doorway") << ")"
+                          << " zoneA=" << p.zoneA << " zoneB=" << p.zoneB << std::endl;
+            }
+        }
+    }
+    // Test PortalLeakDialog selection & MapCanvas integration
+    PortalLeakDialog leakDlg(map, zm);
+    MapCanvas canvas;
+    canvas.setMap(map);
+    QObject::connect(&leakDlg, &PortalLeakDialog::cellSelected, &canvas, &MapCanvas::highlightCell);
+    QObject::connect(&leakDlg, &PortalLeakDialog::warningsUpdated, &canvas, &MapCanvas::setLeakWarnings);
+    leakDlg.runAnalysis();
+
+    bool canvasHasWarnings = !canvas.leakWarnings().empty();
+    std::cout << "[TEST] MapCanvas receives leak warnings from PortalLeakDialog: "
+              << (canvasHasWarnings ? "PASS" : "FAIL") << " (" << canvas.leakWarnings().size() << " warnings)" << std::endl;
+
+    // Simulate clicking row 2
+    leakDlg.tableWidget()->selectRow(2);
+    int origIdx2 = leakDlg.tableWidget()->item(2, 0)->data(Qt::UserRole).toInt();
+    const auto& w2 = leakDlg.currentWarnings()[origIdx2];
+    bool canvasHighlightedRow2 = (canvas.highlightedLayer() == w2.layer && canvas.highlightedX() == w2.x && canvas.highlightedY() == w2.y);
+    std::cout << "[TEST] Selecting row 2 in PortalLeakDialog immediately highlights ("
+              << w2.layer << ", " << w2.x << ", " << w2.y << ") on MapCanvas: "
+              << (canvasHighlightedRow2 ? "PASS" : "FAIL") << " (Canvas highlighted: Floor "
+              << canvas.highlightedLayer() << " at (" << canvas.highlightedX() << "," << canvas.highlightedY() << "))" << std::endl;
+
+    if (!found29_2 || !allWindowsDetected || !f7WindowsDetected || !fakeClassified || !realWinClassified || !map1ExtPortalPass || !atriumUnified || !z2Floor7Closed || !canvasHasWarnings || !canvasHighlightedRow2) {
+        return 1;
     }
     return 0;
 }

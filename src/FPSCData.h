@@ -80,6 +80,8 @@ struct FPSCSegment {
     QString wallTextures[4]; // 0=North, 1=East, 2=South, 3=West
     bool hasWall[4] = {false, false, false, false};
     bool hasPunch = false;
+    bool isFake = false;
+    bool isWindow = false;
     
     int visWallB = -1, visWallR = -1, visWallF = -1, visWallL = -1;
     int visFloor = -1, visRoof = -1;

@@ -4,29 +4,29 @@
 <context>
     <name>ConflictDiagramWidget</name>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="231"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="232"/>
         <source>🏠 Room A: %1 (%2, %3)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="239"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="254"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="240"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="255"/>
         <source>Zone: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="239"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="254"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="240"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="255"/>
         <source>None</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="249"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="250"/>
         <source>🏠 Room B: %1 (%2, %3)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="267"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="268"/>
         <source>⚠️ CLASH</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1399,200 +1399,210 @@ Do you want to save your changes?</source>
 <context>
     <name>PortalLeakDialog</name>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="16"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="144"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="428"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="17"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="147"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="458"/>
         <source>No Map</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="17"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="145"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="429"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="18"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="148"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="459"/>
         <source>%1 — Portal &amp; CSG Leak Detector — %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="24"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="147"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="25"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="150"/>
         <source>Geometry &amp; Leak Detection Methods</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="30"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="149"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="31"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="152"/>
         <source>1. Physical Compiled BSP Analysis (universe.dbu)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="31"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="150"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="32"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="153"/>
         <source>Detects physical gaps, unclosed CSG polyhedra, and see-through portals into the void from compiled universe.dbu (after Test Game in FPS Creator).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="55"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="153"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="56"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="156"/>
         <source>2. Static Grid / Topological Analysis (.FPM / .FPS)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="57"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="154"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="58"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="157"/>
         <source>Checks for unclosed ceiling tiles, outer wall breaches in room perimeters, and CSG overlaps before map compilation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="64"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="156"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="65"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="159"/>
         <source>🔍 Run Analysis</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="71"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="157"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="72"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="160"/>
         <source>Filter by Vis Zone:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="82"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="158"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="372"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="85"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="161"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="402"/>
         <source>⚡ Resolve Clash / Edit...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="84"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="87"/>
         <source>Open the Segment Editor &amp; Conflict Resolver for the selected row</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="95"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="98"/>
         <source>Select detection methods and click &quot;Run Analysis&quot;.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="105"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="162"/>
-        <source>Severity</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="106"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="163"/>
-        <source>Leak Type</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="107"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="164"/>
-        <source>Vis Zone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/PortalLeakDialog.cpp" line="108"/>
         <location filename="../src/PortalLeakDialog.cpp" line="165"/>
-        <source>Coordinates</source>
+        <source>Severity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/PortalLeakDialog.cpp" line="109"/>
         <location filename="../src/PortalLeakDialog.cpp" line="166"/>
+        <source>Leak Type</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="110"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="167"/>
+        <source>Vis Zone</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="111"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="168"/>
+        <source>Coordinates</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="112"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="169"/>
         <source>Issue Description</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="187"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="190"/>
         <source>Enable at least one detection method to run analysis.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="194"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="197"/>
         <source>Error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="194"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="197"/>
         <source>Map is not loaded.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="232"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="237"/>
         <source>All Vis Zones (%1 issues)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="235"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="241"/>
+        <source>Outside / Void / Unzoned (0 — Resolved)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="243"/>
         <source>Outside / Void / Unzoned (%1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="250"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="271"/>
+        <source>%1 — 0 issues (Resolved)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="273"/>
         <source>%1 — %2 issues</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="307"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="332"/>
         <source>ERROR</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="307"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="332"/>
         <source>WARNING</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="320"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="345"/>
         <source>Layer %1 (%2, %3)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="322"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="347"/>
         <source>L%1 (%2,%3) ↔ (%4,%5)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="338"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="368"/>
         <source> [Filtered by: %1]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="341"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="371"/>
         <source>Showing issues: &lt;b&gt;%1&lt;/b&gt; of %2%3 (Physical BSP: %4, Static Grid: %5). Double-click jumps camera to tile.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="366"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="396"/>
         <source>⚡ Resolve Clash...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="368"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="398"/>
         <source>🧱 Edit Segment...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="399"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="429"/>
         <source>🔍 Focus View on Tile (%1, %2)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="407"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="437"/>
         <source>⚡ Resolve Double-Wall Clash...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="408"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="438"/>
         <source>🧱 Inspect Cell A (%1, %2)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="409"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="439"/>
         <source>🧱 Inspect Cell B (%1, %2)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="411"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="441"/>
         <source>🧱 Inspect &amp; Edit Segment (%1, %2)</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1600,388 +1610,366 @@ Do you want to save your changes?</source>
 <context>
     <name>SegmentEditorDialog</name>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="276"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="1095"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="277"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="1093"/>
         <source>No Map</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="277"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="1096"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="278"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="1094"/>
         <source>%1 — Segment Inspector &amp; Conflict Resolver — %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="297"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="1104"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="298"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="1102"/>
         <source>&lt;b&gt;⚠️ Double-Wall Boundary Conflict Detected&lt;/b&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="301"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="1107"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="302"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="1105"/>
         <source>Two adjacent rooms place solid walls on the exact same shared border without a doorway.
 In the game engine, this creates severe texture flickering (Z-fighting) and PVS portal leaks.
 Choose how you want to resolve this boundary below:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="332"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="1112"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="328"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="1110"/>
         <source>🔧 Switch to Manual Tile Inspector</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="339"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="1099"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="335"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="1097"/>
         <source>⚡ Resolve Clash</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="350"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="1115"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="346"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="1113"/>
         <source>Floor:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="357"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="1116"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="353"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="1114"/>
         <source>X:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="364"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="1117"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="360"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="1115"/>
         <source>Y:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="379"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="1118"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="375"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="1116"/>
         <source>Segment Asset:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="397"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="379"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="1117"/>
+        <source>🔍 Filter...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/SegmentEditorDialog.cpp" line="411"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1121"/>
         <source>&lt;b&gt;Interactive 4-Wall Topology:&lt;/b&gt;&lt;br/&gt;&lt;span style=&apos;color:#8c9dae;font-size:10px;&apos;&gt;Click on any wall to toggle it on/off&lt;/span&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="410"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="424"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1123"/>
         <source>Wall Toggles:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="415"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="429"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1124"/>
         <source>North Wall (Z+)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="416"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="430"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1125"/>
         <source>East Wall (X+)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="417"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="431"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1126"/>
         <source>South Wall (Z-)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="418"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="432"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1127"/>
         <source>West Wall (X-)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="427"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="441"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1129"/>
         <source>Quick Presets:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="431"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="452"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1134"/>
         <source>-- Choose Preset --</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="432"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="453"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1135"/>
         <source>🔲 All 4 Walls (Enclosed Room)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="433"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="454"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1136"/>
         <source>🔲 3 Walls (U-Shape)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="434"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="455"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1137"/>
         <source>🔲 Corner (2 Walls)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="435"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="456"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1138"/>
         <source>🔲 Opposite (2 Walls)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="436"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="457"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1139"/>
         <source>🔲 1 Wall Divider</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="437"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="458"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1140"/>
         <source>🔲 Open Floor (No Walls)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="438"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="459"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1141"/>
         <source>🗑️ Clear Tile (Empty Void)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="442"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="463"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1146"/>
         <source>Advanced Engine Parameters</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="445"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="466"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1147"/>
         <source>Ground Mode:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="449"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="472"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1152"/>
         <source>0: Room Floor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="450"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="473"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1153"/>
         <source>1: Interior 2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="451"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="474"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1154"/>
         <source>2: Roof/Ceiling Slab</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="452"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="475"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1155"/>
         <source>3: Exterior Ground</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="455"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="478"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1161"/>
         <source>Symbol (Hole):</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="462"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="485"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1162"/>
         <source>maptile:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="469"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="492"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1163"/>
         <source>maprotate:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="473"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="483"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="498"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="510"/>
         <source>0°</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="474"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="484"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="499"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="511"/>
         <source>90°</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="475"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="485"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="500"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="512"/>
         <source>180°</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="476"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="486"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="501"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="513"/>
         <source>270°</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="479"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="504"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1164"/>
         <source>maporient:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="497"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="524"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1166"/>
         <source>Live Auto-Apply</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="502"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="529"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1167"/>
         <source>✔ Apply Changes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="508"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="1100"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="535"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="1098"/>
         <source>🧱 Tile Inspector</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="514"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="541"/>
         <location filename="../src/SegmentEditorDialog.cpp" line="1168"/>
         <source>Close</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="563"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="606"/>
         <source>(0) None / Empty Air</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="634"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="693"/>
         <source>North</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="635"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="694"/>
         <source>East</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="636"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="695"/>
         <source>South</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="637"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="696"/>
         <source>West</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="655"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="656"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="714"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="715"/>
         <source>Unzoned</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="678"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="737"/>
         <source>🟢 Keep Room A Wall — Remove %1 Wall from &apos;%2&apos; (%3, %4)
    (Eliminates clashing wall from Room B, keeping Room A enclosed)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="681"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="740"/>
         <source>🟢 Keep Room B Wall — Remove %1 Wall from &apos;%2&apos; (%3, %4)
    (Eliminates clashing wall from Room A, keeping Room B enclosed)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="684"/>
-        <source>🚪 Make Open Passage — Remove Shared Walls from BOTH Rooms
-   (Seamlessly connects Room A and Room B without any divider wall)</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="705"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="762"/>
         <source>PVS: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="707"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="764"/>
         <source>PVS: Void / Exterior</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="722"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="900"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="783"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="961"/>
         <source>Empty</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="727"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="905"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="788"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="966"/>
         <source>No segment placed</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="986"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="1025"/>
-        <location filename="../src/SegmentEditorDialog.cpp" line="1080"/>
-        <source>Resolved</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="986"/>
-        <source>Conflict resolved! Wall removed from Room B at (%1, %2).</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="1025"/>
-        <source>Conflict resolved! Wall removed from Room A at (%1, %2).</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="1080"/>
-        <source>Passage opened! Boundary walls removed from both rooms.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>TileInteractiveWidget</name>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="115"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="116"/>
         <source>Floor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="144"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="145"/>
         <source>Open</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="149"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="150"/>
         <source>North (Z+)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="151"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="152"/>
         <source>East (X+)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="153"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="154"/>
         <source>South (Z-)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SegmentEditorDialog.cpp" line="155"/>
+        <location filename="../src/SegmentEditorDialog.cpp" line="156"/>
         <source>West (X-)</source>
         <translation type="unfinished"></translation>
     </message>

@@ -349,15 +349,8 @@ void MainWindow::createMenusAndToolbars() {
     m_actShowPortals = m_viewMenu->addAction(QString());
     m_actShowPortals->setIcon(makePortalIcon());
     m_actShowPortals->setCheckable(true);
-    m_actShowPortals->setChecked(false);
-    connect(m_actShowPortals, &QAction::toggled, this, [this](bool checked) {
-        if (checked && m_canvas) {
-            PortalLeakAnalyzer analyzer(m_currentMap);
-            analyzer.analyze();
-            m_canvas->setPortals(analyzer.allPortals(), analyzer.allZones());
-        }
-        m_canvas->setShowPortals(checked);
-    });
+    m_actShowPortals->setChecked(true);
+    connect(m_actShowPortals, &QAction::toggled, m_canvas, &MapCanvas::setShowPortals);
 
     m_viewMenu->addSeparator();
     m_viewMenu->addAction(m_searchDock->toggleViewAction());
@@ -780,16 +773,47 @@ void MainWindow::deleteEntity(int index) {
     m_statusCoords->setText(tr("Deleted %1").arg(entName));
 }
 
+static QString normalizeMapPath(const QString& path) {
+    if (path.isEmpty()) return QString();
+    QFileInfo fi(path);
+    QString canonical = fi.canonicalFilePath();
+    if (!canonical.isEmpty()) {
+        return QDir::cleanPath(canonical);
+    }
+    return QDir::cleanPath(fi.absoluteFilePath());
+}
+
+static bool areSameMapFiles(const QString& p1, const QString& p2) {
+    if (p1.isEmpty() || p2.isEmpty()) return false;
+    QString n1 = normalizeMapPath(p1);
+    QString n2 = normalizeMapPath(p2);
+#if defined(Q_OS_WIN)
+    return n1.compare(n2, Qt::CaseInsensitive) == 0;
+#else
+    return n1 == n2;
+#endif
+}
+
 void MainWindow::populateRecentMapsMenu() {
     m_recentMapsMenu->clear();
     QSettings settings(QStringLiteral("TGC"), QStringLiteral("FPSCMapViewer"));
     QStringList recent = settings.value(QStringLiteral("recentMaps")).toStringList();
 
-    // Filter valid existing files
+    // Filter valid existing files and eliminate all duplicates (case-insensitive on Windows)
     QStringList valid;
     for (const QString& f : recent) {
-        if (QFile::exists(f) && !valid.contains(f)) {
-            valid.append(f);
+        QString norm = normalizeMapPath(f);
+        if (norm.isEmpty() || !QFile::exists(norm)) continue;
+
+        bool alreadyPresent = false;
+        for (const QString& v : valid) {
+            if (areSameMapFiles(norm, v)) {
+                alreadyPresent = true;
+                break;
+            }
+        }
+        if (!alreadyPresent) {
+            valid.append(norm);
         }
     }
     settings.setValue(QStringLiteral("recentMaps"), valid);
@@ -806,8 +830,7 @@ void MainWindow::populateRecentMapsMenu() {
         QString text = QString("&%1 %2").arg(i + 1).arg(name);
         QAction* act = m_recentMapsMenu->addAction(text, this, [this, fPath]() {
             if (maybeSave()) {
-                bool isSameFile = (m_currentMap && !m_currentMap->filePath.isEmpty() &&
-                                   QFileInfo(m_currentMap->filePath).canonicalFilePath() == QFileInfo(fPath).canonicalFilePath());
+                bool isSameFile = (m_currentMap && areSameMapFiles(m_currentMap->filePath, fPath));
                 loadMapFile(fPath, isSameFile);
             }
         });
@@ -900,15 +923,34 @@ void MainWindow::loadMapFile(const QString& filePath, bool preserveView) {
     progress.setValue(100);
     progress.close();
 
-    // Save to Recent Maps list in QSettings
+    // Save to Recent Maps list in QSettings with robust deduplication
     QSettings settings(QStringLiteral("TGC"), QStringLiteral("FPSCMapViewer"));
     QStringList recent = settings.value(QStringLiteral("recentMaps")).toStringList();
-    recent.removeAll(filePath);
-    recent.prepend(filePath);
-    while (recent.size() > 15) {
-        recent.removeLast();
+    QString normCurrent = normalizeMapPath(filePath);
+
+    QStringList updatedRecent;
+    if (!normCurrent.isEmpty()) {
+        updatedRecent.append(normCurrent);
     }
-    settings.setValue(QStringLiteral("recentMaps"), recent);
+    for (const QString& f : recent) {
+        QString norm = normalizeMapPath(f);
+        if (!norm.isEmpty() && !areSameMapFiles(norm, normCurrent) && QFile::exists(norm)) {
+            bool alreadyIn = false;
+            for (const QString& u : updatedRecent) {
+                if (areSameMapFiles(u, norm)) {
+                    alreadyIn = true;
+                    break;
+                }
+            }
+            if (!alreadyIn) {
+                updatedRecent.append(norm);
+            }
+        }
+    }
+    while (updatedRecent.size() > 15) {
+        updatedRecent.removeLast();
+    }
+    settings.setValue(QStringLiteral("recentMaps"), updatedRecent);
     populateRecentMapsMenu();
 
     updateWindowTitle();
@@ -923,8 +965,7 @@ void MainWindow::loadMapFile(const QString& filePath, bool preserveView) {
 
 void MainWindow::onOpenRecentMap(const QString& filePath) {
     if (!filePath.isEmpty() && maybeSave()) {
-        bool isSameFile = (m_currentMap && !m_currentMap->filePath.isEmpty() &&
-                           QFileInfo(m_currentMap->filePath).canonicalFilePath() == QFileInfo(filePath).canonicalFilePath());
+        bool isSameFile = (m_currentMap && areSameMapFiles(m_currentMap->filePath, filePath));
         loadMapFile(filePath, isSameFile);
     }
 }
@@ -934,8 +975,7 @@ void MainWindow::onOpenMap() {
     QString startDir = AssetManager::instance().engineRoot() + "/Files/mapbank";
     QString file = QFileDialog::getOpenFileName(this, tr("Open FPS Creator Map"), startDir, tr("FPS Creator Project Map (*.fpm);;All Files (*.*)"));
     if (!file.isEmpty()) {
-        bool isSameFile = (m_currentMap && !m_currentMap->filePath.isEmpty() &&
-                           QFileInfo(m_currentMap->filePath).canonicalFilePath() == QFileInfo(file).canonicalFilePath());
+        bool isSameFile = (m_currentMap && areSameMapFiles(m_currentMap->filePath, file));
         loadMapFile(file, isSameFile);
     }
 }
@@ -1150,17 +1190,24 @@ void MainWindow::onOpenPortalLeakDetector() {
         m_portalLeakDialog = new PortalLeakDialog(m_currentMap, m_visZoneManager, this);
         m_portalLeakDialog->setAttribute(Qt::WA_DeleteOnClose);
         connect(m_portalLeakDialog, &PortalLeakDialog::cellSelected, m_canvas, &MapCanvas::highlightCell);
+        connect(m_portalLeakDialog, &PortalLeakDialog::warningsUpdated, m_canvas, &MapCanvas::setLeakWarnings);
+        connect(m_portalLeakDialog, &QDialog::finished, m_canvas, [this]() {
+            m_canvas->clearLeakWarnings();
+            m_canvas->clearHighlight();
+        });
         connect(m_portalLeakDialog, &PortalLeakDialog::resolveConflictRequested, this, &MainWindow::onResolveSegmentConflict);
         connect(m_portalLeakDialog, &PortalLeakDialog::editSegmentRequested, this, [this](int l, int x, int y) {
             onOpenSegmentEditor(l, x, y);
         });
         m_portalLeakDialog->show();
+        m_canvas->setLeakWarnings(m_portalLeakDialog->currentWarnings());
     } else {
         m_portalLeakDialog->setVisZoneManager(m_visZoneManager);
         m_portalLeakDialog->setMap(m_currentMap);
         m_portalLeakDialog->raise();
         m_portalLeakDialog->activateWindow();
         m_portalLeakDialog->show();
+        m_canvas->setLeakWarnings(m_portalLeakDialog->currentWarnings());
     }
 
     // Also auto-refresh canvas portals
@@ -1228,6 +1275,7 @@ void MainWindow::onSegmentModified(int layer, int x, int y) {
     }
 
     if (m_canvas) {
+        m_canvas->clearHighlight();
         m_canvas->update();
     }
 
