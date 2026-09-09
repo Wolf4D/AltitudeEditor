@@ -20,6 +20,8 @@ public:
     void setVisZoneManager(std::shared_ptr<VisZoneManager> mgr);
     void setMap(std::shared_ptr<FPSCMap> map);
 
+    int activeZoneId() const { return m_activeZoneId; }
+
 public slots:
     void onFloorChanged(int floor);
     void onExternalZoneSelected(int zoneId);
@@ -30,12 +32,14 @@ public slots:
 protected:
     void closeEvent(QCloseEvent* event) override;
     void changeEvent(QEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
 
 signals:
     void zoneSelected(int zoneId);
     void isolationChanged(bool isolate, float dimOpacity);
     void entitySelected(int entityIndex);
     void colorAllZonesToggled(bool enabled);
+    void dichotomyDeleteZoneRequested(int zoneId);
 
 private slots:
     void onZoneComboChanged(int index);
@@ -67,6 +71,7 @@ private:
     QPushButton* m_btnPrev = nullptr;
     QPushButton* m_btnNext = nullptr;
     QPushButton* m_btnReset = nullptr;
+    QPushButton* m_btnDichotomyDelete = nullptr;
 
     QCheckBox* m_chkIsolate = nullptr;
     QRadioButton* m_radioHide = nullptr;

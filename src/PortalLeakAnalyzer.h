@@ -29,6 +29,14 @@ struct PortalLeakWarning {
     int y2 = -1;
     bool isClash = false;
     int sideA = -1; // 0=N, 1=E, 2=S, 3=W
+
+    bool isPhysicalBsp = false;
+    bool isStaticMap = false;
+    bool isMerged = false;
+
+    float portalWidth = 0.0f;
+    float portalHeight = 0.0f;
+    bool hasPhysicalSize = false;
 };
 
 struct DBUValidationResult {
@@ -61,12 +69,12 @@ public:
     const std::vector<DBUVisZone>& allZones() const { return m_dbuParser.zones(); }
 
 private:
-    void checkCompiledUniverse();
-    void checkVerticalGaps();
-    void checkCoplanarOverlaps();
-    void checkWallHolesToVoid();
-    void checkInvertedWalls();
-    void checkDoubleWallClashes();
+    std::vector<PortalLeakWarning> checkCompiledUniverse();
+    void checkVerticalGaps(std::vector<PortalLeakWarning>& outWarnings);
+    void checkCoplanarOverlaps(std::vector<PortalLeakWarning>& outWarnings);
+    void checkWallHolesToVoid(std::vector<PortalLeakWarning>& outWarnings);
+    void checkInvertedWalls(std::vector<PortalLeakWarning>& outWarnings);
+    void checkDoubleWallClashes(std::vector<PortalLeakWarning>& outWarnings);
 
     std::shared_ptr<FPSCMap> m_map;
     std::shared_ptr<VisZoneManager> m_visZoneManager;

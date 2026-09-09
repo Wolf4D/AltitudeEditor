@@ -120,12 +120,14 @@ private:
     QAction* m_actLaunchMem = nullptr;
     QAction* m_actLaunchLeaks = nullptr;
     QAction* m_actSegmentEditor = nullptr;
+    QAction* m_actDichotomyDelete = nullptr;
     QAction* m_actAbout = nullptr;
 
 public slots:
     void onOpenSegmentEditor(int layer = -1, int x = -1, int y = -1);
     void onResolveSegmentConflict(int layer, int x1, int y1, int x2, int y2);
     void onSegmentModified(int layer, int x, int y);
+    void deleteVisZone(int zoneId = -1);
 
 private:
     // Language Menu Actions

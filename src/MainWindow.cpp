@@ -6,6 +6,8 @@
 #include "MemoryAnalyzerDialog.h"
 #include "MemoryAnalyzer.h"
 #include "PortalLeakDialog.h"
+#include <tuple>
+#include <set>
 #include <QtConcurrent>
 #include <QFutureWatcher>
 #include <QMenuBar>
@@ -274,7 +276,9 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_visZoneDock, &VisZoneDock::isolationChanged, m_canvas, &MapCanvas::setVisZoneCulling);
     connect(m_visZoneDock, &VisZoneDock::colorAllZonesToggled, m_canvas, &MapCanvas::setColorAllVisZones);
     connect(m_visZoneDock, &VisZoneDock::entitySelected, this, &MainWindow::onEntitySelected);
+    connect(m_visZoneDock, &VisZoneDock::dichotomyDeleteZoneRequested, this, &MainWindow::deleteVisZone);
     connect(m_canvas, &MapCanvas::visZoneSelected, m_visZoneDock, &VisZoneDock::onExternalZoneSelected);
+    connect(m_canvas, &MapCanvas::dichotomyDeleteZoneRequested, this, &MainWindow::deleteVisZone);
     connect(m_canvas, &MapCanvas::segmentInspectRequested, this, [this](int l, int x, int y) {
         onOpenSegmentEditor(l, x, y);
     });
@@ -379,11 +383,15 @@ void MainWindow::createMenusAndToolbars() {
 
     m_portalsMenu->addSeparator();
     m_portalsMenu->addAction(m_actShowPortals);
+    m_portalsMenu->addSeparator();
+    m_actDichotomyDelete = m_portalsMenu->addAction(QString(), this, [this]() { deleteVisZone(); }, QKeySequence(Qt::SHIFT + Qt::Key_Delete));
 
     m_toolsMenu = menuBar()->addMenu(QString());
     m_actMemoryAnalyzer = m_toolsMenu->addAction(QString(), this, &MainWindow::onOpenMemoryAnalyzer, QKeySequence(Qt::CTRL + Qt::Key_M));
     m_actLeakDetector = m_toolsMenu->addAction(QString(), this, &MainWindow::onOpenPortalLeakDetector);
     m_actSegmentEditor = m_toolsMenu->addAction(QString(), this, [this]() { onOpenSegmentEditor(); }, QKeySequence(Qt::CTRL + Qt::Key_E));
+    m_toolsMenu->addSeparator();
+    m_toolsMenu->addAction(m_actDichotomyDelete);
 
     // Language Menu
     m_languageMenu = menuBar()->addMenu(QString());
@@ -618,6 +626,10 @@ void MainWindow::retranslateUi() {
     if (m_actLeakDetector) m_actLeakDetector->setText(tr("&Leak Detector..."));
     if (m_actMemoryAnalyzer) m_actMemoryAnalyzer->setText(tr("&Memory Analyzer..."));
     if (m_actSegmentEditor) m_actSegmentEditor->setText(tr("🧱 &Segment Inspector && Editor..."));
+    if (m_actDichotomyDelete) {
+        m_actDichotomyDelete->setText(tr("✂️ &Dichotomy Tool: Delete Zone && Entities..."));
+        m_actDichotomyDelete->setToolTip(tr("Delete active visibility zone room, all its tiles, ceiling slabs, and entities (Shift+Del)"));
+    }
     if (m_actAbout) m_actAbout->setText(tr("&About %1...").arg(VersionInfo::AppName));
 
     // Toolbar Buttons
@@ -771,6 +783,187 @@ void MainWindow::deleteEntity(int index) {
     updateWindowTitle();
 
     m_statusCoords->setText(tr("Deleted %1").arg(entName));
+}
+
+void MainWindow::deleteVisZone(int zoneId) {
+    if (!m_currentMap || !m_visZoneManager) {
+        return;
+    }
+
+    if (zoneId < 0) {
+        if (m_canvas) zoneId = m_canvas->activeVisZone();
+        if (zoneId < 0 && m_visZoneDock) zoneId = m_visZoneDock->activeZoneId();
+    }
+
+    if (zoneId < 0) {
+        m_statusCoords->setText(tr("✂️ Dichotomy Tool: Select a zone on canvas or in VisZone panel first"));
+        return;
+    }
+
+    const VisZone* zone = m_visZoneManager->getZone(zoneId);
+    if (!zone) {
+        m_statusCoords->setText(tr("✂️ Dichotomy Tool: Zone %1 not found").arg(zoneId + 1));
+        return;
+    }
+
+    int removedTiles = 0;
+    int removedEntities = 0;
+    int removedWaypoints = 0;
+
+    int rows = m_currentMap->header.maxY + 1;
+    int cols = m_currentMap->header.maxX + 1;
+    int layerMax = m_currentMap->header.layerMax;
+
+    // 1. Gather all tiles to delete across all floors of the zone
+    // Also include ceiling slabs on maxFloor + 1 if no upper room exists there
+    std::set<std::tuple<int, int, int>> tilesToDelete; // (layer, x, y)
+
+    for (const auto& kv : zone->floorTiles) {
+        int l = kv.first;
+        for (const QPoint& pt : kv.second) {
+            tilesToDelete.insert(std::make_tuple(l, pt.x(), pt.y()));
+        }
+    }
+
+    // Overhead ceiling slabs:
+    // If maxFloor + 1 <= layerMax, check if there are ceiling slabs (gridGround == 2) directly above
+    int ceilingLayer = zone->maxFloor + 1;
+    if (ceilingLayer <= layerMax) {
+        for (const QPoint& pt : zone->tiles) {
+            int x = pt.x();
+            int y = pt.y();
+            if (y < rows && x < cols) {
+                // If the tile above is not part of another valid room zone
+                int upperZone = m_visZoneManager->getZoneAt(ceilingLayer, x, y);
+                if (upperZone < 0) {
+                    if (ceilingLayer < m_currentMap->gridGround.size() &&
+                        y < m_currentMap->gridGround[ceilingLayer].size() &&
+                        x < m_currentMap->gridGround[ceilingLayer][y].size() &&
+                        m_currentMap->gridGround[ceilingLayer][y][x] == 2) {
+                        tilesToDelete.insert(std::make_tuple(ceilingLayer, x, y));
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Clear grid data for all tilesToDelete
+    for (const auto& t : tilesToDelete) {
+        int l = std::get<0>(t);
+        int x = std::get<1>(t);
+        int y = std::get<2>(t);
+
+        if (l >= 0 && l < m_currentMap->gridBlocks.size() &&
+            y >= 0 && y < m_currentMap->gridBlocks[l].size() &&
+            x >= 0 && x < m_currentMap->gridBlocks[l][y].size()) {
+
+            bool hadBlock = (m_currentMap->gridBlocks[l][y][x] > 0);
+            bool hadOverlay = (l < m_currentMap->gridOverlays.size() &&
+                               y < m_currentMap->gridOverlays[l].size() &&
+                               x < m_currentMap->gridOverlays[l][y].size() &&
+                               m_currentMap->gridOverlays[l][y][x] > 0);
+
+            if (hadBlock || hadOverlay) {
+                removedTiles++;
+            }
+
+            m_currentMap->gridBlocks[l][y][x] = 0;
+
+            if (l < m_currentMap->gridRotation.size() && y < m_currentMap->gridRotation[l].size() && x < m_currentMap->gridRotation[l][y].size())
+                m_currentMap->gridRotation[l][y][x] = 0;
+            if (l < m_currentMap->gridOrientation.size() && y < m_currentMap->gridOrientation[l].size() && x < m_currentMap->gridOrientation[l][y].size())
+                m_currentMap->gridOrientation[l][y][x] = 0;
+            if (l < m_currentMap->gridTileType.size() && y < m_currentMap->gridTileType[l].size() && x < m_currentMap->gridTileType[l][y].size())
+                m_currentMap->gridTileType[l][y][x] = 0;
+            if (l < m_currentMap->gridGround.size() && y < m_currentMap->gridGround[l].size() && x < m_currentMap->gridGround[l][y].size())
+                m_currentMap->gridGround[l][y][x] = 0;
+            if (l < m_currentMap->gridSymbol.size() && y < m_currentMap->gridSymbol[l].size() && x < m_currentMap->gridSymbol[l][y].size())
+                m_currentMap->gridSymbol[l][y][x] = 0;
+
+            if (l < m_currentMap->gridOverlays.size() && y < m_currentMap->gridOverlays[l].size() && x < m_currentMap->gridOverlays[l][y].size())
+                m_currentMap->gridOverlays[l][y][x] = 0;
+            if (l < m_currentMap->gridOverlayRotation.size() && y < m_currentMap->gridOverlayRotation[l].size() && x < m_currentMap->gridOverlayRotation[l][y].size())
+                m_currentMap->gridOverlayRotation[l][y][x] = 0;
+            if (l < m_currentMap->gridTileOverlays.size() && y < m_currentMap->gridTileOverlays[l].size() && x < m_currentMap->gridTileOverlays[l][y].size())
+                m_currentMap->gridTileOverlays[l][y][x].clear();
+        }
+    }
+
+    // 3. Collect entities to delete
+    std::vector<int> entIndicesToDelete;
+    for (int idx : zone->entityIndices) {
+        if (idx >= 0 && idx < m_currentMap->placedEntities.size()) {
+            entIndicesToDelete.push_back(idx);
+        }
+    }
+    for (int i = 0; i < m_currentMap->placedEntities.size(); ++i) {
+        const auto& e = m_currentMap->placedEntities[i];
+        int l = e.floorLayer;
+        int tx = static_cast<int>(e.x / 100.0f);
+        int ty = static_cast<int>(std::abs(e.z) / 100.0f);
+
+        if (tilesToDelete.count(std::make_tuple(l, tx, ty)) > 0 ||
+            m_visZoneManager->getZoneAt(l, tx, ty) == zoneId) {
+            entIndicesToDelete.push_back(i);
+        }
+    }
+    std::sort(entIndicesToDelete.begin(), entIndicesToDelete.end(), std::greater<int>());
+    entIndicesToDelete.erase(std::unique(entIndicesToDelete.begin(), entIndicesToDelete.end()), entIndicesToDelete.end());
+
+    removedEntities = static_cast<int>(entIndicesToDelete.size());
+    for (int idx : entIndicesToDelete) {
+        m_currentMap->placedEntities.erase(m_currentMap->placedEntities.begin() + idx);
+    }
+
+    // 4. Waypoints inside zone
+    for (int i = m_currentMap->waypoints.size() - 1; i >= 0; --i) {
+        const auto& wp = m_currentMap->waypoints[i];
+        int l = static_cast<int>(std::round(wp.y / 100.0f));
+        int tx = static_cast<int>(std::floor(wp.x / 100.0f));
+        int ty = static_cast<int>(std::floor(std::abs(wp.z) / 100.0f));
+        if (tilesToDelete.count(std::make_tuple(l, tx, ty)) > 0 ||
+            m_visZoneManager->getZoneAt(l, tx, ty) == zoneId) {
+            m_currentMap->waypoints.erase(m_currentMap->waypoints.begin() + i);
+            removedWaypoints++;
+        }
+    }
+
+    // 5. Mark modified, rebuild VisZoneManager & UI
+    m_currentMap->isModified = true;
+    m_visZoneManager->buildFromMap(m_currentMap);
+
+    // Reset selection
+    if (m_canvas) {
+        m_canvas->setActiveVisZone(-1);
+        m_canvas->selectEntity(-1);
+        m_canvas->clearHighlight();
+        m_canvas->setVisZoneManager(m_visZoneManager);
+        m_canvas->update();
+    }
+    if (m_visZoneDock) {
+        m_visZoneDock->setVisZoneManager(m_visZoneManager);
+        m_visZoneDock->onExternalZoneSelected(-1);
+    }
+    if (m_searchDock) {
+        m_searchDock->selectEntity(-1);
+        m_searchDock->rebuildTable();
+    }
+    if (m_inspectorDock) {
+        m_inspectorDock->clear();
+    }
+
+    if (m_portalLeakDialog && m_portalLeakDialog->isVisible()) {
+        m_portalLeakDialog->runAnalysis();
+    }
+
+    updateFloorControls();
+    updateStatusBar();
+    updateWindowTitle();
+
+    QString msg = tr("✂️ Dichotomy Tool: Room Zone %1 deleted (removed %2 tiles, %3 entities).")
+                  .arg(zoneId + 1).arg(removedTiles).arg(removedEntities);
+    m_statusCoords->setText(msg);
+    statusBar()->showMessage(msg, 5000);
 }
 
 static QString normalizeMapPath(const QString& path) {

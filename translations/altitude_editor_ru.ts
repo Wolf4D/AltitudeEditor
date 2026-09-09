@@ -615,357 +615,357 @@ Script: %3</source>
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../src/MainWindow.cpp" line="424"/>
+        <location filename="../src/MainWindow.cpp" line="425"/>
         <source>About %1</source>
         <translation>О программе %1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="425"/>
+        <location filename="../src/MainWindow.cpp" line="426"/>
         <source>&lt;h3&gt;%1 v%2 - %3&lt;/h3&gt;&lt;p style=&apos;font-size: 13px;&apos;&gt;&lt;b&gt;Version:&lt;/b&gt; %2&lt;br&gt;&lt;b&gt;Developer:&lt;/b&gt; %4&lt;br&gt;&lt;b&gt;Studio:&lt;/b&gt; %5&lt;/p&gt;&lt;hr&gt;&lt;p&gt;A professional tool for editing, visualizing, and analyzing &lt;b&gt;FPS Creator&lt;/b&gt; maps (.FPM).&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Doom-Style Segment Wall &amp; Floor Rendering:&lt;/b&gt; Visualizes segment walls, custom floors, ceilings, and gantry walkways.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Multi-Overlay Engine Architecture:&lt;/b&gt; Accurate overlay placement for doorways, CSG punch-outs, and corridors.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Floor-by-Floor Navigation:&lt;/b&gt; Full layer switching (0..20) via toolbar, shortcuts (PageUp/PageDown), and mouse wheel.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Entity Browser &amp; Inspector:&lt;/b&gt; Inspect, filter, search, and edit placed map entities.&lt;/li&gt;&lt;li&gt;&lt;b&gt;PVS Visibility Zones &amp; Portals:&lt;/b&gt; Complete room topology, portal leak detection, and culling visualization.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Memory Footprint Analyzer:&lt;/b&gt; Measures memory weight in MB for 3D meshes, textures, and audio buffers with 32-bit limit warnings.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Built with &lt;b&gt;Qt 5.15.2 (MinGW 32-bit)&lt;/b&gt;.&lt;/p&gt;</source>
         <translation>&lt;h3&gt;%1 v%2 - %3&lt;/h3&gt;&lt;p style=&apos;font-size: 13px;&apos;&gt;&lt;b&gt;Версия:&lt;/b&gt; %2&lt;br&gt;&lt;b&gt;Разработчик:&lt;/b&gt; %4&lt;br&gt;&lt;b&gt;Студия:&lt;/b&gt; %5&lt;/p&gt;&lt;hr&gt;&lt;p&gt;Профессиональный инструмент для редактирования, визуализации и анализа карт &lt;b&gt;FPS Creator&lt;/b&gt; (.FPM).&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Отрисовка стен и полов сегментов в стиле Doom:&lt;/b&gt; визуализация стен сегментов, полов, потолков и подвесных мостиков.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Архитектура многослойных оверлеев:&lt;/b&gt; точное позиционирование наложений для дверных проёмов, CSG-вырезов и коридоров.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Поэтажная навигация:&lt;/b&gt; переключение слоёв (0..20) через панель инструментов, горячие клавиши (PageUp/PageDown) и колёсико мыши.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Браузер и инспектор энтити:&lt;/b&gt; просмотр, фильтрация, поиск и редактирование установленных энтити карты.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Зоны видимости PVS и порталы:&lt;/b&gt; полная топология комнат, детектор утечек порталов и визуализация отсечения.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Анализатор расхода памяти:&lt;/b&gt; измерение веса памяти в МБ для 3D-моделей, текстур и аудио-буферов с контролем лимита 32-битного процесса.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Собрано с &lt;b&gt;Qt 5.15.2 (MinGW 32-bit)&lt;/b&gt;.&lt;/p&gt;</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="572"/>
+        <location filename="../src/MainWindow.cpp" line="573"/>
         <source>&amp;File</source>
         <translation>&amp;Файл</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="573"/>
+        <location filename="../src/MainWindow.cpp" line="574"/>
         <source>&amp;View</source>
         <translation>&amp;Вид</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="574"/>
-        <location filename="../src/MainWindow.cpp" line="614"/>
+        <location filename="../src/MainWindow.cpp" line="575"/>
+        <location filename="../src/MainWindow.cpp" line="615"/>
         <source>&amp;Portals</source>
         <translation>&amp;Порталы</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="575"/>
+        <location filename="../src/MainWindow.cpp" line="576"/>
         <source>&amp;Tools</source>
         <translation>&amp;Инструменты</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="576"/>
+        <location filename="../src/MainWindow.cpp" line="577"/>
         <source>&amp;Language</source>
         <translation>&amp;Язык</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="577"/>
+        <location filename="../src/MainWindow.cpp" line="578"/>
         <source>&amp;Help</source>
         <translation>&amp;Справка</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="578"/>
+        <location filename="../src/MainWindow.cpp" line="579"/>
         <source>&amp;Recent Maps</source>
         <translation>&amp;Недавние карты</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="581"/>
+        <location filename="../src/MainWindow.cpp" line="582"/>
         <source>&amp;Open Map (.FPM)...</source>
         <translation>&amp;Открыть карту (.FPM)...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="582"/>
+        <location filename="../src/MainWindow.cpp" line="583"/>
         <source>&amp;Save Map</source>
         <translation>&amp;Сохранить карту</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="583"/>
+        <location filename="../src/MainWindow.cpp" line="584"/>
         <source>Save Map &amp;As...</source>
         <translation>Сохранить карту &amp;как...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="585"/>
+        <location filename="../src/MainWindow.cpp" line="586"/>
         <source>&amp;Reload Map</source>
         <translation>&amp;Перезагрузить карту</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="586"/>
+        <location filename="../src/MainWindow.cpp" line="587"/>
         <source>Reload map from disk (F5)</source>
         <translation>Перезагрузить карту с диска (F5)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="588"/>
+        <location filename="../src/MainWindow.cpp" line="589"/>
         <source>&amp;Configure FPS Creator Path...</source>
         <translation>&amp;Настроить путь к FPS Creator...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="589"/>
+        <location filename="../src/MainWindow.cpp" line="590"/>
         <source>E&amp;xit</source>
         <translation>В&amp;ыход</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="592"/>
+        <location filename="../src/MainWindow.cpp" line="593"/>
         <source>Zoom &amp;In</source>
         <translation>Увеличить ма&amp;сштаб</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="593"/>
+        <location filename="../src/MainWindow.cpp" line="594"/>
         <source>Zoom &amp;Out</source>
         <translation>У&amp;меньшить масштаб</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="594"/>
+        <location filename="../src/MainWindow.cpp" line="595"/>
         <source>Reset Zoom (100%)</source>
         <translation>Сбросить масштаб (100%)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="596"/>
+        <location filename="../src/MainWindow.cpp" line="597"/>
         <source>Fit View</source>
         <translation>По размеру</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="597"/>
+        <location filename="../src/MainWindow.cpp" line="598"/>
         <source>Fit whole map in view (Home)</source>
         <translation>Поместить всю карту в окно (Home)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="599"/>
+        <location filename="../src/MainWindow.cpp" line="600"/>
         <source>&amp;Wall Textures</source>
         <translation>Текстуры с&amp;тен</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="600"/>
+        <location filename="../src/MainWindow.cpp" line="601"/>
         <source>&amp;Floor Textures</source>
         <translation>Текстуры &amp;пола</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="601"/>
+        <location filename="../src/MainWindow.cpp" line="602"/>
         <source>&amp;Grid Lines</source>
         <translation>Линии &amp;сетки</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="603"/>
+        <location filename="../src/MainWindow.cpp" line="604"/>
         <source>&amp;Entities</source>
         <translation>&amp;Энтити</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="604"/>
+        <location filename="../src/MainWindow.cpp" line="605"/>
         <source>Toggle entity rendering on map (E)</source>
         <translation>Отображение энтити на карте (E)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="606"/>
+        <location filename="../src/MainWindow.cpp" line="607"/>
         <source>Light &amp;Halos</source>
         <translation>&amp;Ореолы света</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="607"/>
+        <location filename="../src/MainWindow.cpp" line="608"/>
         <source>Trigger &amp;Zones</source>
         <translation>Триггерные &amp;зоны</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="608"/>
+        <location filename="../src/MainWindow.cpp" line="609"/>
         <source>&amp;Waypoints</source>
         <translation>Путевые &amp;точки</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="610"/>
+        <location filename="../src/MainWindow.cpp" line="611"/>
         <source>&amp;Ghost Lower Floor</source>
         <translation>&amp;Полупрозрачный нижний этаж</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="611"/>
+        <location filename="../src/MainWindow.cpp" line="612"/>
         <source>Show Ghost Lower Floor (toggle semi-transparent rendering of the floor below)</source>
         <translation>Показать нижний этаж полупрозрачным фоном</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="615"/>
+        <location filename="../src/MainWindow.cpp" line="616"/>
         <source>Toggle Portals &amp; VisZones display</source>
         <translation>Переключить отображение порталов и зон видимости</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="618"/>
+        <location filename="../src/MainWindow.cpp" line="619"/>
         <source>Vis Zones</source>
         <translation>Зоны видимости</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="619"/>
+        <location filename="../src/MainWindow.cpp" line="620"/>
         <source>Color all visibility zones with unique colors overlay (Ctrl+Shift+C)</source>
         <translation>Отобразить цветовую карту всех зон видимости текущего этажа (Ctrl+Shift+C)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="623"/>
+        <location filename="../src/MainWindow.cpp" line="624"/>
         <source>👁 &amp;Visibility Zones &amp; Portals Panel (PVS)...</source>
         <translation>👁 Панель &amp;зон видимости и порталов (PVS)...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="624"/>
+        <location filename="../src/MainWindow.cpp" line="625"/>
         <source>🔄 &amp;Show All Zones (Normal View)</source>
         <translation>🔄 &amp;Показать все зоны (обычный вид)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="625"/>
+        <location filename="../src/MainWindow.cpp" line="626"/>
         <source>&amp;Leak Detector...</source>
         <translation>Детектор &amp;утечек порталов...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="626"/>
+        <location filename="../src/MainWindow.cpp" line="627"/>
         <source>&amp;Memory Analyzer...</source>
         <translation>Анализатор &amp;памяти...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="627"/>
+        <location filename="../src/MainWindow.cpp" line="628"/>
         <source>🧱 &amp;Segment Inspector &amp;&amp; Editor...</source>
         <translation>🧱 &amp;Инспектор и редактор сегментов...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="628"/>
+        <location filename="../src/MainWindow.cpp" line="633"/>
         <source>&amp;About %1...</source>
         <translation>О &amp;программе %1...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="631"/>
+        <location filename="../src/MainWindow.cpp" line="636"/>
         <source>Go one floor down (PageDown / -)</source>
         <translation>Перейти на этаж ниже (PageDown / -)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="632"/>
+        <location filename="../src/MainWindow.cpp" line="637"/>
         <source>Go one floor up (PageUp / +)</source>
         <translation>Перейти на этаж выше (PageUp / +)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="634"/>
+        <location filename="../src/MainWindow.cpp" line="639"/>
         <source>Memory</source>
         <translation>Память</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="635"/>
+        <location filename="../src/MainWindow.cpp" line="640"/>
         <source>Measure level RAM weight in Megabytes and inspect memory budget (Ctrl+M)</source>
         <translation>Измерить расход оперативной памяти уровня в мегабайтах и проверить бюджет (Ctrl+M)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="638"/>
+        <location filename="../src/MainWindow.cpp" line="643"/>
         <source>🔍 Leaks</source>
         <translation>🔍 Утечки</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1018"/>
+        <location filename="../src/MainWindow.cpp" line="1251"/>
         <source>Floor %1 (Y: %2)</source>
         <translation>Этаж %1 (Y: %2)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1020"/>
+        <location filename="../src/MainWindow.cpp" line="1253"/>
         <source> [%1 ent, %2 seg]</source>
         <translation> [%1 ent, %2 seg]</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="639"/>
+        <location filename="../src/MainWindow.cpp" line="644"/>
         <source>Scan compiled universe.dbu and map geometry for occlusion leaks</source>
         <translation>Сканировать скомпилированный universe.dbu и геометрию карты на предмет утечек окклюзии</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="642"/>
+        <location filename="../src/MainWindow.cpp" line="647"/>
         <source>👁 VisZones</source>
         <translation>👁 Зоны PVS</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="643"/>
+        <location filename="../src/MainWindow.cpp" line="648"/>
         <source>Toggle Visibility Zones &amp; Portals (PVS) right dock panel</source>
         <translation>Переключить правую панель зон видимости и порталов (PVS)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="647"/>
+        <location filename="../src/MainWindow.cpp" line="652"/>
         <source>System Default</source>
         <translation>Системный по умолчанию</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="655"/>
+        <location filename="../src/MainWindow.cpp" line="660"/>
         <source>Entity Search &amp; Palette</source>
         <translation>Поиск энтити и палитра</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="656"/>
+        <location filename="../src/MainWindow.cpp" line="661"/>
         <source>Entity Properties Inspector</source>
         <translation>Свойства энтити</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="657"/>
+        <location filename="../src/MainWindow.cpp" line="662"/>
         <source>Visibility Zones &amp; Portals (PVS)</source>
         <translation>Зоны видимости и порталы (PVS)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="679"/>
+        <location filename="../src/MainWindow.cpp" line="684"/>
         <source>Unsaved Changes</source>
         <translation>Несохранённые изменения</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="680"/>
+        <location filename="../src/MainWindow.cpp" line="685"/>
         <source>The map &apos;%1&apos; has unsaved modifications.
 Do you want to save your changes?</source>
         <translation>Карта &apos;%1&apos; содержит несохранённые изменения.
 Сохранить изменения перед выходом?</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="720"/>
+        <location filename="../src/MainWindow.cpp" line="725"/>
         <source>Saved %1</source>
         <translation>Карта сохранена: %1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="722"/>
-        <location filename="../src/MainWindow.cpp" line="745"/>
+        <location filename="../src/MainWindow.cpp" line="727"/>
+        <location filename="../src/MainWindow.cpp" line="750"/>
         <source>Save Error</source>
         <translation>Ошибка сохранения</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="722"/>
-        <location filename="../src/MainWindow.cpp" line="745"/>
+        <location filename="../src/MainWindow.cpp" line="727"/>
+        <location filename="../src/MainWindow.cpp" line="750"/>
         <source>Failed to save map to:
 %1</source>
         <translation>Не удалось сохранить карту в:
 %1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="734"/>
+        <location filename="../src/MainWindow.cpp" line="739"/>
         <source>Save FPS Creator Map As</source>
         <translation>Сохранить карту FPS Creator как</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="736"/>
-        <location filename="../src/MainWindow.cpp" line="935"/>
+        <location filename="../src/MainWindow.cpp" line="741"/>
+        <location filename="../src/MainWindow.cpp" line="1169"/>
         <source>FPS Creator Project Map (*.fpm);;All Files (*.*)</source>
         <translation>Карта проекта FPS Creator (*.fpm);;Все файлы (*.*)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="743"/>
+        <location filename="../src/MainWindow.cpp" line="748"/>
         <source>Saved as %1</source>
         <translation>Сохранено как %1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="765"/>
+        <location filename="../src/MainWindow.cpp" line="770"/>
         <source>Entity #%1</source>
         <translation>Энтити #%1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="780"/>
+        <location filename="../src/MainWindow.cpp" line="785"/>
         <source>Deleted %1</source>
         <translation>Удалено: %1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="798"/>
+        <location filename="../src/MainWindow.cpp" line="1015"/>
         <source>No Recent Maps</source>
         <translation>Нет недавних карт</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="819"/>
+        <location filename="../src/MainWindow.cpp" line="1035"/>
         <source>Clear Recent Maps</source>
         <translation>Очистить список недавних карт</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="831"/>
+        <location filename="../src/MainWindow.cpp" line="1047"/>
         <source>Loading %1...</source>
         <translation>Загрузка %1...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="855"/>
-        <location filename="../src/MainWindow.cpp" line="1146"/>
-        <location filename="../src/MainWindow.cpp" line="1174"/>
+        <location filename="../src/MainWindow.cpp" line="1071"/>
+        <location filename="../src/MainWindow.cpp" line="1379"/>
+        <location filename="../src/MainWindow.cpp" line="1414"/>
         <source>Error</source>
         <translation>Ошибка</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="855"/>
+        <location filename="../src/MainWindow.cpp" line="1071"/>
         <source>Failed to load FPM map file:
 %1</source>
         <translation>Не удалось загрузить файл карты FPM:
@@ -976,103 +976,138 @@ Do you want to save your changes?</source>
         <translation type="vanished">Анализ расхода оперативной памяти карты...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="866"/>
+        <location filename="../src/MainWindow.cpp" line="1082"/>
         <source>Building visibility zones &amp; portals...</source>
         <translation>Построение зон видимости и порталов...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="871"/>
+        <location filename="../src/MainWindow.cpp" line="1087"/>
         <source>Populating entity list...</source>
         <translation>Заполнение списка энтити...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="896"/>
+        <location filename="../src/MainWindow.cpp" line="1112"/>
         <source>Rendering map canvas...</source>
         <translation>Отрисовка холста карты...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="917"/>
+        <location filename="../src/MainWindow.cpp" line="1152"/>
         <source>Loaded &quot;%1&quot; (%2 entities, %3 segments) in %4 ms</source>
         <translation>Загружено &quot;%1&quot; (%2 энтити, %3 сегментов) за %4 мс</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="935"/>
+        <location filename="../src/MainWindow.cpp" line="1169"/>
         <source>Open FPS Creator Map</source>
         <translation>Открыть карту FPS Creator</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="952"/>
+        <location filename="../src/MainWindow.cpp" line="1185"/>
         <source>Select FPS Creator Installation Directory</source>
         <translation>Выберите каталог установки FPS Creator</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="964"/>
+        <location filename="../src/MainWindow.cpp" line="1197"/>
         <source>No Map Loaded</source>
         <translation>Карта не загружена</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="964"/>
+        <location filename="../src/MainWindow.cpp" line="1197"/>
         <source>Please open an FPS Creator map (.FPM) first.</source>
         <translation>Пожалуйста, сначала откройте карту FPS Creator (.FPM).</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1088"/>
+        <location filename="../src/MainWindow.cpp" line="1321"/>
         <source>No map loaded</source>
         <translation>Карта не загружена</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1089"/>
+        <location filename="../src/MainWindow.cpp" line="1322"/>
         <source>Floor: 0</source>
         <translation>Этаж: 0</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1090"/>
+        <location filename="../src/MainWindow.cpp" line="1323"/>
         <source>RAM: 0 MB</source>
         <translation>RAM: 0 МБ</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1094"/>
+        <location filename="../src/MainWindow.cpp" line="1327"/>
         <source>Map: %1 (%2 entities, %3 segments)</source>
         <translation>Карта: %1 (%2 энтити, %3 сегментов)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1099"/>
+        <location filename="../src/MainWindow.cpp" line="1332"/>
         <source>Floor: %1 / %2 (Height: %3 units)</source>
         <translation>Этаж: %1 / %2 (Высота: %3 ед.)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1105"/>
+        <location filename="../src/MainWindow.cpp" line="1338"/>
         <source>Level RAM: %1 MB (%2%)</source>
         <translation>RAM уровня: %1 МБ (%2%)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1111"/>
+        <location filename="../src/MainWindow.cpp" line="1344"/>
         <source>Level RAM: --</source>
         <translation>RAM уровня: --</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1109"/>
+        <location filename="../src/MainWindow.cpp" line="1342"/>
         <source>Level RAM: calculating...</source>
         <translation>RAM уровня: расчёт...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1146"/>
-        <location filename="../src/MainWindow.cpp" line="1174"/>
+        <location filename="../src/MainWindow.cpp" line="1379"/>
+        <location filename="../src/MainWindow.cpp" line="1414"/>
         <source>Please open a map first.</source>
         <translation>Пожалуйста, сначала откройте карту.</translation>
+    </message>
+    <message>
+        <location filename="../src/MainWindow.cpp" line="630"/>
+        <source>✂️ &amp;Dichotomy Tool: Delete Zone &amp;&amp; Entities...</source>
+        <translation>✂️ &amp;Инструмент дихотомии: удалить зону и Entity...</translation>
+    </message>
+    <message>
+        <location filename="../src/MainWindow.cpp" line="631"/>
+        <source>Delete active visibility zone room, all its tiles, ceiling slabs, and entities (Shift+Del)</source>
+        <translation>Удалить комнату активной зоны видимости, все её блоки, потолочные перекрытия и объекты Entity (Shift+Del)</translation>
+    </message>
+    <message>
+        <location filename="../src/MainWindow.cpp" line="799"/>
+        <source>✂️ Dichotomy Tool: Select a zone on canvas or in VisZone panel first</source>
+        <translation>✂️ Инструмент дихотомии: сначала выберите зону на холсте или в панели VisZones</translation>
+    </message>
+    <message>
+        <location filename="../src/MainWindow.cpp" line="805"/>
+        <source>✂️ Dichotomy Tool: Zone %1 not found</source>
+        <translation>✂️ Инструмент дихотомии: Зона %1 не найдена</translation>
+    </message>
+    <message>
+        <location filename="../src/MainWindow.cpp" line="963"/>
+        <source>✂️ Dichotomy Tool: Room Zone %1 deleted (removed %2 tiles, %3 entities).</source>
+        <translation>✂️ Инструмент дихотомии: комната Зоны %1 удалена (удалено блоков: %2, объектов Entity: %3).</translation>
     </message>
 </context>
 <context>
     <name>MapCanvas</name>
     <message>
-        <location filename="../src/MapCanvas.cpp" line="1273"/>
+        <location filename="../src/MapCanvas.cpp" line="1335"/>
         <source>Tile (%1, %2): %3</source>
         <translation>Тайл (%1, %2): %3</translation>
     </message>
     <message>
-        <location filename="../src/MapCanvas.cpp" line="1276"/>
+        <location filename="../src/MapCanvas.cpp" line="1340"/>
         <source>🧱 Inspect &amp; Edit Segment...</source>
         <translation>🧱 Осмотреть и изменить сегмент...</translation>
+    </message>
+    <message>
+        <location filename="../src/MapCanvas.cpp" line="1334"/>
+        <source>Empty Tile</source>
+        <translation>Пустой тайл</translation>
+    </message>
+    <message>
+        <location filename="../src/MapCanvas.cpp" line="1344"/>
+        <source>✂️ Dichotomy Tool: Delete Room (Zone %1)</source>
+        <translation>✂️ Инструмент дихотомии: удалить комнату (Зона %1)</translation>
     </message>
 </context>
 <context>
@@ -1380,238 +1415,392 @@ Do you want to save your changes?</source>
         <translation>Файл universe.dbu не найден. Запустите Тест Игры (F9) в FPS Creator.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakAnalyzer.cpp" line="73"/>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="79"/>
+        <source>⚠ universe.dbu has %1 modified tiles since last build (%2). Run Test Game (F9).</source>
+        <translation>⚠ universe.dbu содержит %1 изменённых плиток с момента прошлой сборки (%2). Запустите Тест Игры (F9).</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="82"/>
         <source>⚠ universe.dbu is outdated (map saved: %1, build: %2). Run Test Game (F9).</source>
         <translation>⚠ universe.dbu устарел (карта сохранена: %1, сборка: %2). Запустите Тест Игры (F9).</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakAnalyzer.cpp" line="76"/>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="86"/>
         <source>✓ universe.dbu is up to date (built %1 for this map)</source>
         <translation>✓ universe.dbu актуален (собран %1 для этой карты)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakAnalyzer.cpp" line="79"/>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="89"/>
         <source>⚠ universe.dbu is from ANOTHER map (built %1). Run Test Game (F9) for this map.</source>
         <translation>⚠ universe.dbu от ДРУГОЙ карты (собран %1). Запустите Тест Игры (F9) для этой карты.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakAnalyzer.cpp" line="89"/>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="99"/>
         <source>⚠ universe.dbu is outdated. Run Test Game (F9) in FPS Creator.</source>
         <translation>⚠ universe.dbu устарел. Запустите Тест Игры (F9) в FPS Creator.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakAnalyzer.cpp" line="91"/>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="101"/>
         <source>✓ universe.dbu found (%1)</source>
         <translation>✓ universe.dbu найден (%1)</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="425"/>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="509"/>
+        <source>Compiled BSP portal of sub-segment size detected at Floor %1 (%2, %3) without a door or window. Indicates misaligned geometry or CSG split seam.</source>
+        <translation>Скомпилированный BSP-портал подсегментного размера обнаружен на этаже %1 (%2, %3) без двери или окна. Указывает на несостыковку геометрии или шов разбиения CSG.</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="431"/>
+        <source>Unsealed ceiling opening opens directly into universe void at Floor %1 (%2, %3).</source>
+        <translation>Негерметичный проём потолка открывает комнату в пустоту на этаже %1 (%2, %3).</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="515"/>
+        <source>Unsealed boundary opening opens directly into universe void at Floor %1 (%2, %3).</source>
+        <translation>Негерметичный проём границы открывает комнату в пустоту на этаже %1 (%2, %3).</translation>
+    </message>
+    <message>
+        <source>Unsealed ceiling opening (%1x%2) opens directly into universe void at Floor %3 (%4, %5).</source>
+        <translation type="vanished">Негерметичный проём потолка (%1x%2) открывает комнату в пустоту на этаже %3 (%4, %5).</translation>
+    </message>
+    <message>
+        <source>Unsealed boundary opening (%1x%2) opens directly into universe void at Floor %3 (%4, %5).</source>
+        <translation type="vanished">Негерметичный проём границы (%1x%2) открывает комнату в пустоту на этаже %3 (%4, %5).</translation>
+    </message>
+    <message>
+        <source>Confirmed Leak [BSP + Static]</source>
+        <translation type="vanished">Подтверждённая утечка [BSP + Сетка]</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="251"/>
+        <source>Compiled BSP Mismatch</source>
+        <translation>Несоответствие скомпилированного BSP</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="262"/>
+        <source>Compiled BSP Outdated</source>
+        <translation>Скомпилированный BSP устарел</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="424"/>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="508"/>
+        <source>Physical Mesh Seam / Micro-Crack (CSG)</source>
+        <translation>Физический шов / микротрещина геометрии (CSG)</translation>
+    </message>
+    <message>
+        <source>Compiled BSP portal of sub-segment size (%1x%2) detected at Floor %3 (%4, %5) without a door or window. Indicates misaligned geometry or CSG split seam.</source>
+        <translation type="vanished">Скомпилированный BSP-портал подсегментного размера (%1x%2) обнаружен на этаже %3 (%4, %5) без двери или окна. Указывает на несостыковку геометрии или шов разбиения CSG.</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="430"/>
+        <location filename="../src/PortalLeakAnalyzer.cpp" line="514"/>
+        <source>Physical BSP Void Leak</source>
+        <translation>Физическая утечка BSP в пустоту</translation>
+    </message>
+    <message>
+        <source>[Confirmed by compiled universe.dbu: Portal %1 (%2x%3) connects to Zone %4 (Void) at Floor %5 (%6, %7)]</source>
+        <translation type="vanished">[Подтверждено скомпилированным universe.dbu: Портал %1 (%2x%3) выходит в Зону %4 (Пустота) на этаже %5 (%6, %7)]</translation>
     </message>
 </context>
 <context>
     <name>PortalLeakDialog</name>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="17"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="147"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="458"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="100"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="231"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="592"/>
         <source>No Map</source>
         <translation>Карта не загружена</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="18"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="148"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="459"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="101"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="232"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="593"/>
         <source>%1 — Portal &amp; CSG Leak Detector — %2</source>
         <translation>%1 — Детектор утечек порталов и CSG — %2</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="25"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="150"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="108"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="234"/>
         <source>Geometry &amp; Leak Detection Methods</source>
         <translation>Геометрия и методы обнаружения утечек</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="31"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="152"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="114"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="236"/>
         <source>1. Physical Compiled BSP Analysis (universe.dbu)</source>
         <translation>1. Анализ скомпилированного физического BSP (universe.dbu)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="32"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="153"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="115"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="237"/>
         <source>Detects physical gaps, unclosed CSG polyhedra, and see-through portals into the void from compiled universe.dbu (after Test Game in FPS Creator).</source>
         <translation>Обнаруживает физические зазоры, незакрытые полиэдры CSG и сквозные порталы в пустоту из скомпилированного universe.dbu (после запуска Test Game в FPS Creator).</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="56"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="156"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="139"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="240"/>
         <source>2. Static Grid / Topological Analysis (.FPM / .FPS)</source>
         <translation>2. Статический сеточный / топологический анализ (.FPM / .FPS)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="58"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="157"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="141"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="241"/>
         <source>Checks for unclosed ceiling tiles, outer wall breaches in room perimeters, and CSG overlaps before map compilation.</source>
         <translation>Проверяет незакрытые потолочные плитки, проломы внешних стен по периметру комнат и пересечения CSG до компиляции карты.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="65"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="159"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="148"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="243"/>
         <source>🔍 Run Analysis</source>
         <translation>🔍 Запустить анализ</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="72"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="160"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="155"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="244"/>
         <source>Filter by Vis Zone:</source>
         <translation>Фильтр по Vis-зоне:</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="85"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="161"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="402"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="168"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="245"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="536"/>
         <source>⚡ Resolve Clash / Edit...</source>
         <translation>⚡ Устранить конфликт / Редактировать...</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="87"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="170"/>
         <source>Open the Segment Editor &amp; Conflict Resolver for the selected row</source>
         <translation>Открыть редактор сегментов и устранение конфликтов для выбранной строки</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="98"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="181"/>
         <source>Select detection methods and click &quot;Run Analysis&quot;.</source>
         <translation>Выберите методы проверки и нажмите &quot;Запустить анализ&quot;.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="108"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="165"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="191"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="249"/>
         <source>Severity</source>
         <translation>Серьёзность</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="109"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="166"/>
+        <source>Source</source>
+        <translation type="vanished">Источник</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="192"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="250"/>
         <source>Leak Type</source>
         <translation>Тип утечки</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="110"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="167"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="193"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="251"/>
         <source>Vis Zone</source>
         <translation>Vis-зона</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="111"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="168"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="194"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="252"/>
         <source>Coordinates</source>
         <translation>Координаты</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="112"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="169"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="195"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="253"/>
         <source>Issue Description</source>
         <translation>Описание проблемы</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="190"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="274"/>
         <source>Enable at least one detection method to run analysis.</source>
         <translation>Включите хотя бы один метод проверки для запуска анализа.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="197"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="282"/>
         <source>Error</source>
         <translation>Ошибка</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="197"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="282"/>
         <source>Map is not loaded.</source>
         <translation>Карта не загружена.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="237"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="323"/>
         <source>All Vis Zones (%1 issues)</source>
         <translation>Все Vis-зоны (проблем: %1)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="241"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="327"/>
         <source>Outside / Void / Unzoned (0 — Resolved)</source>
         <translation>Вне зон / Пустота / Без зоны (0 — решено)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="243"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="329"/>
         <source>Outside / Void / Unzoned (%1)</source>
         <translation>Вне зон / Пустота / Без зоны (%1)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="271"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="357"/>
         <source>%1 — 0 issues (Resolved)</source>
         <translation>%1 — проблем: 0 (Решено)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="273"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="359"/>
         <source>%1 — %2 issues</source>
         <translation>%1 — проблем: %2</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="332"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="421"/>
         <source>ERROR</source>
         <translation>ОШИБКА</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="332"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="421"/>
         <source>WARNING</source>
         <translation>ПРЕДУПРЕЖДЕНИЕ</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="345"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="446"/>
+        <source>[%1×%2 (seam)] </source>
+        <translation>[%1×%2 (щель)] </translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="448"/>
+        <source>[%1×%2] </source>
+        <translation>[%1×%2] </translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="460"/>
+        <source>
+Estimated Portal Size: %1 × %2 (~%3 × %4 m)</source>
+        <translation>
+Оценочный размер портала: %1 × %2 (~%3 × %4 м)</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="469"/>
+        <source>[Source: Both (Physical BSP + Logical Grid)]%1
+%2</source>
+        <translation>[Источник: Оба (Физический BSP + Логическая сетка)]%1
+%2</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="471"/>
+        <source>[Source: Physical BSP (universe.dbu)]%1
+%2</source>
+        <translation>[Источник: Физический BSP (universe.dbu)]%1
+%2</translation>
+    </message>
+    <message>
+        <source>Both</source>
+        <translation type="vanished">Оба</translation>
+    </message>
+    <message>
+        <source>Confirmed by Both Sources: Physical BSP (universe.dbu) and Logical Grid (.FPM)</source>
+        <translation type="vanished">Подтверждено обоими источниками: Физический BSP (universe.dbu) и Логическая сетка (.FPM)</translation>
+    </message>
+    <message>
+        <source>Physical</source>
+        <translation type="vanished">Физич.</translation>
+    </message>
+    <message>
+        <source>Physical Source: Compiled BSP portal from universe.dbu</source>
+        <translation type="vanished">Физический источник: скомпилированный портал BSP из universe.dbu</translation>
+    </message>
+    <message>
+        <source>Logical</source>
+        <translation type="vanished">Логич.</translation>
+    </message>
+    <message>
+        <source>Logical Source: Topological map grid analysis (.FPM)</source>
+        <translation type="vanished">Логический источник: топологический анализ сетки карты (.FPM)</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="434"/>
         <source>Layer %1 (%2, %3)</source>
         <translation>Слой %1 (%2, %3)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="347"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="436"/>
         <source>L%1 (%2,%3) ↔ (%4,%5)</source>
         <translation>Слой %1 (%2,%3) ↔ (%4,%5)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="368"/>
+        <source>[Source: Both (Physical BSP + Logical Grid)]
+%1</source>
+        <translation type="vanished">[Источник: Оба (Физический BSP + Логическая сетка)]
+%1</translation>
+    </message>
+    <message>
+        <source>[Source: Physical BSP (universe.dbu)]
+%1</source>
+        <translation type="vanished">[Источник: Физический BSP (universe.dbu)]
+%1</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="473"/>
+        <source>[Source: Logical Grid (.FPM)]
+%1</source>
+        <translation>[Источник: Логическая сетка (.FPM)]
+%1</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="491"/>
         <source> [Filtered by: %1]</source>
         <translation> [Фильтр: %1]</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="371"/>
-        <source>Showing issues: &lt;b&gt;%1&lt;/b&gt; of %2%3 (Physical BSP: %4, Static Grid: %5). Double-click jumps camera to tile.</source>
-        <translation>Показано проблем: &lt;b&gt;%1&lt;/b&gt; из %2%3 (Физический BSP: %4, Статическая сетка: %5). Двойной клик наводит камеру на тайл.</translation>
+        <location filename="../src/PortalLeakDialog.cpp" line="495"/>
+        <source>Showing issues: &lt;b&gt;%1&lt;/b&gt; of %2%3 (Both: %4, Physical: %5, Logical: %6). Double-click jumps camera to tile.</source>
+        <translation>Показано проблем: &lt;b&gt;%1&lt;/b&gt; из %2%3 (Оба источника: %4, Физический: %5, Логический: %6). Двойной клик наводит камеру на тайл.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="396"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="503"/>
+        <source>Showing issues: &lt;b&gt;%1&lt;/b&gt; of %2%3 (Physical: %4, Logical: %5). Double-click jumps camera to tile.</source>
+        <translation>Показано проблем: &lt;b&gt;%1&lt;/b&gt; из %2%3 (Физический: %4, Логический: %5). Двойной клик наводит камеру на тайл.</translation>
+    </message>
+    <message>
+        <source>Showing issues: &lt;b&gt;%1&lt;/b&gt; of %2%3 (Confirmed [BSP+Static]: %4, Physical BSP: %5, Static Grid: %6). Double-click jumps camera to tile.</source>
+        <translation type="vanished">Показано проблем: &lt;b&gt;%1&lt;/b&gt; из %2%3 (Подтверждено [BSP+Сетка]: %4, Физический BSP: %5, Статическая сетка: %6). Двойной клик наводит камеру на тайл.</translation>
+    </message>
+    <message>
+        <source>Showing issues: &lt;b&gt;%1&lt;/b&gt; of %2%3 (Physical BSP: %4, Static Grid: %5). Double-click jumps camera to tile.</source>
+        <translation type="vanished">Показано проблем: &lt;b&gt;%1&lt;/b&gt; из %2%3 (Физический BSP: %4, Статическая сетка: %5). Двойной клик наводит камеру на тайл.</translation>
+    </message>
+    <message>
+        <location filename="../src/PortalLeakDialog.cpp" line="529"/>
         <source>⚡ Resolve Clash...</source>
         <translation>⚡ Устранить конфликт...</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="398"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="531"/>
         <source>🧱 Edit Segment...</source>
         <translation>🧱 Редактировать сегмент...</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="429"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="563"/>
         <source>🔍 Focus View on Tile (%1, %2)</source>
         <translation>🔍 Навести камеру на тайл (%1, %2)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="437"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="571"/>
         <source>⚡ Resolve Double-Wall Clash...</source>
         <translation>⚡ Устранить конфликт двойной стены...</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="438"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="572"/>
         <source>🧱 Inspect Cell A (%1, %2)</source>
         <translation>🧱 Осмотреть ячейку A (%1, %2)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="439"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="573"/>
         <source>🧱 Inspect Cell B (%1, %2)</source>
         <translation>🧱 Осмотреть ячейку B (%1, %2)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="441"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="575"/>
         <source>🧱 Inspect &amp; Edit Segment (%1, %2)</source>
         <translation>🧱 Осмотреть и изменить сегмент (%1, %2)</translation>
     </message>
@@ -2016,180 +2205,219 @@ Choose how you want to resolve this boundary below:</source>
 <context>
     <name>VisZoneDock</name>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="172"/>
-        <location filename="../src/VisZoneDock.cpp" line="573"/>
+        <location filename="../src/VisZoneDock.cpp" line="194"/>
+        <location filename="../src/VisZoneDock.cpp" line="646"/>
         <source>Zone Selection</source>
         <translation>Выбор зоны</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="176"/>
-        <location filename="../src/VisZoneDock.cpp" line="574"/>
+        <location filename="../src/VisZoneDock.cpp" line="198"/>
+        <location filename="../src/VisZoneDock.cpp" line="647"/>
         <source>Filter to Current Floor</source>
         <translation>Только текущий этаж</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="182"/>
-        <location filename="../src/VisZoneDock.cpp" line="576"/>
+        <location filename="../src/VisZoneDock.cpp" line="204"/>
+        <location filename="../src/VisZoneDock.cpp" line="649"/>
         <source>🎨 Color All Zones</source>
         <translation>🎨 Покрасить все зоны</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="183"/>
-        <location filename="../src/VisZoneDock.cpp" line="577"/>
+        <location filename="../src/VisZoneDock.cpp" line="205"/>
+        <location filename="../src/VisZoneDock.cpp" line="650"/>
         <source>Display color map of all vis zones on the current floor simultaneously (Ctrl+Shift+C)</source>
         <translation>Отобразить цветовую карту всех зон видимости текущего этажа одновременно (Ctrl+Shift+C)</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="184"/>
-        <location filename="../src/VisZoneDock.cpp" line="580"/>
+        <location filename="../src/VisZoneDock.cpp" line="206"/>
+        <location filename="../src/VisZoneDock.cpp" line="653"/>
         <source>🎲 Palette</source>
         <translation>🎲 Палитра</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="185"/>
-        <location filename="../src/VisZoneDock.cpp" line="581"/>
+        <location filename="../src/VisZoneDock.cpp" line="207"/>
+        <location filename="../src/VisZoneDock.cpp" line="654"/>
         <source>Regenerate random color palette for all zones</source>
         <translation>Перегенерировать случайную цветовую палитру для всех зон</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="211"/>
-        <location filename="../src/VisZoneDock.cpp" line="583"/>
+        <location filename="../src/VisZoneDock.cpp" line="233"/>
+        <location filename="../src/VisZoneDock.cpp" line="656"/>
         <source>&lt; Prev Zone</source>
         <translation>&lt; Пред. зона</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="212"/>
-        <location filename="../src/VisZoneDock.cpp" line="584"/>
+        <location filename="../src/VisZoneDock.cpp" line="234"/>
+        <location filename="../src/VisZoneDock.cpp" line="657"/>
         <source>Next Zone &gt;</source>
         <translation>След. зона &gt;</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="217"/>
-        <location filename="../src/VisZoneDock.cpp" line="586"/>
+        <location filename="../src/VisZoneDock.cpp" line="239"/>
+        <location filename="../src/VisZoneDock.cpp" line="659"/>
         <source>Show All Zones (Normal View)</source>
         <translation>Показать все зоны (обычный вид)</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="219"/>
-        <location filename="../src/VisZoneDock.cpp" line="587"/>
+        <location filename="../src/VisZoneDock.cpp" line="241"/>
+        <location filename="../src/VisZoneDock.cpp" line="660"/>
         <source>Reset map display to show all zones and segments</source>
         <translation>Сбросить отображение карты, показывая все зоны и сегменты</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="226"/>
-        <location filename="../src/VisZoneDock.cpp" line="590"/>
+        <location filename="../src/VisZoneDock.cpp" line="259"/>
+        <location filename="../src/VisZoneDock.cpp" line="671"/>
         <source>Visibility Culling Mode</source>
         <translation>Режим отсечения видимости</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="230"/>
-        <location filename="../src/VisZoneDock.cpp" line="591"/>
+        <location filename="../src/VisZoneDock.cpp" line="263"/>
+        <location filename="../src/VisZoneDock.cpp" line="672"/>
         <source>Isolate Active Zone</source>
         <translation>Изолировать активную зону</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="235"/>
-        <location filename="../src/VisZoneDock.cpp" line="592"/>
+        <location filename="../src/VisZoneDock.cpp" line="268"/>
+        <location filename="../src/VisZoneDock.cpp" line="673"/>
         <source>Hide Outside</source>
         <translation>Скрыть внешние</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="237"/>
-        <location filename="../src/VisZoneDock.cpp" line="593"/>
+        <location filename="../src/VisZoneDock.cpp" line="270"/>
+        <location filename="../src/VisZoneDock.cpp" line="674"/>
         <source>Dim Outside (Ghost)</source>
         <translation>Затемнить внешние (Призрак)</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="243"/>
-        <location filename="../src/VisZoneDock.cpp" line="594"/>
+        <location filename="../src/VisZoneDock.cpp" line="276"/>
+        <location filename="../src/VisZoneDock.cpp" line="675"/>
         <source>Dim:</source>
         <translation>Яркость:</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="255"/>
-        <location filename="../src/VisZoneDock.cpp" line="596"/>
+        <location filename="../src/VisZoneDock.cpp" line="288"/>
+        <location filename="../src/VisZoneDock.cpp" line="677"/>
         <source>Active Zone Details</source>
         <translation>Сведения об активной зоне</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="259"/>
-        <location filename="../src/VisZoneDock.cpp" line="449"/>
+        <location filename="../src/VisZoneDock.cpp" line="292"/>
+        <location filename="../src/VisZoneDock.cpp" line="482"/>
         <source>All zones visible. No single zone isolated.</source>
         <translation>Все зоны видимы. Отдельная зона не изолирована.</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="264"/>
-        <location filename="../src/VisZoneDock.cpp" line="597"/>
+        <location filename="../src/VisZoneDock.cpp" line="297"/>
+        <location filename="../src/VisZoneDock.cpp" line="678"/>
         <source>Connected Portals (double-click to jump):</source>
         <translation>Связанные порталы (двойной клик для перехода):</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="271"/>
-        <location filename="../src/VisZoneDock.cpp" line="598"/>
+        <location filename="../src/VisZoneDock.cpp" line="304"/>
+        <location filename="../src/VisZoneDock.cpp" line="679"/>
         <source>Contained Entities (click to inspect):</source>
         <translation>Содержит энтити (клик для выбора):</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="329"/>
+        <location filename="../src/VisZoneDock.cpp" line="362"/>
         <source>All Zones (Normal View)</source>
         <translation>Все зоны (обычный вид)</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="345"/>
-        <location filename="../src/VisZoneDock.cpp" line="460"/>
+        <location filename="../src/VisZoneDock.cpp" line="378"/>
+        <location filename="../src/VisZoneDock.cpp" line="506"/>
         <source>Floor %1</source>
         <translation>Этаж %1</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="346"/>
-        <location filename="../src/VisZoneDock.cpp" line="461"/>
+        <location filename="../src/VisZoneDock.cpp" line="379"/>
+        <location filename="../src/VisZoneDock.cpp" line="507"/>
         <source>Floors %1..%2</source>
         <translation>Этажи %1..%2</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="348"/>
+        <location filename="../src/VisZoneDock.cpp" line="381"/>
         <source>Zone %1 (%2: %3 tiles, %4 entities, %5 portals)</source>
         <translation>Зона %1 (%2: %3 плиток, %4 энтити, %5 порталов)</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="455"/>
+        <location filename="../src/VisZoneDock.cpp" line="492"/>
         <source>Zone not found.</source>
         <translation>Зона не найдена.</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="463"/>
+        <location filename="../src/VisZoneDock.cpp" line="509"/>
         <source>&lt;b&gt;Zone %1&lt;/b&gt; on %2&lt;br&gt;Tiles: %3 (%4 m²)&lt;br&gt;Grid Bounds: (%5, %6) to (%7, %8)</source>
         <translation>&lt;b&gt;Зона %1&lt;/b&gt; на %2&lt;br&gt;Плиток: %3 (%4 м²)&lt;br&gt;Границы сетки: от (%5, %6) до (%7, %8)</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="481"/>
+        <location filename="../src/VisZoneDock.cpp" line="530"/>
+        <source>🪟 Ext. Window #%1 ➔ Sky (at tile %2, %3)</source>
+        <translation>🪟 Внешнее окно #%1 ➔ Небо (плитка %2, %3)</translation>
+    </message>
+    <message>
+        <location filename="../src/VisZoneDock.cpp" line="533"/>
+        <source>🚪 Ext. Door #%1 ➔ Outdoors (at tile %2, %3)</source>
+        <translation>🚪 Внешняя дверь #%1 ➔ Улица (плитка %2, %3)</translation>
+    </message>
+    <message>
+        <location filename="../src/VisZoneDock.cpp" line="541"/>
+        <source>🪟 Window #%1 ➔ Zone %2 (at tile %3, %4)</source>
+        <translation>🪟 Окно #%1 ➔ Зона %2 (плитка %3, %4)</translation>
+    </message>
+    <message>
+        <location filename="../src/VisZoneDock.cpp" line="544"/>
         <source>Portal #%1 ➔ Zone %2 (at tile %3, %4)</source>
         <translation>Портал #%1 ➔ Зона %2 (плитка %3, %4)</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="492"/>
+        <location filename="../src/VisZoneDock.cpp" line="554"/>
         <source>(No direct doorway portals)</source>
         <translation>(Нет прямых дверных порталов)</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="504"/>
+        <location filename="../src/VisZoneDock.cpp" line="566"/>
         <source>Entity #%1</source>
         <translation>Энтити #%1</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="507"/>
+        <location filename="../src/VisZoneDock.cpp" line="569"/>
         <source>%1 [Floor %2 at (%3, %4)]</source>
         <translation>%1 [Этаж %2 в (%3, %4)]</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="520"/>
+        <location filename="../src/VisZoneDock.cpp" line="582"/>
         <source>(No entities inside this zone)</source>
         <translation>(В этой зоне нет энтити)</translation>
     </message>
     <message>
-        <location filename="../src/VisZoneDock.cpp" line="572"/>
+        <location filename="../src/VisZoneDock.cpp" line="645"/>
         <source>Visibility Zones &amp; Portals (PVS)</source>
         <translation>Зоны видимости и порталы (PVS)</translation>
+    </message>
+    <message>
+        <location filename="../src/VisZoneDock.cpp" line="245"/>
+        <source>✂️ Dichotomy: Delete Zone</source>
+        <translation>✂️ Дихотомия: удалить зону</translation>
+    </message>
+    <message>
+        <location filename="../src/VisZoneDock.cpp" line="247"/>
+        <location filename="../src/VisZoneDock.cpp" line="663"/>
+        <source>Delete this entire room and all contained entities (single-key: Delete)</source>
+        <translation>Удалить всю эту комнату и все находящиеся в ней сущности Entity (одна клавиша: Delete)</translation>
+    </message>
+    <message>
+        <location filename="../src/VisZoneDock.cpp" line="485"/>
+        <location filename="../src/VisZoneDock.cpp" line="495"/>
+        <location filename="../src/VisZoneDock.cpp" line="667"/>
+        <source>✂️ Dichotomy: Delete Zone (Select Zone)</source>
+        <translation>✂️ Дихотомия: удалить зону (выберите зону)</translation>
+    </message>
+    <message>
+        <location filename="../src/VisZoneDock.cpp" line="502"/>
+        <location filename="../src/VisZoneDock.cpp" line="665"/>
+        <source>✂️ Dichotomy: Delete Zone %1 [Del]</source>
+        <translation>✂️ Дихотомия: удалить Зону %1 [Del]</translation>
     </message>
 </context>
 </TS>

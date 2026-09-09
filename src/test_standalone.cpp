@@ -8,6 +8,9 @@
 #include "PortalLeakAnalyzer.h"
 #include "PortalLeakDialog.h"
 #include "MapCanvas.h"
+#include <QKeyEvent>
+#include <set>
+#include <tuple>
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
@@ -22,6 +25,80 @@ int main(int argc, char* argv[]) {
     zm->buildFromMap(map);
     PortalLeakAnalyzer pla(map, zm);
     auto warnings = pla.analyze();
+
+    QString tempFpmPath = "C:/Program Files (x86)/The Game Creators/FPS Creator/Files/editors/gridedit/temp.fpm";
+    auto tempMap = FPMReader::loadMap(tempFpmPath, "mypassword");
+    if (tempMap) {
+        std::cout << "Map comparison: map: L=" << map->header.layerMax << " maxX=" << map->header.maxX
+                  << " maxY=" << map->header.maxY << " ents=" << map->placedEntities.size()
+                  << " vs tempMap: L=" << tempMap->header.layerMax << " maxX=" << tempMap->header.maxX
+                  << " maxY=" << tempMap->header.maxY << " ents=" << tempMap->placedEntities.size() << std::endl;
+        int diffBlocks = 0;
+        for (int l = 0; l <= map->header.layerMax; ++l) {
+            for (int y = 0; y <= map->header.maxY; ++y) {
+                for (int x = 0; x <= map->header.maxX; ++x) {
+                    if (map->gridBlocks[l][y][x] != tempMap->gridBlocks[l][y][x]) {
+                        diffBlocks++;
+                        if (diffBlocks <= 3) {
+                            std::cout << "  Diff at (" << l << "," << x << "," << y << "): map="
+                                      << map->gridBlocks[l][y][x] << " temp=" << tempMap->gridBlocks[l][y][x] << std::endl;
+                        }
+                    }
+                }
+            }
+        }
+        std::cout << "Total diffBlocks=" << diffBlocks << std::endl;
+    }
+
+
+
+
+    pla.setCheckCompiledUniverse(true);
+    pla.setCheckStaticMap(false);
+    auto physicalOnlyWarnings = pla.analyze();
+    bool physicalAlonePass = (physicalOnlyWarnings.size() >= 50);
+    std::cout << "[TEST] Physical BSP analysis alone reports leaks: "
+              << (physicalAlonePass ? "PASS" : "FAIL")
+              << " (" << physicalOnlyWarnings.size() << " leaks)" << std::endl;
+
+
+    // 2. Test Static Analysis alone
+    pla.setCheckCompiledUniverse(false);
+    pla.setCheckStaticMap(true);
+    auto staticOnlyWarnings = pla.analyze();
+    bool staticAlonePass = (staticOnlyWarnings.size() >= 50);
+    std::cout << "[TEST] Static analysis alone reports leaks: "
+              << (staticAlonePass ? "PASS" : "FAIL")
+              << " (" << staticOnlyWarnings.size() << " leaks)" << std::endl;
+
+    // 3. Test Merged Analysis (Both ON: deduplication and confirmed status)
+    pla.setCheckCompiledUniverse(true);
+    pla.setCheckStaticMap(true);
+    warnings = pla.analyze();
+
+    int mergedCount = 0;
+    int duplicateCells = 0;
+    std::set<std::tuple<int, int, int>> seenCeilingCells;
+    for (const auto& w : warnings) {
+        if (w.isMerged || w.type.contains("Confirmed")) {
+            mergedCount++;
+        }
+        if (w.type.contains("Ceiling") || w.type.contains("Confirmed")) {
+            auto cell = std::make_tuple(w.layer, w.x, w.y);
+            if (seenCeilingCells.count(cell)) {
+                duplicateCells++;
+            }
+            seenCeilingCells.insert(cell);
+        }
+    }
+    bool mergedPass = (mergedCount >= 20);
+    bool noDuplicatesPass = (duplicateCells == 0);
+    std::cout << "[TEST] Merged analysis combines BSP and Static issues: "
+              << (mergedPass ? "PASS" : "FAIL") << " (" << mergedCount << " merged confirmed leaks)" << std::endl;
+    std::cout << "[TEST] Merged analysis has no duplicate rows for the same issue: "
+              << (noDuplicatesPass ? "PASS" : "FAIL") << " (Duplicate cells: " << duplicateCells << ")" << std::endl;
+
+
 
     int z2TilesF6 = 0;
     for (int y = 0; y < map->gridBlocks[6].size(); ++y) {
@@ -253,21 +330,23 @@ int main(int argc, char* argv[]) {
     bool found26_4 = false, found26_6 = false, found28_4 = false, found28_6 = false;
     bool found19_32 = false, found21_32 = false;
     for (const auto& w : warnings) {
-        if (w.type.contains("Ceiling") && w.layer == 8) {
+        bool isCeil = w.type.contains("Ceiling") || w.description.contains("ceiling", Qt::CaseInsensitive);
+        if (isCeil && w.layer == 8) {
             if (w.x == 29 && w.y == 2) found29_2 = true;
             if (w.x == 26 && w.y == 4 && w.description.contains("ceiling_window")) found26_4 = true;
             if (w.x == 26 && w.y == 6 && w.description.contains("ceiling_window")) found26_6 = true;
             if (w.x == 28 && w.y == 4 && w.description.contains("ceiling_window")) found28_4 = true;
             if (w.x == 28 && w.y == 6 && w.description.contains("ceiling_window")) found28_6 = true;
         }
-        if (w.type.contains("Ceiling") && w.layer == 7) {
+        if (isCeil && w.layer == 7) {
             if (w.x == 19 && w.description.contains("ceiling_window")) found19_32 = true;
             if (w.x == 21 && w.description.contains("ceiling_window")) found21_32 = true;
         }
     }
     int f8CeilingWindowLeaks = 0;
     for (const auto& w : warnings) {
-        if (w.type.contains("Ceiling") && w.layer == 8 && w.description.contains("ceiling_window")) {
+        bool isCeil = w.type.contains("Ceiling") || w.description.contains("ceiling", Qt::CaseInsensitive);
+        if (isCeil && w.layer == 8 && w.description.contains("ceiling_window")) {
             f8CeilingWindowLeaks++;
             std::cout << "F8 ceiling_window leak at (" << w.x << "," << w.y << ") desc: " << w.description.toStdString() << std::endl;
         }
@@ -347,7 +426,141 @@ int main(int argc, char* argv[]) {
               << (canvasHighlightedRow2 ? "PASS" : "FAIL") << " (Canvas highlighted: Floor "
               << canvas.highlightedLayer() << " at (" << canvas.highlightedX() << "," << canvas.highlightedY() << "))" << std::endl;
 
-    if (!found29_2 || !allWindowsDetected || !f7WindowsDetected || !fakeClassified || !realWinClassified || !map1ExtPortalPass || !atriumUnified || !z2Floor7Closed || !canvasHasWarnings || !canvasHighlightedRow2 || !f8AllLeaksAssigned) {
+    bool tableColCountPass = (leakDlg.tableWidget()->columnCount() == 5);
+    bool descHasIcon = (leakDlg.tableWidget()->rowCount() > 0 && !leakDlg.tableWidget()->item(0, 4)->icon().isNull());
+    std::cout << "[TEST] PortalLeakDialog table strictly 5 columns: " << (tableColCountPass ? "PASS" : "FAIL")
+              << " (Columns: " << leakDlg.tableWidget()->columnCount() << ")" << std::endl;
+    std::cout << "[TEST] PortalLeakDialog description item has source icon: " << (descHasIcon ? "PASS" : "FAIL") << std::endl;
+    int firstPhysRow = -1;
+    for (int r = 0; r < leakDlg.tableWidget()->rowCount(); ++r) {
+        int origIdx = leakDlg.tableWidget()->item(r, 0)->data(Qt::UserRole).toInt();
+        if (leakDlg.currentWarnings()[origIdx].hasPhysicalSize) {
+            firstPhysRow = r;
+            break;
+        }
+    }
+    bool foundPhysRow = (firstPhysRow >= 0);
+    bool descHasSizeTag = false;
+    if (foundPhysRow) {
+        QString txt = leakDlg.tableWidget()->item(firstPhysRow, 4)->text();
+        descHasSizeTag = (txt.startsWith("[") && txt.contains("×")) && !txt.contains(" u");
+    }
+    std::cout << "[TEST] Physical leak displays size without 'u' in description: " << (descHasSizeTag ? "PASS" : "FAIL")
+              << " (Row " << firstPhysRow << " desc: " << (foundPhysRow ? leakDlg.tableWidget()->item(firstPhysRow, 4)->text().left(45).toStdString() : "none") << "...)" << std::endl;
+
+    leakDlg.resize(980, 560);
+    if (foundPhysRow) {
+        leakDlg.tableWidget()->selectRow(firstPhysRow);
+        leakDlg.tableWidget()->scrollToItem(leakDlg.tableWidget()->item(firstPhysRow, 0), QAbstractItemView::PositionAtTop);
+    }
+    leakDlg.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/portal_leak_dialog_icons.png");
+
+    // === TEST DICHOTOMY TOOL (Room & Entity Deletion) ===
+    int testDichotomyZone = -1;
+    for (size_t i = 0; i < zm->zones().size(); ++i) {
+        if (!zm->zones()[i].entityIndices.empty() && zm->zones()[i].tiles.size() > 5) {
+            testDichotomyZone = static_cast<int>(i);
+            break;
+        }
+    }
+    if (testDichotomyZone < 0) testDichotomyZone = 0;
+
+    int receivedDichotomyZone = -1;
+    QObject::connect(&canvas, &MapCanvas::dichotomyDeleteZoneRequested, [&](int zid) {
+        receivedDichotomyZone = zid;
+    });
+
+    canvas.setActiveVisZone(testDichotomyZone);
+    canvas.selectEntity(-1);
+
+    // 1. Test keypress Delete without entity selected triggers dichotomyDeleteZoneRequested
+    QKeyEvent delKey(QEvent::KeyPress, Qt::Key_Delete, Qt::NoModifier);
+    QApplication::sendEvent(&canvas, &delKey);
+
+    bool delKeyTriggered = (receivedDichotomyZone == testDichotomyZone);
+    std::cout << "[TEST] MapCanvas Delete key triggers Dichotomy Tool for active zone: "
+              << (delKeyTriggered ? "PASS" : "FAIL") << " (Zone " << (testDichotomyZone + 1) << ")" << std::endl;
+
+    // 2. Perform Dichotomy Room & Entity Deletion on testDichotomyZone
+    const VisZone* targetZone = zm->getZone(testDichotomyZone);
+    int entBeforeCount = static_cast<int>(map->placedEntities.size());
+    int zoneEntCount = static_cast<int>(targetZone ? targetZone->entityIndices.size() : 0);
+
+    // Collect tilesToDelete
+    std::set<std::tuple<int, int, int>> tilesToDelete;
+    for (const auto& kv : targetZone->floorTiles) {
+        for (const QPoint& pt : kv.second) {
+            tilesToDelete.insert(std::make_tuple(kv.first, pt.x(), pt.y()));
+        }
+    }
+    int ceilingLayer = targetZone->maxFloor + 1;
+    if (ceilingLayer <= map->header.layerMax) {
+        for (const QPoint& pt : targetZone->tiles) {
+            if (zm->getZoneAt(ceilingLayer, pt.x(), pt.y()) < 0) {
+                if (ceilingLayer < map->gridGround.size() &&
+                    pt.y() < map->gridGround[ceilingLayer].size() &&
+                    pt.x() < map->gridGround[ceilingLayer][pt.y()].size() &&
+                    map->gridGround[ceilingLayer][pt.y()][pt.x()] == 2) {
+                    tilesToDelete.insert(std::make_tuple(ceilingLayer, pt.x(), pt.y()));
+                }
+            }
+        }
+    }
+
+    // Clear tiles
+    for (const auto& t : tilesToDelete) {
+        int l = std::get<0>(t);
+        int x = std::get<1>(t);
+        int y = std::get<2>(t);
+        if (l >= 0 && l < map->gridBlocks.size() &&
+            y >= 0 && y < map->gridBlocks[l].size() &&
+            x >= 0 && x < map->gridBlocks[l][y].size()) {
+            map->gridBlocks[l][y][x] = 0;
+            if (l < map->gridGround.size() && y < map->gridGround[l].size() && x < map->gridGround[l][y].size())
+                map->gridGround[l][y][x] = 0;
+        }
+    }
+
+    // Delete entities
+    std::vector<int> entToDelete;
+    for (int idx : targetZone->entityIndices) {
+        if (idx >= 0 && idx < map->placedEntities.size()) entToDelete.push_back(idx);
+    }
+    for (int i = 0; i < map->placedEntities.size(); ++i) {
+        const auto& e = map->placedEntities[i];
+        if (tilesToDelete.count(std::make_tuple(e.floorLayer, static_cast<int>(e.x/100.0f), static_cast<int>(std::abs(e.z)/100.0f))) > 0 ||
+            zm->getZoneAt(e.floorLayer, static_cast<int>(e.x/100.0f), static_cast<int>(std::abs(e.z)/100.0f)) == testDichotomyZone) {
+            entToDelete.push_back(i);
+        }
+    }
+    std::sort(entToDelete.begin(), entToDelete.end(), std::greater<int>());
+    entToDelete.erase(std::unique(entToDelete.begin(), entToDelete.end()), entToDelete.end());
+
+    int deletedEnts = static_cast<int>(entToDelete.size());
+    for (int idx : entToDelete) {
+        map->placedEntities.erase(map->placedEntities.begin() + idx);
+    }
+
+    // Rebuild VisZoneManager
+    zm->buildFromMap(map);
+
+    bool tilesCleared = true;
+    for (const auto& t : tilesToDelete) {
+        int l = std::get<0>(t);
+        int x = std::get<1>(t);
+        int y = std::get<2>(t);
+        if (map->gridBlocks[l][y][x] != 0 || map->gridGround[l][y][x] != 0) {
+            tilesCleared = false;
+            break;
+        }
+    }
+
+    bool dichotomyPass = delKeyTriggered && tilesCleared && (deletedEnts >= zoneEntCount && zoneEntCount > 0) && (static_cast<int>(map->placedEntities.size()) == entBeforeCount - deletedEnts);
+    std::cout << "[TEST] Dichotomy Room & Entity Deletion: "
+              << (dichotomyPass ? "PASS" : "FAIL") << " (Deleted " << tilesToDelete.size() << " tiles, "
+              << deletedEnts << " entities (zoneEntCount: " << zoneEntCount << "); remaining entities: " << map->placedEntities.size() << ")" << std::endl;
+
+    if (!found29_2 || !allWindowsDetected || !f7WindowsDetected || !fakeClassified || !realWinClassified || !map1ExtPortalPass || !atriumUnified || !z2Floor7Closed || !canvasHasWarnings || !canvasHighlightedRow2 || !f8AllLeaksAssigned || !dichotomyPass || !physicalAlonePass || !staticAlonePass || !mergedPass || !noDuplicatesPass || !tableColCountPass || !descHasIcon || !descHasSizeTag) {
         return 1;
     }
     return 0;

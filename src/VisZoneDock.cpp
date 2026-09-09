@@ -4,6 +4,7 @@
 #include <QGroupBox>
 #include <QButtonGroup>
 #include <QHeaderView>
+#include <QKeyEvent>
 
 VisZoneDock::VisZoneDock(QWidget* parent)
     : QDockWidget(QStringLiteral("Visibility Zones & Portals (PVS)"), parent)
@@ -100,6 +101,27 @@ VisZoneDock::VisZoneDock(QWidget* parent)
         "  background-color: #4a2028;"
         "  color: #ff8fa0;"
         "  border-color: #78313e;"
+        "}"
+        "QPushButton#btnDichotomyDelete {"
+        "  background-color: #5a1820;"
+        "  color: #ff99a8;"
+        "  border: 1px solid #882230;"
+        "  border-radius: 4px;"
+        "  padding: 0px 8px;"
+        "  height: 28px;"
+        "  min-height: 28px;"
+        "  max-height: 28px;"
+        "  font-weight: bold;"
+        "}"
+        "QPushButton#btnDichotomyDelete:hover {"
+        "  background-color: #7b1e2a;"
+        "  color: #ffffff;"
+        "  border-color: #c0392b;"
+        "}"
+        "QPushButton#btnDichotomyDelete:disabled {"
+        "  background-color: #24191c;"
+        "  color: #665053;"
+        "  border-color: #382428;"
         "}"
         "QCheckBox, QRadioButton {"
         "  color: #d8c2c5;"
@@ -219,6 +241,17 @@ VisZoneDock::VisZoneDock(QWidget* parent)
     m_btnReset->setToolTip(tr("Reset map display to show all zones and segments"));
     selLayout->addWidget(m_btnReset);
     connect(m_btnReset, &QPushButton::clicked, this, &VisZoneDock::resetToNormalView);
+
+    m_btnDichotomyDelete = new QPushButton(tr("✂️ Dichotomy: Delete Zone"), m_grpSelection);
+    m_btnDichotomyDelete->setObjectName("btnDichotomyDelete");
+    m_btnDichotomyDelete->setToolTip(tr("Delete this entire room and all contained entities (single-key: Delete)"));
+    m_btnDichotomyDelete->setEnabled(false);
+    selLayout->addWidget(m_btnDichotomyDelete);
+    connect(m_btnDichotomyDelete, &QPushButton::clicked, this, [this]() {
+        if (m_activeZoneId >= 0) {
+            emit dichotomyDeleteZoneRequested(m_activeZoneId);
+        }
+    });
 
     mainLayout->addWidget(m_grpSelection);
 
@@ -447,13 +480,26 @@ void VisZoneDock::updateActiveZoneDetails() {
 
     if (!m_mgr || m_activeZoneId < 0) {
         m_lblStats->setText(tr("All zones visible. No single zone isolated."));
+        if (m_btnDichotomyDelete) {
+            m_btnDichotomyDelete->setEnabled(false);
+            m_btnDichotomyDelete->setText(tr("✂️ Dichotomy: Delete Zone (Select Zone)"));
+        }
         return;
     }
 
     const VisZone* z = m_mgr->getZone(m_activeZoneId);
     if (!z) {
         m_lblStats->setText(tr("Zone not found."));
+        if (m_btnDichotomyDelete) {
+            m_btnDichotomyDelete->setEnabled(false);
+            m_btnDichotomyDelete->setText(tr("✂️ Dichotomy: Delete Zone (Select Zone)"));
+        }
         return;
+    }
+
+    if (m_btnDichotomyDelete) {
+        m_btnDichotomyDelete->setEnabled(true);
+        m_btnDichotomyDelete->setText(tr("✂️ Dichotomy: Delete Zone %1 [Del]").arg(z->id + 1));
     }
 
     QString floorStr = (z->minFloor == z->maxFloor)
@@ -584,6 +630,17 @@ void VisZoneDock::changeEvent(QEvent* event) {
     QDockWidget::changeEvent(event);
 }
 
+void VisZoneDock::keyPressEvent(QKeyEvent* event) {
+    if (event->key() == Qt::Key_Delete || event->key() == Qt::Key_Backspace) {
+        if (m_activeZoneId >= 0) {
+            emit dichotomyDeleteZoneRequested(m_activeZoneId);
+            event->accept();
+            return;
+        }
+    }
+    QDockWidget::keyPressEvent(event);
+}
+
 void VisZoneDock::retranslateUi() {
     setWindowTitle(tr("Visibility Zones & Portals (PVS)"));
     if (m_grpSelection) m_grpSelection->setTitle(tr("Zone Selection"));
@@ -601,6 +658,14 @@ void VisZoneDock::retranslateUi() {
     if (m_btnReset) {
         m_btnReset->setText(tr("Show All Zones (Normal View)"));
         m_btnReset->setToolTip(tr("Reset map display to show all zones and segments"));
+    }
+    if (m_btnDichotomyDelete) {
+        m_btnDichotomyDelete->setToolTip(tr("Delete this entire room and all contained entities (single-key: Delete)"));
+        if (m_activeZoneId >= 0) {
+            m_btnDichotomyDelete->setText(tr("✂️ Dichotomy: Delete Zone %1 [Del]").arg(m_activeZoneId + 1));
+        } else {
+            m_btnDichotomyDelete->setText(tr("✂️ Dichotomy: Delete Zone (Select Zone)"));
+        }
     }
 
     if (m_grpIsolation) m_grpIsolation->setTitle(tr("Visibility Culling Mode"));

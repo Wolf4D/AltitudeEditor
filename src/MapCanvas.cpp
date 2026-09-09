@@ -1137,7 +1137,20 @@ void MapCanvas::mousePressEvent(QMouseEvent* event) {
             }
         }
 
-        selectEntity(clickedEntity);
+        if (clickedEntity >= 0) {
+            selectEntity(clickedEntity);
+        } else {
+            selectEntity(-1);
+            int tileX = static_cast<int>(std::floor(worldPos.x() / TILE_SIZE));
+            int tileY = static_cast<int>(std::floor(worldPos.y() / TILE_SIZE));
+            if (m_visZoneManager) {
+                int zId = m_visZoneManager->getZoneAt(m_currentFloor, tileX, tileY);
+                if (zId >= 0 && zId != m_activeVisZoneId) {
+                    setActiveVisZone(zId);
+                    emit visZoneSelected(zId);
+                }
+            }
+        }
         event->accept();
     }
 }
@@ -1307,7 +1320,7 @@ void MapCanvas::mouseReleaseEvent(QMouseEvent* event) {
                 return;
             }
 
-            // Check if right clicked on a segment tile
+            // Check if right clicked on a segment tile or inside a visibility zone
             int tileX = static_cast<int>(std::floor(worldPos.x() / TILE_SIZE));
             int tileY = static_cast<int>(std::floor(worldPos.y() / TILE_SIZE));
             if (tileX >= 0 && tileX <= m_map->header.maxX && tileY >= 0 && tileY <= m_map->header.maxY) {
@@ -1315,16 +1328,26 @@ void MapCanvas::mouseReleaseEvent(QMouseEvent* event) {
                              tileY < m_map->gridBlocks[m_currentFloor].size() &&
                              tileX < m_map->gridBlocks[m_currentFloor][tileY].size())
                             ? m_map->gridBlocks[m_currentFloor][tileY][tileX] : 0;
-                if (segId > 0) {
+                int zoneAtTile = m_visZoneManager ? m_visZoneManager->getZoneAt(m_currentFloor, tileX, tileY) : -1;
+                if (segId > 0 || zoneAtTile >= 0) {
                     QMenu menu(this);
-                    QString segName = m_map->segments.contains(segId) ? m_map->segments[segId]->name : QString("Segment #%1").arg(segId);
+                    QString segName = (segId > 0 && m_map->segments.contains(segId)) ? m_map->segments[segId]->name : tr("Empty Tile");
                     QAction* titleAct = menu.addAction(tr("Tile (%1, %2): %3").arg(tileX).arg(tileY).arg(segName));
                     titleAct->setEnabled(false);
                     menu.addSeparator();
-                    QAction* actInspectSeg = menu.addAction(tr("🧱 Inspect & Edit Segment..."));
+                    QAction* actInspectSeg = nullptr;
+                    if (segId > 0) {
+                        actInspectSeg = menu.addAction(tr("🧱 Inspect & Edit Segment..."));
+                    }
+                    QAction* actDichotomy = nullptr;
+                    if (zoneAtTile >= 0) {
+                        actDichotomy = menu.addAction(tr("✂️ Dichotomy Tool: Delete Room (Zone %1)").arg(zoneAtTile + 1));
+                    }
                     QAction* chosen = menu.exec(mapToGlobal(event->pos()));
-                    if (chosen == actInspectSeg) {
+                    if (actInspectSeg && chosen == actInspectSeg) {
                         emit segmentInspectRequested(m_currentFloor, tileX, tileY);
+                    } else if (actDichotomy && chosen == actDichotomy) {
+                        emit dichotomyDeleteZoneRequested(zoneAtTile);
                     }
                     event->accept();
                     return;
@@ -1395,8 +1418,20 @@ void MapCanvas::keyPressEvent(QKeyEvent* event) {
             break;
         case Qt::Key_Delete:
         case Qt::Key_Backspace:
-            if (m_selectedEntityIndex >= 0) {
+            if (event->modifiers() & Qt::ShiftModifier) {
+                if (m_activeVisZoneId >= 0) {
+                    emit dichotomyDeleteZoneRequested(m_activeVisZoneId);
+                    event->accept();
+                    return;
+                }
+            } else if (m_selectedEntityIndex >= 0) {
                 emit entityDeleteRequested(m_selectedEntityIndex);
+                event->accept();
+                return;
+            } else if (m_activeVisZoneId >= 0) {
+                emit dichotomyDeleteZoneRequested(m_activeVisZoneId);
+                event->accept();
+                return;
             }
             break;
         case Qt::Key_PageUp:

@@ -68,6 +68,26 @@ bool UniverseDBUParser::parse(const QString& filePath) {
                         p.vertices.push_back({f[12 + v*3], f[12 + v*3 + 1], f[12 + v*3 + 2]});
                     }
 
+                    if (p.vertices.size() >= 3) {
+                        float v1x = p.vertices[1].x - p.vertices[0].x;
+                        float v1y = p.vertices[1].y - p.vertices[0].y;
+                        float v1z = p.vertices[1].z - p.vertices[0].z;
+                        float v2x = p.vertices[2].x - p.vertices[0].x;
+                        float v2y = p.vertices[2].y - p.vertices[0].y;
+                        float v2z = p.vertices[2].z - p.vertices[0].z;
+                        float nx = v1y * v2z - v1z * v2y;
+                        float ny = v1z * v2x - v1x * v2z;
+                        float nz = v1x * v2y - v1y * v2x;
+                        float len = std::sqrt(nx*nx + ny*ny + nz*nz);
+                        if (len > 0.0001f) {
+                            p.normal = {nx / len, ny / len, nz / len};
+                        } else {
+                            p.normal = {normX, normY, normZ};
+                        }
+                    } else {
+                        p.normal = {normX, normY, normZ};
+                    }
+
                     // Assign to fromZone based on portal center containment
                     for (uint32_t z = 0; z < m_numZones; ++z) {
                         if (m_zones[z].box.contains(cenX, cenY, cenZ)) {
@@ -101,8 +121,8 @@ void UniverseDBUParser::identifyLeaks() {
 
         bool isLeak = false;
 
-        // Leak Condition 1: Target zone does not exist
-        if (portal.targetZone >= m_numZones) {
+        // Leak Condition 1: Target zone does not exist or is Zone 0 (outside void)
+        if (portal.targetZone >= m_numZones || portal.targetZone == 0) {
             isLeak = true;
         }
 

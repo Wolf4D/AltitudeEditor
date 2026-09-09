@@ -10,6 +10,89 @@
 #include <QApplication>
 #include <QFile>
 #include <QAbstractItemView>
+#include <QPainter>
+
+static QIcon makeSourceIcon(bool isPhysical, bool isStatic, bool isMerged) {
+    const int S = 20;
+    QPixmap pix(S, S);
+    pix.fill(Qt::transparent);
+    QPainter p(&pix);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    if (isMerged || (isPhysical && isStatic)) {
+        // BOTH AT ONCE: Composite dual badge (2D Grid + 3D Cube + Verified Badge)
+        // 1. Draw small 2D grid at bottom-left
+        p.setPen(QPen(QColor(245, 158, 11), 1.2));
+        p.setBrush(QColor(245, 158, 11, 40));
+        p.drawRoundedRect(QRectF(1.5, 7, 9, 9), 1.2, 1.2);
+        p.drawLine(QPointF(6, 7), QPointF(6, 16));
+        p.drawLine(QPointF(1.5, 11.5), QPointF(10.5, 11.5));
+
+        // 2. Draw 3D Cube at top-right
+        QPolygonF topFace;
+        topFace << QPointF(14.5, 1.5) << QPointF(19, 3.8) << QPointF(14.5, 6) << QPointF(10, 3.8);
+        p.setPen(QPen(QColor(14, 165, 233), 1.2));
+        p.setBrush(QColor(56, 189, 248, 160));
+        p.drawPolygon(topFace);
+
+        QPolygonF leftFace;
+        leftFace << QPointF(10, 3.8) << QPointF(14.5, 6) << QPointF(14.5, 11.5) << QPointF(10, 9.2);
+        p.setBrush(QColor(2, 132, 199, 180));
+        p.drawPolygon(leftFace);
+
+        QPolygonF rightFace;
+        rightFace << QPointF(14.5, 6) << QPointF(19, 3.8) << QPointF(19, 9.2) << QPointF(14.5, 11.5);
+        p.setBrush(QColor(3, 105, 161, 200));
+        p.drawPolygon(rightFace);
+
+        // 3. Small emerald confirmation check badge at bottom-right
+        p.setPen(QPen(QColor(16, 185, 129), 1.0));
+        p.setBrush(QColor(16, 185, 129));
+        p.drawEllipse(QRectF(11, 11, 8, 8));
+        p.setPen(QPen(Qt::white, 1.4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.drawLine(QPointF(12.8, 15), QPointF(14.5, 16.8));
+        p.drawLine(QPointF(14.5, 16.8), QPointF(17.5, 13.2));
+    } else if (isPhysical) {
+        // PHYSICAL ONLY: 3D Isometric Polyhedron Cube (Compiled BSP)
+        QPolygonF topFace;
+        topFace << QPointF(10, 2) << QPointF(17.5, 5.8) << QPointF(10, 9.5) << QPointF(2.5, 5.8);
+        p.setPen(QPen(QColor(14, 165, 233), 1.3));
+        p.setBrush(QColor(56, 189, 248, 140));
+        p.drawPolygon(topFace);
+
+        QPolygonF leftFace;
+        leftFace << QPointF(2.5, 5.8) << QPointF(10, 9.5) << QPointF(10, 18) << QPointF(2.5, 14.2);
+        p.setBrush(QColor(2, 132, 199, 180));
+        p.drawPolygon(leftFace);
+
+        QPolygonF rightFace;
+        rightFace << QPointF(10, 9.5) << QPointF(17.5, 5.8) << QPointF(17.5, 14.2) << QPointF(10, 18);
+        p.setBrush(QColor(3, 105, 161, 220));
+        p.drawPolygon(rightFace);
+
+        // Subtle center line
+        p.setPen(QPen(QColor(224, 242, 254), 1.0));
+        p.drawLine(QPointF(10, 9.5), QPointF(10, 18));
+    } else {
+        // LOGICAL ONLY: 2D Grid / Blueprint (.FPM)
+        p.setPen(QPen(QColor(245, 158, 11), 1.4));
+        p.setBrush(QColor(245, 158, 11, 35));
+        p.drawRoundedRect(QRectF(2.5, 2.5, 15, 15), 2.0, 2.0);
+
+        p.setPen(QPen(QColor(217, 119, 6), 1.1));
+        // Cross lines
+        p.drawLine(QPointF(10, 2.5), QPointF(10, 17.5));
+        p.drawLine(QPointF(2.5, 10), QPointF(17.5, 10));
+
+        // Center dot
+        p.setBrush(QColor(245, 158, 11));
+        p.setPen(Qt::NoPen);
+        p.drawEllipse(QRectF(8.5, 8.5, 3, 3));
+    }
+
+    p.end();
+    return QIcon(pix);
+}
 
 PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, std::shared_ptr<VisZoneManager> visZoneMgr, QWidget* parent)
     : QDialog(parent), m_map(map), m_visZoneManager(visZoneMgr)
@@ -111,6 +194,7 @@ PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, std::shared_ptr
         tr("Coordinates"),
         tr("Issue Description")
     });
+    m_table->setIconSize(QSize(20, 20));
     m_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     m_table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
     m_table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
@@ -301,6 +385,7 @@ void PortalLeakDialog::updateTableRows() {
     int prevSelectedRow = m_table->currentRow();
     m_visibleWarningIndices.clear();
 
+    int mergedCount = 0;
     int bspCount = 0;
     int staticCount = 0;
 
@@ -318,7 +403,9 @@ void PortalLeakDialog::updateTableRows() {
 
         if (match) {
             m_visibleWarningIndices.push_back(i);
-            if (w.type.contains(QStringLiteral("BSP")) || w.type.contains(QStringLiteral("Universe"))) {
+            if (w.isMerged) {
+                mergedCount++;
+            } else if (w.isPhysicalBsp) {
                 bspCount++;
             } else {
                 staticCount++;
@@ -351,7 +438,41 @@ void PortalLeakDialog::updateTableRows() {
         QTableWidgetItem* locItem = new QTableWidgetItem(coordText);
         locItem->setTextAlignment(Qt::AlignCenter);
 
-        QTableWidgetItem* descItem = new QTableWidgetItem(w.description);
+        // Issue Description column (includes source verification icon, estimated size tag, and detailed tooltip)
+        QString displayDesc = w.description;
+        if (w.hasPhysicalSize) {
+            QString sizeTag;
+            if (w.portalWidth < 95.0f || w.portalHeight < 95.0f) {
+                sizeTag = tr("[%1×%2 (seam)] ").arg(w.portalWidth, 0, 'f', 0).arg(w.portalHeight, 0, 'f', 0);
+            } else {
+                sizeTag = tr("[%1×%2] ").arg(w.portalWidth, 0, 'f', 0).arg(w.portalHeight, 0, 'f', 0);
+            }
+            displayDesc = sizeTag + displayDesc;
+        }
+
+        QTableWidgetItem* descItem = new QTableWidgetItem(displayDesc);
+        descItem->setIcon(makeSourceIcon(w.isPhysicalBsp, w.isStaticMap, w.isMerged));
+
+        QString sizeInfo;
+        if (w.hasPhysicalSize) {
+            float mWidth = w.portalWidth * 0.0254f;
+            float mHeight = w.portalHeight * 0.0254f;
+            sizeInfo = tr("\nEstimated Portal Size: %1 × %2 (~%3 × %4 m)")
+                           .arg(w.portalWidth, 0, 'f', 0)
+                           .arg(w.portalHeight, 0, 'f', 0)
+                           .arg(mWidth, 0, 'f', 1)
+                           .arg(mHeight, 0, 'f', 1);
+        }
+
+        QString sourceTooltip;
+        if (w.isMerged) {
+            sourceTooltip = tr("[Source: Both (Physical BSP + Logical Grid)]%1\n%2").arg(sizeInfo, w.description);
+        } else if (w.isPhysicalBsp) {
+            sourceTooltip = tr("[Source: Physical BSP (universe.dbu)]%1\n%2").arg(sizeInfo, w.description);
+        } else {
+            sourceTooltip = tr("[Source: Logical Grid (.FPM)]\n%1").arg(w.description);
+        }
+        descItem->setToolTip(sourceTooltip);
 
         m_table->setItem(row, 0, sevItem);
         m_table->setItem(row, 1, typeItem);
@@ -370,12 +491,22 @@ void PortalLeakDialog::updateTableRows() {
         filterNotice = tr(" [Filtered by: %1]").arg(m_cmbZoneFilter->currentText());
     }
 
-    m_lblStats->setText(tr("Showing issues: <b>%1</b> of %2%3 (Physical BSP: %4, Static Grid: %5). Double-click jumps camera to tile.")
-                        .arg(m_visibleWarningIndices.size())
-                        .arg(m_currentWarnings.size())
-                        .arg(filterNotice)
-                        .arg(bspCount)
-                        .arg(staticCount));
+    if (mergedCount > 0) {
+        m_lblStats->setText(tr("Showing issues: <b>%1</b> of %2%3 (Both: %4, Physical: %5, Logical: %6). Double-click jumps camera to tile.")
+                            .arg(m_visibleWarningIndices.size())
+                            .arg(m_currentWarnings.size())
+                            .arg(filterNotice)
+                            .arg(mergedCount)
+                            .arg(bspCount)
+                            .arg(staticCount));
+    } else {
+        m_lblStats->setText(tr("Showing issues: <b>%1</b> of %2%3 (Physical: %4, Logical: %5). Double-click jumps camera to tile.")
+                            .arg(m_visibleWarningIndices.size())
+                            .arg(m_currentWarnings.size())
+                            .arg(filterNotice)
+                            .arg(bspCount)
+                            .arg(staticCount));
+    }
 
     onTableSelectionChanged();
 }

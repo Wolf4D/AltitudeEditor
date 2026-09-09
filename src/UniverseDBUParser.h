@@ -42,6 +42,36 @@ struct DBUPortal {
     bool isLeak = false; // Flagged if pointing to outside void or unsealed boundary
     bool isExteriorHull = false; // Spans outside boundary into void
 
+    float spanX() const { return box.maxX - box.minX; }
+    float spanY() const { return box.maxY - box.minY; }
+    float spanZ() const { return box.maxZ - box.minZ; }
+
+    bool isHorizontal() const {
+        return std::abs(normal.y) > 0.7f || spanY() < 1.0f;
+    }
+
+    float width() const {
+        if (isHorizontal()) {
+            return std::max(spanX(), spanZ());
+        } else {
+            return std::abs(normal.x) > std::abs(normal.z) ? spanZ() : spanX();
+        }
+    }
+
+    float height() const {
+        if (isHorizontal()) {
+            return std::min(spanX(), spanZ());
+        } else {
+            return spanY();
+        }
+    }
+
+    bool isSubSegment() const {
+        float w = width();
+        float h = height();
+        return (w < 95.0f || h < 95.0f) && (w > 1.0f && h > 1.0f);
+    }
+
     int minLayer() const { return static_cast<int>(box.minY / 100.0f); }
     int maxLayer() const { return static_cast<int>(box.maxY / 100.0f); }
     
@@ -49,6 +79,13 @@ struct DBUPortal {
     int gridX() const { return static_cast<int>(box.cenX / 100.0f); }
     int gridY() const { 
         return static_cast<int>(std::abs(box.cenZ) / 100.0f);
+    }
+    int layer() const {
+        if (isHorizontal()) {
+            return static_cast<int>(std::round(box.cenY / 100.0f));
+        } else {
+            return static_cast<int>(std::floor(box.cenY / 100.0f));
+        }
     }
 };
 
