@@ -841,12 +841,12 @@ Script: %3</source>
         <translation>🔍 Утечки</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1251"/>
+        <location filename="../src/MainWindow.cpp" line="1257"/>
         <source>Floor %1 (Y: %2)</source>
         <translation>Этаж %1 (Y: %2)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1253"/>
+        <location filename="../src/MainWindow.cpp" line="1259"/>
         <source> [%1 ent, %2 seg]</source>
         <translation> [%1 ent, %2 seg]</translation>
     </message>
@@ -898,74 +898,74 @@ Do you want to save your changes?</source>
 Сохранить изменения перед выходом?</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="725"/>
+        <location filename="../src/MainWindow.cpp" line="728"/>
         <source>Saved %1</source>
         <translation>Карта сохранена: %1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="727"/>
-        <location filename="../src/MainWindow.cpp" line="750"/>
+        <location filename="../src/MainWindow.cpp" line="730"/>
+        <location filename="../src/MainWindow.cpp" line="756"/>
         <source>Save Error</source>
         <translation>Ошибка сохранения</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="727"/>
-        <location filename="../src/MainWindow.cpp" line="750"/>
+        <location filename="../src/MainWindow.cpp" line="730"/>
+        <location filename="../src/MainWindow.cpp" line="756"/>
         <source>Failed to save map to:
 %1</source>
         <translation>Не удалось сохранить карту в:
 %1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="739"/>
+        <location filename="../src/MainWindow.cpp" line="742"/>
         <source>Save FPS Creator Map As</source>
         <translation>Сохранить карту FPS Creator как</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="741"/>
-        <location filename="../src/MainWindow.cpp" line="1169"/>
+        <location filename="../src/MainWindow.cpp" line="744"/>
+        <location filename="../src/MainWindow.cpp" line="1175"/>
         <source>FPS Creator Project Map (*.fpm);;All Files (*.*)</source>
         <translation>Карта проекта FPS Creator (*.fpm);;Все файлы (*.*)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="748"/>
+        <location filename="../src/MainWindow.cpp" line="754"/>
         <source>Saved as %1</source>
         <translation>Сохранено как %1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="770"/>
+        <location filename="../src/MainWindow.cpp" line="776"/>
         <source>Entity #%1</source>
         <translation>Энтити #%1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="785"/>
+        <location filename="../src/MainWindow.cpp" line="791"/>
         <source>Deleted %1</source>
         <translation>Удалено: %1</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1015"/>
+        <location filename="../src/MainWindow.cpp" line="1021"/>
         <source>No Recent Maps</source>
         <translation>Нет недавних карт</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1035"/>
+        <location filename="../src/MainWindow.cpp" line="1041"/>
         <source>Clear Recent Maps</source>
         <translation>Очистить список недавних карт</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1047"/>
+        <location filename="../src/MainWindow.cpp" line="1053"/>
         <source>Loading %1...</source>
         <translation>Загрузка %1...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1071"/>
-        <location filename="../src/MainWindow.cpp" line="1379"/>
-        <location filename="../src/MainWindow.cpp" line="1414"/>
+        <location filename="../src/MainWindow.cpp" line="1077"/>
+        <location filename="../src/MainWindow.cpp" line="1385"/>
+        <location filename="../src/MainWindow.cpp" line="1426"/>
         <source>Error</source>
         <translation>Ошибка</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1071"/>
+        <location filename="../src/MainWindow.cpp" line="1077"/>
         <source>Failed to load FPM map file:
 %1</source>
         <translation>Не удалось загрузить файл карты FPM:
@@ -976,88 +976,88 @@ Do you want to save your changes?</source>
         <translation type="vanished">Анализ расхода оперативной памяти карты...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1082"/>
+        <location filename="../src/MainWindow.cpp" line="1088"/>
         <source>Building visibility zones &amp; portals...</source>
         <translation>Построение зон видимости и порталов...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1087"/>
+        <location filename="../src/MainWindow.cpp" line="1093"/>
         <source>Populating entity list...</source>
         <translation>Заполнение списка энтити...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1112"/>
+        <location filename="../src/MainWindow.cpp" line="1118"/>
         <source>Rendering map canvas...</source>
         <translation>Отрисовка холста карты...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1152"/>
+        <location filename="../src/MainWindow.cpp" line="1158"/>
         <source>Loaded &quot;%1&quot; (%2 entities, %3 segments) in %4 ms</source>
         <translation>Загружено &quot;%1&quot; (%2 энтити, %3 сегментов) за %4 мс</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1169"/>
+        <location filename="../src/MainWindow.cpp" line="1175"/>
         <source>Open FPS Creator Map</source>
         <translation>Открыть карту FPS Creator</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1185"/>
+        <location filename="../src/MainWindow.cpp" line="1191"/>
         <source>Select FPS Creator Installation Directory</source>
         <translation>Выберите каталог установки FPS Creator</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1197"/>
+        <location filename="../src/MainWindow.cpp" line="1203"/>
         <source>No Map Loaded</source>
         <translation>Карта не загружена</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1197"/>
+        <location filename="../src/MainWindow.cpp" line="1203"/>
         <source>Please open an FPS Creator map (.FPM) first.</source>
         <translation>Пожалуйста, сначала откройте карту FPS Creator (.FPM).</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1321"/>
+        <location filename="../src/MainWindow.cpp" line="1327"/>
         <source>No map loaded</source>
         <translation>Карта не загружена</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1322"/>
+        <location filename="../src/MainWindow.cpp" line="1328"/>
         <source>Floor: 0</source>
         <translation>Этаж: 0</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1323"/>
+        <location filename="../src/MainWindow.cpp" line="1329"/>
         <source>RAM: 0 MB</source>
         <translation>RAM: 0 МБ</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1327"/>
+        <location filename="../src/MainWindow.cpp" line="1333"/>
         <source>Map: %1 (%2 entities, %3 segments)</source>
         <translation>Карта: %1 (%2 энтити, %3 сегментов)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1332"/>
+        <location filename="../src/MainWindow.cpp" line="1338"/>
         <source>Floor: %1 / %2 (Height: %3 units)</source>
         <translation>Этаж: %1 / %2 (Высота: %3 ед.)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1338"/>
+        <location filename="../src/MainWindow.cpp" line="1344"/>
         <source>Level RAM: %1 MB (%2%)</source>
         <translation>RAM уровня: %1 МБ (%2%)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1344"/>
+        <location filename="../src/MainWindow.cpp" line="1350"/>
         <source>Level RAM: --</source>
         <translation>RAM уровня: --</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1342"/>
+        <location filename="../src/MainWindow.cpp" line="1348"/>
         <source>Level RAM: calculating...</source>
         <translation>RAM уровня: расчёт...</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="1379"/>
-        <location filename="../src/MainWindow.cpp" line="1414"/>
+        <location filename="../src/MainWindow.cpp" line="1385"/>
+        <location filename="../src/MainWindow.cpp" line="1426"/>
         <source>Please open a map first.</source>
         <translation>Пожалуйста, сначала откройте карту.</translation>
     </message>
@@ -1072,17 +1072,17 @@ Do you want to save your changes?</source>
         <translation>Удалить комнату активной зоны видимости, все её блоки, потолочные перекрытия и объекты Entity (Shift+Del)</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="799"/>
+        <location filename="../src/MainWindow.cpp" line="805"/>
         <source>✂️ Dichotomy Tool: Select a zone on canvas or in VisZone panel first</source>
         <translation>✂️ Инструмент дихотомии: сначала выберите зону на холсте или в панели VisZones</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="805"/>
+        <location filename="../src/MainWindow.cpp" line="811"/>
         <source>✂️ Dichotomy Tool: Zone %1 not found</source>
         <translation>✂️ Инструмент дихотомии: Зона %1 не найдена</translation>
     </message>
     <message>
-        <location filename="../src/MainWindow.cpp" line="963"/>
+        <location filename="../src/MainWindow.cpp" line="969"/>
         <source>✂️ Dichotomy Tool: Room Zone %1 deleted (removed %2 tiles, %3 entities).</source>
         <translation>✂️ Инструмент дихотомии: комната Зоны %1 удалена (удалено блоков: %2, объектов Entity: %3).</translation>
     </message>
@@ -1506,99 +1506,95 @@ Do you want to save your changes?</source>
 <context>
     <name>PortalLeakDialog</name>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="100"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="251"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="771"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="652"/>
         <source>No Map</source>
         <translation>Карта не загружена</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="101"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="252"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="772"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="656"/>
         <source>%1 — Portal &amp; CSG Leak Detector — %2</source>
         <translation>%1 — Детектор утечек порталов и CSG — %2</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="108"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="254"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="107"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="252"/>
         <source>Geometry &amp; Leak Detection Methods</source>
         <translation>Геометрия и методы обнаружения утечек</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="114"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="256"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="113"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="254"/>
         <source>1. Physical Compiled BSP Analysis (universe.dbu)</source>
         <translation>1. Анализ скомпилированного физического BSP (universe.dbu)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="115"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="257"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="114"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="255"/>
         <source>Detects physical gaps, unclosed CSG polyhedra, and see-through portals into the void from compiled universe.dbu (after Test Game in FPS Creator).</source>
         <translation>Обнаруживает физические зазоры, незакрытые полиэдры CSG и сквозные порталы в пустоту из скомпилированного universe.dbu (после запуска Test Game в FPS Creator).</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="139"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="260"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="138"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="258"/>
         <source>2. Static Grid / Topological Analysis (.FPM / .FPS)</source>
         <translation>2. Статический сеточный / топологический анализ (.FPM / .FPS)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="141"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="261"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="140"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="259"/>
         <source>Checks for unclosed ceiling tiles, outer wall breaches in room perimeters, and CSG overlaps before map compilation.</source>
         <translation>Проверяет незакрытые потолочные плитки, проломы внешних стен по периметру комнат и пересечения CSG до компиляции карты.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="148"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="263"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="147"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="261"/>
         <source>🔍 Run Analysis</source>
         <translation>🔍 Запустить анализ</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="155"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="264"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="154"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="262"/>
         <source>Filter by Vis Zone:</source>
         <translation>Фильтр по Vis-зоне:</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="168"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="265"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="634"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="167"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="263"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="632"/>
         <source>⚡ Resolve Clash / Edit...</source>
         <translation>⚡ Устранить конфликт / Редактировать...</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="170"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="169"/>
         <source>Open the Segment Editor &amp; Conflict Resolver for the selected row</source>
         <translation>Открыть редактор сегментов и устранение конфликтов для выбранной строки</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="177"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="624"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="636"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="176"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="622"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="634"/>
         <source>🚫 Suppress</source>
         <translation>🚫 Подавить</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="179"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="625"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="178"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="623"/>
         <source>Suppress this warning (pack into .FPM) [M]</source>
         <translation>Подавить это предупреждение (сохранить в .FPM) [M]</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="187"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="186"/>
         <source>Show Suppressed (0)</source>
         <translation>Показывать подавленные (0)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="196"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="195"/>
         <source>Select detection methods and click &quot;Run Analysis&quot;.</source>
         <translation>Выберите методы проверки и нажмите &quot;Запустить анализ&quot;.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="206"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="275"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="205"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="273"/>
         <source>Severity</source>
         <translation>Серьёзность</translation>
     </message>
@@ -1607,155 +1603,155 @@ Do you want to save your changes?</source>
         <translation type="vanished">Источник</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="207"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="276"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="206"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="274"/>
         <source>Leak Type</source>
         <translation>Тип утечки</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="208"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="277"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="207"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="275"/>
         <source>Vis Zone</source>
         <translation>Vis-зона</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="209"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="278"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="208"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="276"/>
         <source>Coordinates</source>
         <translation>Координаты</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="210"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="279"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="209"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="277"/>
         <source>Issue Description</source>
         <translation>Описание проблемы</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="267"/>
-        <location filename="../src/PortalLeakDialog.cpp" line="428"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="265"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="426"/>
         <source>Show Suppressed (%1)</source>
         <translation>Показывать подавленные (%1)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="300"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="298"/>
         <source>Enable at least one detection method to run analysis.</source>
         <translation>Включите хотя бы один метод проверки для запуска анализа.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="308"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="306"/>
         <source>Error</source>
         <translation>Ошибка</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="308"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="306"/>
         <source>Map is not loaded.</source>
         <translation>Карта не загружена.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="357"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="355"/>
         <source>All Vis Zones (%1 issues)</source>
         <translation>Все Vis-зоны (проблем: %1)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="361"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="359"/>
         <source>Outside / Void / Unzoned (0 — Resolved)</source>
         <translation>Вне зон / Пустота / Без зоны (0 — решено)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="363"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="361"/>
         <source>Outside / Void / Unzoned (%1)</source>
         <translation>Вне зон / Пустота / Без зоны (%1)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="391"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="389"/>
         <source>%1 — 0 issues (Resolved)</source>
         <translation>%1 — проблем: 0 (Решено)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="393"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="391"/>
         <source>%1 — %2 issues</source>
         <translation>%1 — проблем: %2</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="469"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="467"/>
         <source>[SUPPRESSED]</source>
         <translation>[ПОДАВЛЕНО]</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="471"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="469"/>
         <source>ERROR</source>
         <translation>ОШИБКА</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="471"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="469"/>
         <source>WARNING</source>
         <translation>ПРЕДУПРЕЖДЕНИЕ</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="502"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="500"/>
         <source>[%1×%2 (seam)] </source>
         <translation>[%1×%2 (щель)] </translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="504"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="502"/>
         <source>[%1×%2] </source>
         <translation>[%1×%2] </translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="516"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="514"/>
         <source>
 Estimated Portal Size: %1 × %2 (~%3 × %4 m)</source>
         <translation>
 Оценочный размер портала: %1 × %2 (~%3 × %4 м)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="525"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="523"/>
         <source>[STATUS: SUPPRESSED]
 </source>
         <translation>[СТАТУС: ПОДАВЛЕНО]
 </translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="528"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="526"/>
         <source>[Source: Both (Physical BSP + Logical Grid)]%1
 %2</source>
         <translation>[Источник: Оба (Физический BSP + Логическая сетка)]%1
 %2</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="530"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="528"/>
         <source>[Source: Physical BSP (universe.dbu)]%1
 %2</source>
         <translation>[Источник: Физический BSP (universe.dbu)]%1
 %2</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="571"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="569"/>
         <source> (Suppressed: %1)</source>
         <translation> (Подавлено: %1)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="575"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="573"/>
         <source>Showing issues: &lt;b&gt;%1&lt;/b&gt; of %2%3%4 (Both: %5, Physical: %6, Logical: %7). Double-click jumps camera to tile.</source>
         <translation>Показано проблем: &lt;b&gt;%1&lt;/b&gt; из %2%3%4 (Оба источника: %5, Физический: %6, Логический: %7). Двойной клик наводит камеру на тайл.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="584"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="582"/>
         <source>Showing issues: &lt;b&gt;%1&lt;/b&gt; of %2%3%4 (Physical: %5, Logical: %6). Double-click jumps camera to tile.</source>
         <translation>Показано проблем: &lt;b&gt;%1&lt;/b&gt; из %2%3%4 (Физический: %5, Логический: %6). Двойной клик наводит камеру на тайл.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="741"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="748"/>
         <source>↩️ Restore Warning</source>
         <translation>↩️ Вернуть предупреждение</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="743"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="750"/>
         <source>🚫 Suppress Warning</source>
         <translation>🚫 Подавить предупреждение</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="748"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="758"/>
         <source>↩️ Restore All Suppressed (%1)...</source>
         <translation>↩️ Вернуть все подавленные (%1)...</translation>
     </message>
@@ -1784,12 +1780,12 @@ Estimated Portal Size: %1 × %2 (~%3 × %4 m)</source>
         <translation type="vanished">Логический источник: топологический анализ сетки карты (.FPM)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="490"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="488"/>
         <source>Layer %1 (%2, %3)</source>
         <translation>Слой %1 (%2, %3)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="492"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="490"/>
         <source>L%1 (%2,%3) ↔ (%4,%5)</source>
         <translation>Слой %1 (%2,%3) ↔ (%4,%5)</translation>
     </message>
@@ -1806,14 +1802,14 @@ Estimated Portal Size: %1 × %2 (~%3 × %4 m)</source>
 %1</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="532"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="530"/>
         <source>[Source: Logical Grid (.FPM)]
 %1</source>
         <translation>[Источник: Логическая сетка (.FPM)]
 %1</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="566"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="564"/>
         <source> [Filtered by: %1]</source>
         <translation> [Фильтр: %1]</translation>
     </message>
@@ -1834,62 +1830,62 @@ Estimated Portal Size: %1 × %2 (~%3 × %4 m)</source>
         <translation type="vanished">Показано проблем: &lt;b&gt;%1&lt;/b&gt; из %2%3 (Физический BSP: %4, Статическая сетка: %5). Двойной клик наводит камеру на тайл.</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="611"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="609"/>
         <source>⚡ Resolve Clash...</source>
         <translation>⚡ Устранить конфликт...</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="613"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="611"/>
         <source>🧱 Edit Segment...</source>
         <translation>🧱 Редактировать сегмент...</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="618"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="616"/>
         <source>↩️ Unsuppress</source>
         <translation>↩️ Вернуть</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="619"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="617"/>
         <source>Restore this warning to active state [M]</source>
         <translation>Вернуть это предупреждение в активное состояние [M]</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="687"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="698"/>
         <source>Restore All Warnings</source>
         <translation>Вернуть все предупреждения</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="688"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="699"/>
         <source>Restore all %1 suppressed warnings back to active state?</source>
         <translation>Вернуть все %1 подавленных предупреждений в активное состояние?</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="707"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="724"/>
         <source>↩️ Restore All Suppressed Warnings (%1)...</source>
         <translation>↩️ Вернуть все подавленные предупреждения (%1)...</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="723"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="764"/>
         <source>🔍 Focus View on Tile (%1, %2)</source>
         <translation>🔍 Навести камеру на тайл (%1, %2)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="731"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="774"/>
         <source>⚡ Resolve Double-Wall Clash...</source>
         <translation>⚡ Устранить конфликт двойной стены...</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="732"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="775"/>
         <source>🧱 Inspect Cell A (%1, %2)</source>
         <translation>🧱 Осмотреть ячейку A (%1, %2)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="733"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="776"/>
         <source>🧱 Inspect Cell B (%1, %2)</source>
         <translation>🧱 Осмотреть ячейку B (%1, %2)</translation>
     </message>
     <message>
-        <location filename="../src/PortalLeakDialog.cpp" line="735"/>
+        <location filename="../src/PortalLeakDialog.cpp" line="778"/>
         <source>🧱 Inspect &amp; Edit Segment (%1, %2)</source>
         <translation>🧱 Осмотреть и изменить сегмент (%1, %2)</translation>
     </message>

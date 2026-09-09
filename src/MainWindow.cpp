@@ -722,6 +722,9 @@ void MainWindow::onSaveMap() {
     bool ok = FPMWriter::saveMap(m_currentMap, m_currentMap->filePath, m_currentMap->password);
     if (ok) {
         updateWindowTitle();
+        if (m_portalLeakDialog) {
+            m_portalLeakDialog->updateDialogTitle();
+        }
         statusBar()->showMessage(tr("Saved %1").arg(m_currentMap->filePath), 4000);
     } else {
         QMessageBox::critical(this, tr("Save Error"), tr("Failed to save map to:\n%1").arg(m_currentMap->filePath));
@@ -745,6 +748,9 @@ void MainWindow::onSaveMapAs() {
     bool ok = FPMWriter::saveMap(m_currentMap, savePath, m_currentMap->password);
     if (ok) {
         updateWindowTitle();
+        if (m_portalLeakDialog) {
+            m_portalLeakDialog->updateDialogTitle();
+        }
         statusBar()->showMessage(tr("Saved as %1").arg(savePath), 4000);
     } else {
         QMessageBox::critical(this, tr("Save Error"), tr("Failed to save map to:\n%1").arg(savePath));
@@ -1384,6 +1390,12 @@ void MainWindow::onOpenPortalLeakDetector() {
         m_portalLeakDialog->setAttribute(Qt::WA_DeleteOnClose);
         connect(m_portalLeakDialog, &PortalLeakDialog::cellSelected, m_canvas, &MapCanvas::highlightCell);
         connect(m_portalLeakDialog, &PortalLeakDialog::warningsUpdated, m_canvas, &MapCanvas::setLeakWarnings);
+        connect(m_portalLeakDialog, &PortalLeakDialog::mapModified, this, [this]() {
+            if (m_currentMap) {
+                m_currentMap->isModified = true;
+                updateWindowTitle();
+            }
+        });
         connect(m_portalLeakDialog, &QDialog::finished, m_canvas, [this]() {
             m_canvas->clearLeakWarnings();
             m_canvas->clearHighlight();

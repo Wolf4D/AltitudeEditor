@@ -22,6 +22,7 @@ public:
 
     void setMap(std::shared_ptr<FPSCMap> map);
     void setVisZoneManager(std::shared_ptr<VisZoneManager> mgr);
+    void updateDialogTitle();
     const std::vector<PortalLeakWarning>& currentWarnings() const { return m_currentWarnings; }
 
     LeakSuppressionManager& suppressionManager() { return m_suppressionMgr; }
@@ -35,6 +36,7 @@ signals:
     void warningsUpdated(const std::vector<PortalLeakWarning>& warnings);
     void resolveConflictRequested(int layer, int x1, int y1, int x2, int y2);
     void editSegmentRequested(int layer, int x, int y);
+    void mapModified();
 
 public slots:
     void runAnalysis();

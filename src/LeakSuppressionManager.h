@@ -15,7 +15,7 @@ public:
 
     // Save current suppressed warnings into map->rawEntries["map.leaks.json"]
     // If autoSaveToFile is true and map has a valid filePath, writes the updated .FPM archive to disk
-    bool saveToMap(const std::shared_ptr<FPSCMap>& map, bool autoSaveToFile = true);
+    bool saveToMap(const std::shared_ptr<FPSCMap>& map, bool autoSaveToFile = false);
 
     bool isSuppressed(const QString& key) const;
     bool isSuppressed(const PortalLeakWarning& w) const;

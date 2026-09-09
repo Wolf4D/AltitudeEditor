@@ -587,6 +587,10 @@ int main(int argc, char* argv[]) {
         suppMgr.suppress(testW);
         bool suppKeyAdded = (suppMgr.suppressedCount() == 1 && suppMgr.isSuppressed(testW));
 
+        map->isModified = false;
+        suppMgr.saveToMap(map, false);
+        bool isModifiedMarked = (map->isModified == true);
+
         QString testFpmPath = "build_test_suppression.fpm";
         QFile::remove(testFpmPath);
 
@@ -619,7 +623,7 @@ int main(int argc, char* argv[]) {
 
         QFile::remove(testFpmPath);
 
-        suppressionPass = suppKeyAdded && savedToFpm && fpmContainsJson && loadedFromRaw &&
+        suppressionPass = suppKeyAdded && isModifiedMarked && savedToFpm && fpmContainsJson && loadedFromRaw &&
                           suppressionPersisted && unsuppressedInMemory && unsuppressionPersisted;
     }
     std::cout << "[TEST] Persistent Warning Suppression in .FPM container: "

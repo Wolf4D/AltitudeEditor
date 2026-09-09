@@ -97,8 +97,7 @@ static QIcon makeSourceIcon(bool isPhysical, bool isStatic, bool isMerged) {
 PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, std::shared_ptr<VisZoneManager> visZoneMgr, QWidget* parent)
     : QDialog(parent), m_map(map), m_visZoneManager(visZoneMgr)
 {
-    QString mapName = m_map ? m_map->mapName : tr("No Map");
-    setWindowTitle(tr("%1 — Portal & CSG Leak Detector — %2").arg(VersionInfo::shortTitle(), mapName));
+    updateDialogTitle();
     resize(980, 560);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
@@ -248,8 +247,7 @@ void PortalLeakDialog::changeEvent(QEvent* event) {
 }
 
 void PortalLeakDialog::retranslateUi() {
-    QString mapName = m_map ? m_map->mapName : tr("No Map");
-    setWindowTitle(tr("%1 — Portal & CSG Leak Detector — %2").arg(VersionInfo::shortTitle(), mapName));
+    updateDialogTitle();
 
     if (m_grpMethods) m_grpMethods->setTitle(tr("Geometry & Leak Detection Methods"));
     if (m_chkCompiledBsp) {
@@ -650,6 +648,14 @@ void PortalLeakDialog::onResolveClicked() {
     }
 }
 
+void PortalLeakDialog::updateDialogTitle() {
+    QString mapName = m_map ? m_map->mapName : tr("No Map");
+    if (m_map && m_map->isModified) {
+        mapName += QStringLiteral("*");
+    }
+    setWindowTitle(tr("%1 — Portal & CSG Leak Detector — %2").arg(VersionInfo::shortTitle(), mapName));
+}
+
 void PortalLeakDialog::onSuppressClicked() {
     int row = m_table->currentRow();
     if (row >= 0 && row < static_cast<int>(m_visibleWarningIndices.size())) {
@@ -662,7 +668,12 @@ void PortalLeakDialog::onSuppressClicked() {
             m_suppressionMgr.suppress(w);
             w.isSuppressed = true;
         }
-        m_suppressionMgr.saveToMap(m_map, true);
+        m_suppressionMgr.saveToMap(m_map, false);
+        if (m_map) {
+            m_map->isModified = true;
+        }
+        updateDialogTitle();
+        emit mapModified();
 
         std::vector<PortalLeakWarning> activeWarnings;
         for (const auto& item : m_currentWarnings) {
@@ -689,7 +700,13 @@ void PortalLeakDialog::onUnsuppressAllClicked() {
                                        QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
     if (reply == QMessageBox::Yes) {
         m_suppressionMgr.unsuppressAll();
-        m_suppressionMgr.saveToMap(m_map, true);
+        m_suppressionMgr.saveToMap(m_map, false);
+        if (m_map) {
+            m_map->isModified = true;
+        }
+        updateDialogTitle();
+        emit mapModified();
+
         for (auto& w : m_currentWarnings) {
             w.isSuppressed = false;
         }
@@ -716,13 +733,39 @@ void PortalLeakDialog::onTableContextMenu(const QPoint& pos) {
     int row = index.row();
     if (row < 0 || row >= static_cast<int>(m_visibleWarningIndices.size())) return;
 
+    if (m_table->currentRow() != row) {
+        m_table->selectRow(row);
+    }
+
     int origIdx = m_visibleWarningIndices[row];
     const auto& w = m_currentWarnings[origIdx];
 
     QMenu menu(this);
+
+    // 1. Suppress / Restore Warning at the VERY TOP of the context menu
+    QAction* actToggleSuppress = nullptr;
+    if (w.isSuppressed) {
+        actToggleSuppress = menu.addAction(tr("↩️ Restore Warning"));
+    } else {
+        actToggleSuppress = menu.addAction(tr("🚫 Suppress Warning"));
+    }
+    QFont boldFont = actToggleSuppress->font();
+    boldFont.setBold(true);
+    actToggleSuppress->setFont(boldFont);
+
+    QAction* actRestoreAll = nullptr;
+    if (m_suppressionMgr.suppressedCount() > 0) {
+        actRestoreAll = menu.addAction(tr("↩️ Restore All Suppressed (%1)...").arg(m_suppressionMgr.suppressedCount()));
+    }
+
+    menu.addSeparator();
+
+    // 2. Camera Navigation
     QAction* actJump = menu.addAction(tr("🔍 Focus View on Tile (%1, %2)").arg(w.x).arg(w.y));
 
     menu.addSeparator();
+
+    // 3. Segment Editing / Resolving
     QAction* actResolve = nullptr;
     QAction* actEditA = nullptr;
     QAction* actEditB = nullptr;
@@ -735,21 +778,12 @@ void PortalLeakDialog::onTableContextMenu(const QPoint& pos) {
         actEditA = menu.addAction(tr("🧱 Inspect & Edit Segment (%1, %2)").arg(w.x).arg(w.y));
     }
 
-    menu.addSeparator();
-    QAction* actToggleSuppress = nullptr;
-    if (w.isSuppressed) {
-        actToggleSuppress = menu.addAction(tr("↩️ Restore Warning"));
-    } else {
-        actToggleSuppress = menu.addAction(tr("🚫 Suppress Warning"));
-    }
-
-    QAction* actRestoreAll = nullptr;
-    if (m_suppressionMgr.suppressedCount() > 0) {
-        actRestoreAll = menu.addAction(tr("↩️ Restore All Suppressed (%1)...").arg(m_suppressionMgr.suppressedCount()));
-    }
-
     QAction* chosen = menu.exec(m_table->viewport()->mapToGlobal(pos));
-    if (chosen == actJump) {
+    if (chosen == actToggleSuppress) {
+        onSuppressClicked();
+    } else if (chosen == actRestoreAll) {
+        onUnsuppressAllClicked();
+    } else if (chosen == actJump) {
         emit cellSelected(w.layer, w.x, w.y);
     } else if (chosen == actResolve) {
         emit resolveConflictRequested(w.layer, w.x, w.y, w.x2, w.y2);
@@ -757,10 +791,6 @@ void PortalLeakDialog::onTableContextMenu(const QPoint& pos) {
         emit editSegmentRequested(w.layer, w.x, w.y);
     } else if (chosen == actEditB) {
         emit editSegmentRequested(w.layer, w.x2, w.y2);
-    } else if (chosen == actToggleSuppress) {
-        onSuppressClicked();
-    } else if (chosen == actRestoreAll) {
-        onUnsuppressAllClicked();
     }
 }
 
@@ -768,8 +798,7 @@ void PortalLeakDialog::setMap(std::shared_ptr<FPSCMap> map) {
     m_map = map;
     m_suppressionMgr.loadFromMap(m_map);
 
-    QString mapName = m_map ? m_map->mapName : tr("No Map");
-    setWindowTitle(tr("%1 — Portal & CSG Leak Detector — %2").arg(VersionInfo::shortTitle(), mapName));
+    updateDialogTitle();
 
     PortalLeakAnalyzer analyzer(m_map, m_visZoneManager);
     auto val = analyzer.validateCompiledUniverse();
