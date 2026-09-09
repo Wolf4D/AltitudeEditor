@@ -8,12 +8,19 @@
 #include "PortalLeakAnalyzer.h"
 #include "PortalLeakDialog.h"
 #include "MapCanvas.h"
+#include "LeakSuppressionManager.h"
 #include <QKeyEvent>
+#include <QFile>
+#include <QTranslator>
 #include <set>
 #include <tuple>
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
+    QTranslator translator;
+    if (translator.load("c:/FPSC Maped/translations/altitude_editor_ru.qm")) {
+        app.installTranslator(&translator);
+    }
     QString path = "C:/Program Files (x86)/The Game Creators/FPS Creator/Files/mapbank/Slipgate/Full/2_Vault.fpm";
     auto map = FPMReader::loadMap(path, "mypassword");
     if (!map) {
@@ -455,6 +462,19 @@ int main(int argc, char* argv[]) {
     }
     leakDlg.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/portal_leak_dialog_icons.png");
 
+    // Capture suppressed state screenshot for walkthrough
+    if (leakDlg.tableWidget()->rowCount() > 0) {
+        leakDlg.tableWidget()->selectRow(0);
+        QMetaObject::invokeMethod(&leakDlg, "onSuppressClicked");
+        QMetaObject::invokeMethod(&leakDlg, "onShowSuppressedToggled", Q_ARG(bool, true));
+        leakDlg.tableWidget()->selectRow(0);
+        leakDlg.tableWidget()->scrollToItem(leakDlg.tableWidget()->item(0, 0), QAbstractItemView::PositionAtTop);
+        leakDlg.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/portal_leak_dialog_suppressed.png");
+        // Revert back so subsequent tests see clean state
+        QMetaObject::invokeMethod(&leakDlg, "onSuppressClicked");
+        QMetaObject::invokeMethod(&leakDlg, "onShowSuppressedToggled", Q_ARG(bool, false));
+    }
+
     // === TEST DICHOTOMY TOOL (Room & Entity Deletion) ===
     int testDichotomyZone = -1;
     for (size_t i = 0; i < zm->zones().size(); ++i) {
@@ -556,11 +576,56 @@ int main(int argc, char* argv[]) {
     }
 
     bool dichotomyPass = delKeyTriggered && tilesCleared && (deletedEnts >= zoneEntCount && zoneEntCount > 0) && (static_cast<int>(map->placedEntities.size()) == entBeforeCount - deletedEnts);
-    std::cout << "[TEST] Dichotomy Room & Entity Deletion: "
-              << (dichotomyPass ? "PASS" : "FAIL") << " (Deleted " << tilesToDelete.size() << " tiles, "
-              << deletedEnts << " entities (zoneEntCount: " << zoneEntCount << "); remaining entities: " << map->placedEntities.size() << ")" << std::endl;
+    // 17. Test Persistent Warning Suppression packed into .FPM container
+    bool suppressionPass = false;
+    if (!warnings.empty()) {
+        const auto& testW = warnings.front();
+        QString sKey = testW.suppressionKey();
+        std::cout << "Target suppression key: " << sKey.toStdString() << std::endl;
 
-    if (!found29_2 || !allWindowsDetected || !f7WindowsDetected || !fakeClassified || !realWinClassified || !map1ExtPortalPass || !atriumUnified || !z2Floor7Closed || !canvasHasWarnings || !canvasHighlightedRow2 || !f8AllLeaksAssigned || !dichotomyPass || !physicalAlonePass || !staticAlonePass || !mergedPass || !noDuplicatesPass || !tableColCountPass || !descHasIcon || !descHasSizeTag) {
+        LeakSuppressionManager suppMgr;
+        suppMgr.suppress(testW);
+        bool suppKeyAdded = (suppMgr.suppressedCount() == 1 && suppMgr.isSuppressed(testW));
+
+        QString testFpmPath = "build_test_suppression.fpm";
+        QFile::remove(testFpmPath);
+
+        // Save map with suppression to test FPM
+        QString origMapPath = map->filePath;
+        map->filePath = testFpmPath;
+        bool savedToFpm = suppMgr.saveToMap(map, true);
+        map->filePath = origMapPath;
+
+        // Reload fresh map from the saved .FPM container
+        auto reloadedMap = FPMReader::loadMap(testFpmPath, "mypassword");
+        bool fpmContainsJson = reloadedMap && reloadedMap->rawEntries.contains(QStringLiteral("map.leaks.json"));
+
+        LeakSuppressionManager reloadedSuppMgr;
+        bool loadedFromRaw = reloadedSuppMgr.loadFromMap(reloadedMap);
+        bool suppressionPersisted = (reloadedSuppMgr.suppressedCount() == 1 && reloadedSuppMgr.isSuppressed(testW));
+
+        // Test unsuppression
+        reloadedSuppMgr.unsuppress(testW);
+        bool unsuppressedInMemory = (reloadedSuppMgr.suppressedCount() == 0 && !reloadedSuppMgr.isSuppressed(testW));
+
+        reloadedMap->filePath = testFpmPath;
+        reloadedSuppMgr.saveToMap(reloadedMap, true);
+
+        // Reload fresh map again and verify 0 suppressed
+        auto reloadedMap2 = FPMReader::loadMap(testFpmPath, "mypassword");
+        LeakSuppressionManager reloadedSuppMgr2;
+        reloadedSuppMgr2.loadFromMap(reloadedMap2);
+        bool unsuppressionPersisted = (reloadedSuppMgr2.suppressedCount() == 0);
+
+        QFile::remove(testFpmPath);
+
+        suppressionPass = suppKeyAdded && savedToFpm && fpmContainsJson && loadedFromRaw &&
+                          suppressionPersisted && unsuppressedInMemory && unsuppressionPersisted;
+    }
+    std::cout << "[TEST] Persistent Warning Suppression in .FPM container: "
+              << (suppressionPass ? "PASS" : "FAIL") << std::endl;
+
+    if (!found29_2 || !allWindowsDetected || !f7WindowsDetected || !fakeClassified || !realWinClassified || !map1ExtPortalPass || !atriumUnified || !z2Floor7Closed || !canvasHasWarnings || !canvasHighlightedRow2 || !f8AllLeaksAssigned || !dichotomyPass || !physicalAlonePass || !staticAlonePass || !mergedPass || !noDuplicatesPass || !tableColCountPass || !descHasIcon || !descHasSizeTag || !suppressionPass) {
         return 1;
     }
     return 0;

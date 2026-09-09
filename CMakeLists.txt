@@ -25,6 +25,7 @@ set(SOURCES
     src/EntityInspector.cpp
     src/PortalLeakAnalyzer.cpp
     src/PortalLeakDialog.cpp
+    src/LeakSuppressionManager.cpp
     src/UniverseDBUParser.cpp
     src/VisZoneManager.cpp
     src/VisZoneDock.cpp
@@ -51,6 +52,7 @@ set(HEADERS
     src/EntityInspector.h
     src/PortalLeakAnalyzer.h
     src/PortalLeakDialog.h
+    src/LeakSuppressionManager.h
     src/SegmentEditorDialog.h
     src/UniverseDBUParser.h
     src/VisZoneManager.h
@@ -90,6 +92,7 @@ add_executable(test_standalone
     src/MemoryAnalyzer.cpp
     src/PortalLeakAnalyzer.cpp
     src/PortalLeakDialog.cpp
+    src/LeakSuppressionManager.cpp
     src/UniverseDBUParser.cpp
     src/VisZoneManager.cpp
 )

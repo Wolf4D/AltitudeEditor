@@ -11,6 +11,8 @@
 #include <QComboBox>
 #include <QMenu>
 
+#include "LeakSuppressionManager.h"
+
 class VisZoneManager;
 
 class PortalLeakDialog : public QDialog {
@@ -21,6 +23,9 @@ public:
     void setMap(std::shared_ptr<FPSCMap> map);
     void setVisZoneManager(std::shared_ptr<VisZoneManager> mgr);
     const std::vector<PortalLeakWarning>& currentWarnings() const { return m_currentWarnings; }
+
+    LeakSuppressionManager& suppressionManager() { return m_suppressionMgr; }
+    const LeakSuppressionManager& suppressionManager() const { return m_suppressionMgr; }
 
 protected:
     void changeEvent(QEvent* event) override;
@@ -45,6 +50,9 @@ private slots:
     void onTableContextMenu(const QPoint& pos);
     void onResolveClicked();
     void onTableSelectionChanged();
+    void onSuppressClicked();
+    void onShowSuppressedToggled(bool checked);
+    void onUnsuppressAllClicked();
 
 private:
     void retranslateUi();
@@ -53,6 +61,8 @@ private:
 
     std::shared_ptr<FPSCMap> m_map;
     std::shared_ptr<VisZoneManager> m_visZoneManager;
+    LeakSuppressionManager m_suppressionMgr;
+
     class QGroupBox* m_grpMethods = nullptr;
     QCheckBox* m_chkCompiledBsp = nullptr;
     QCheckBox* m_chkStaticMap = nullptr;
@@ -62,8 +72,11 @@ private:
     QLabel* m_lblZoneFilter = nullptr;
     QComboBox* m_cmbZoneFilter = nullptr;
     QPushButton* m_btnResolve = nullptr;
+    QPushButton* m_btnSuppress = nullptr;
+    QCheckBox* m_chkShowSuppressed = nullptr;
     QTableWidget* m_table = nullptr;
     std::vector<PortalLeakWarning> m_currentWarnings;
     std::vector<int> m_visibleWarningIndices;
     int m_selectedZoneFilterId = -1; // -1 = All, -2 = Unzoned / Void, >= 0 = zoneId
+    bool m_showSuppressed = false;
 };

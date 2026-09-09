@@ -37,6 +37,9 @@ struct PortalLeakWarning {
     float portalWidth = 0.0f;
     float portalHeight = 0.0f;
     bool hasPhysicalSize = false;
+
+    bool isSuppressed = false;
+    QString suppressionKey() const;
 };
 
 struct DBUValidationResult {

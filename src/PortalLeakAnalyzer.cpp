@@ -11,6 +11,34 @@
 #include <cmath>
 #include <queue>
 
+QString PortalLeakWarning::suppressionKey() const {
+    QString canonicalType = QStringLiteral("Other");
+    if (type.contains(QStringLiteral("Ceiling"), Qt::CaseInsensitive)) {
+        canonicalType = QStringLiteral("CeilingLeak");
+    } else if (type.contains(QStringLiteral("Perimeter"), Qt::CaseInsensitive)) {
+        canonicalType = QStringLiteral("PerimeterWallLeak");
+    } else if (type.contains(QStringLiteral("Double"), Qt::CaseInsensitive) || type.contains(QStringLiteral("Clash"), Qt::CaseInsensitive)) {
+        canonicalType = QStringLiteral("DoubleWallClash");
+    } else if (type.contains(QStringLiteral("Seam"), Qt::CaseInsensitive) || type.contains(QStringLiteral("Micro-Crack"), Qt::CaseInsensitive) || type.contains(QStringLiteral("Crack"), Qt::CaseInsensitive)) {
+        canonicalType = QStringLiteral("MicroCrack");
+    } else if (type.contains(QStringLiteral("Duplicate"), Qt::CaseInsensitive)) {
+        canonicalType = QStringLiteral("DuplicateSegment");
+    } else if (type.contains(QStringLiteral("Penetrat"), Qt::CaseInsensitive)) {
+        canonicalType = QStringLiteral("Penetration");
+    } else if (type.contains(QStringLiteral("Inverted"), Qt::CaseInsensitive)) {
+        canonicalType = QStringLiteral("InvertedWall");
+    } else if (type.contains(QStringLiteral("Void"), Qt::CaseInsensitive)) {
+        canonicalType = QStringLiteral("VoidLeak");
+    }
+
+    if (isClash && x2 >= 0 && y2 >= 0) {
+        int minX = std::min(x, x2), maxX = std::max(x, x2);
+        int minY = std::min(y, y2), maxY = std::max(y, y2);
+        return QStringLiteral("%1:L%2:(%3,%4)-(%5,%6)").arg(canonicalType).arg(layer).arg(minX).arg(minY).arg(maxX).arg(maxY);
+    }
+    return QStringLiteral("%1:L%2:(%3,%4)").arg(canonicalType).arg(layer).arg(x).arg(y);
+}
+
 PortalLeakAnalyzer::PortalLeakAnalyzer(std::shared_ptr<FPSCMap> map, std::shared_ptr<VisZoneManager> visZoneManager)
     : m_map(map), m_visZoneManager(visZoneManager) {
 }
