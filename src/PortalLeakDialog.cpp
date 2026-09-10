@@ -156,11 +156,12 @@ PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, std::shared_ptr
     ctrlLayout->addWidget(m_lblZoneFilter);
 
     m_cmbZoneFilter = new QComboBox(this);
-    m_cmbZoneFilter->setMinimumWidth(240);
+    m_cmbZoneFilter->setMinimumWidth(280);
     m_cmbZoneFilter->setMaxVisibleItems(15);
     m_cmbZoneFilter->view()->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    m_cmbZoneFilter->setStyleSheet(QStringLiteral("QComboBox { combobox-popup: 0; background-color: #1e2630; color: #cad8e6; border: 1px solid #3d4f61; border-radius: 4px; padding: 5px 8px; }"
-                                                 "QComboBox QAbstractItemView { max-height: 280px; background-color: #1e2630; color: #cad8e6; selection-background-color: #2e537a; }"));
+    m_cmbZoneFilter->setStyleSheet(QStringLiteral("QComboBox { combobox-popup: 0; background-color: #1e2630; color: #cad8e6; border: 1px solid #3d4f61; border-radius: 4px; padding: 3px 8px; min-height: 24px; }"
+                                                 "QComboBox QAbstractItemView { background-color: #1e2630; color: #cad8e6; selection-background-color: #2e537a; outline: none; border: 1px solid #3d4f61; }"
+                                                 "QComboBox QAbstractItemView::item { min-height: 22px; padding: 2px 6px; }"));
     ctrlLayout->addWidget(m_cmbZoneFilter);
 
     ctrlLayout->addSpacing(10);
@@ -181,6 +182,15 @@ PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, std::shared_ptr
                                                "QPushButton:hover { background-color: #4a3434; color: #fca5a5; }"
                                                "QPushButton:disabled { background-color: #1c242d; color: #5a6e82; border-color: #2b3846; }"));
     ctrlLayout->addWidget(m_btnSuppress);
+
+    ctrlLayout->addSpacing(6);
+    m_btnSuppressZone = new QPushButton(tr("🚫 Suppress Zone"), this);
+    m_btnSuppressZone->setEnabled(false);
+    m_btnSuppressZone->setToolTip(tr("Suppress all warnings in the active Vis Zone (pack into .FPM)"));
+    m_btnSuppressZone->setStyleSheet(QStringLiteral("QPushButton { font-weight: bold; background-color: #3b2a2a; color: #f87171; border: 1px solid #6b3b3b; border-radius: 4px; padding: 7px 14px; }"
+                                                   "QPushButton:hover { background-color: #4a3434; color: #fca5a5; }"
+                                                   "QPushButton:disabled { background-color: #1c242d; color: #5a6e82; border-color: #2b3846; }"));
+    ctrlLayout->addWidget(m_btnSuppressZone);
 
     ctrlLayout->addSpacing(10);
     m_chkShowSuppressed = new QCheckBox(tr("Show Suppressed (0)"), this);
@@ -215,6 +225,7 @@ PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, std::shared_ptr
     m_table->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
     m_table->horizontalHeader()->setSectionResizeMode(4, QHeaderView::Stretch);
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_table->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_table->setAlternatingRowColors(true);
     m_table->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -230,6 +241,7 @@ PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, std::shared_ptr
     connect(m_table, &QTableWidget::customContextMenuRequested, this, &PortalLeakDialog::onTableContextMenu);
     connect(m_btnResolve, &QPushButton::clicked, this, &PortalLeakDialog::onResolveClicked);
     connect(m_btnSuppress, &QPushButton::clicked, this, &PortalLeakDialog::onSuppressClicked);
+    connect(m_btnSuppressZone, &QPushButton::clicked, this, &PortalLeakDialog::onSuppressZoneClicked);
     connect(m_chkShowSuppressed, &QCheckBox::toggled, this, &PortalLeakDialog::onShowSuppressedToggled);
 
     // Load suppressions from map container
@@ -264,9 +276,7 @@ void PortalLeakDialog::retranslateUi() {
     if (m_chkShowSuppressed) {
         m_chkShowSuppressed->setText(tr("Show Suppressed (%1)").arg(m_suppressionMgr.suppressedCount()));
     }
-    if (m_btnSuppress) {
-        onTableSelectionChanged();
-    }
+    updateSuppressionButtons();
 
     if (m_table) {
         m_table->setHorizontalHeaderLabels({
@@ -410,11 +420,12 @@ void PortalLeakDialog::onZoneFilterChanged(int index) {
     if (index >= 0) {
         m_selectedZoneFilterId = m_cmbZoneFilter->itemData(index).toInt();
         updateTableRows();
+        updateSuppressionButtons();
     }
 }
 
-void PortalLeakDialog::updateTableRows() {
-    int prevSelectedRow = m_table->currentRow();
+void PortalLeakDialog::updateTableRows(int preferredSelectedRow) {
+    int prevSelectedRow = (preferredSelectedRow >= 0) ? preferredSelectedRow : m_table->currentRow();
     m_visibleWarningIndices.clear();
 
     int totalSuppressed = 0;
@@ -599,9 +610,37 @@ void PortalLeakDialog::onCellDoubleClicked(int row, int /*column*/) {
     }
 }
 
+QList<int> PortalLeakDialog::selectedVisibleRows() const {
+    QSet<int> rowSet;
+    if (m_table && m_table->selectionModel()) {
+        for (const auto& idx : m_table->selectionModel()->selectedRows()) {
+            if (idx.row() >= 0 && idx.row() < static_cast<int>(m_visibleWarningIndices.size())) {
+                rowSet.insert(idx.row());
+            }
+        }
+    }
+    if (m_table) {
+        for (auto* item : m_table->selectedItems()) {
+            if (item && item->row() >= 0 && item->row() < static_cast<int>(m_visibleWarningIndices.size())) {
+                rowSet.insert(item->row());
+            }
+        }
+    }
+    if (rowSet.isEmpty() && m_table) {
+        int r = m_table->currentRow();
+        if (r >= 0 && r < static_cast<int>(m_visibleWarningIndices.size())) {
+            rowSet.insert(r);
+        }
+    }
+    QList<int> list = rowSet.values();
+    std::sort(list.begin(), list.end());
+    return list;
+}
+
 void PortalLeakDialog::onTableSelectionChanged() {
+    QList<int> selRows = selectedVisibleRows();
     int row = m_table->currentRow();
-    if (row >= 0 && row < static_cast<int>(m_visibleWarningIndices.size())) {
+    if (selRows.size() == 1 && row >= 0 && row < static_cast<int>(m_visibleWarningIndices.size())) {
         int origIdx = m_visibleWarningIndices[row];
         const auto& w = m_currentWarnings[origIdx];
         m_btnResolve->setEnabled(true);
@@ -611,27 +650,144 @@ void PortalLeakDialog::onTableSelectionChanged() {
             m_btnResolve->setText(tr("🧱 Edit Segment..."));
         }
 
-        m_btnSuppress->setEnabled(true);
-        if (w.isSuppressed) {
-            m_btnSuppress->setText(tr("↩️ Unsuppress"));
-            m_btnSuppress->setToolTip(tr("Restore this warning to active state [M]"));
-            m_btnSuppress->setStyleSheet(QStringLiteral("QPushButton { font-weight: bold; background-color: #243d26; color: #72f07b; border: 1px solid #3b6b3e; border-radius: 4px; padding: 7px 14px; }"
-                                                       "QPushButton:hover { background-color: #2f5432; color: #94ff9c; }"
-                                                       "QPushButton:disabled { background-color: #1c242d; color: #5a6e82; border-color: #2b3846; }"));
-        } else {
-            m_btnSuppress->setText(tr("🚫 Suppress"));
-            m_btnSuppress->setToolTip(tr("Suppress this warning (pack into .FPM) [M]"));
-            m_btnSuppress->setStyleSheet(QStringLiteral("QPushButton { font-weight: bold; background-color: #3b2a2a; color: #f87171; border: 1px solid #6b3b3b; border-radius: 4px; padding: 7px 14px; }"
-                                                       "QPushButton:hover { background-color: #4a3434; color: #fca5a5; }"
-                                                       "QPushButton:disabled { background-color: #1c242d; color: #5a6e82; border-color: #2b3846; }"));
-        }
-
         emit cellSelected(w.layer, w.x, w.y);
+    } else if (selRows.size() > 1) {
+        m_btnResolve->setEnabled(false);
+        m_btnResolve->setText(tr("⚡ Resolve Clash / Edit..."));
+        if (row >= 0 && row < static_cast<int>(m_visibleWarningIndices.size())) {
+            int origIdx = m_visibleWarningIndices[row];
+            const auto& w = m_currentWarnings[origIdx];
+            emit cellSelected(w.layer, w.x, w.y);
+        }
     } else {
         m_btnResolve->setEnabled(false);
         m_btnResolve->setText(tr("⚡ Resolve Clash / Edit..."));
-        m_btnSuppress->setEnabled(false);
-        m_btnSuppress->setText(tr("🚫 Suppress"));
+    }
+
+    updateSuppressionButtons();
+}
+
+int PortalLeakDialog::getTargetZoneIdForSuppression() const {
+    if (m_selectedZoneFilterId >= 0 || m_selectedZoneFilterId == -2) {
+        return m_selectedZoneFilterId;
+    }
+    int row = m_table->currentRow();
+    if (row >= 0 && row < static_cast<int>(m_visibleWarningIndices.size())) {
+        int origIdx = m_visibleWarningIndices[row];
+        const auto& w = m_currentWarnings[origIdx];
+        if (w.zoneId >= 0) return w.zoneId;
+        if (w.zoneId2 >= 0) return w.zoneId2;
+        return -2;
+    }
+    return -1;
+}
+
+void PortalLeakDialog::getZoneWarningStats(int targetZoneId, int& total, int& suppressed) const {
+    total = 0;
+    suppressed = 0;
+    if (targetZoneId == -1) return;
+
+    for (const auto& w : m_currentWarnings) {
+        bool match = false;
+        if (targetZoneId >= 0) {
+            match = (w.zoneId == targetZoneId || w.zoneId2 == targetZoneId);
+        } else if (targetZoneId == -2) {
+            match = (w.zoneId < 0 && w.zoneId2 < 0);
+        }
+        if (match) {
+            total++;
+            if (w.isSuppressed) {
+                suppressed++;
+            }
+        }
+    }
+}
+
+void PortalLeakDialog::updateSuppressionButtons() {
+    QList<int> selRows = selectedVisibleRows();
+    if (!selRows.isEmpty()) {
+        int selCount = selRows.size();
+        int suppressedCount = 0;
+        for (int r : selRows) {
+            int origIdx = m_visibleWarningIndices[r];
+            if (m_currentWarnings[origIdx].isSuppressed) {
+                suppressedCount++;
+            }
+        }
+        bool allSuppressed = (suppressedCount == selCount);
+
+        if (m_btnSuppress) {
+            m_btnSuppress->setEnabled(true);
+            if (allSuppressed) {
+                if (selCount > 1) {
+                    m_btnSuppress->setText(tr("↩️ Unsuppress (%1)").arg(selCount));
+                    m_btnSuppress->setToolTip(tr("Restore %1 selected warnings to active state [M]").arg(selCount));
+                } else {
+                    m_btnSuppress->setText(tr("↩️ Unsuppress"));
+                    m_btnSuppress->setToolTip(tr("Restore this warning to active state [M]"));
+                }
+                m_btnSuppress->setStyleSheet(QStringLiteral("QPushButton { font-weight: bold; background-color: #243d26; color: #72f07b; border: 1px solid #3b6b3e; border-radius: 4px; padding: 7px 14px; }"
+                                                           "QPushButton:hover { background-color: #2f5432; color: #94ff9c; }"
+                                                           "QPushButton:disabled { background-color: #1c242d; color: #5a6e82; border-color: #2b3846; }"));
+            } else {
+                if (selCount > 1) {
+                    m_btnSuppress->setText(tr("🚫 Suppress (%1)").arg(selCount));
+                    m_btnSuppress->setToolTip(tr("Suppress %1 selected warnings (pack into .FPM) [M]").arg(selCount));
+                } else {
+                    m_btnSuppress->setText(tr("🚫 Suppress"));
+                    m_btnSuppress->setToolTip(tr("Suppress this warning (pack into .FPM) [M]"));
+                }
+                m_btnSuppress->setStyleSheet(QStringLiteral("QPushButton { font-weight: bold; background-color: #3b2a2a; color: #f87171; border: 1px solid #6b3b3b; border-radius: 4px; padding: 7px 14px; }"
+                                                           "QPushButton:hover { background-color: #4a3434; color: #fca5a5; }"
+                                                           "QPushButton:disabled { background-color: #1c242d; color: #5a6e82; border-color: #2b3846; }"));
+            }
+        }
+    } else {
+        if (m_btnSuppress) {
+            m_btnSuppress->setEnabled(false);
+            m_btnSuppress->setText(tr("🚫 Suppress"));
+            m_btnSuppress->setToolTip(tr("Suppress this warning (pack into .FPM) [M]"));
+        }
+    }
+
+    int targetZid = getTargetZoneIdForSuppression();
+    int zoneTotal = 0, zoneSuppressed = 0;
+    getZoneWarningStats(targetZid, zoneTotal, zoneSuppressed);
+
+    if (m_btnSuppressZone) {
+        if (zoneTotal > 0) {
+            m_btnSuppressZone->setEnabled(true);
+            QString zName;
+            if (targetZid >= 0) {
+                zName = QString("Zone %1").arg(targetZid + 1);
+                if (m_visZoneManager) {
+                    const VisZone* vz = m_visZoneManager->getZone(targetZid);
+                    if (vz && !vz->name.isEmpty()) {
+                        zName = vz->name;
+                    }
+                }
+            } else {
+                zName = tr("Outside / Void");
+            }
+
+            if (zoneSuppressed == zoneTotal) {
+                m_btnSuppressZone->setText(tr("↩️ Restore Zone"));
+                m_btnSuppressZone->setToolTip(tr("Restore all %1 warnings in %2").arg(zoneTotal).arg(zName));
+                m_btnSuppressZone->setStyleSheet(QStringLiteral("QPushButton { font-weight: bold; background-color: #243d26; color: #72f07b; border: 1px solid #3b6b3e; border-radius: 4px; padding: 7px 14px; }"
+                                                               "QPushButton:hover { background-color: #2f5432; color: #94ff9c; }"
+                                                               "QPushButton:disabled { background-color: #1c242d; color: #5a6e82; border-color: #2b3846; }"));
+            } else {
+                m_btnSuppressZone->setText(tr("🚫 Suppress Zone"));
+                m_btnSuppressZone->setToolTip(tr("Suppress all %1 warnings in %2 (pack into .FPM)").arg(zoneTotal).arg(zName));
+                m_btnSuppressZone->setStyleSheet(QStringLiteral("QPushButton { font-weight: bold; background-color: #3b2a2a; color: #f87171; border: 1px solid #6b3b3b; border-radius: 4px; padding: 7px 14px; }"
+                                                               "QPushButton:hover { background-color: #4a3434; color: #fca5a5; }"
+                                                               "QPushButton:disabled { background-color: #1c242d; color: #5a6e82; border-color: #2b3846; }"));
+            }
+        } else {
+            m_btnSuppressZone->setEnabled(false);
+            m_btnSuppressZone->setText(tr("🚫 Suppress Zone"));
+            m_btnSuppressZone->setToolTip(tr("Suppress all warnings in the active Vis Zone (pack into .FPM)"));
+        }
     }
 }
 
@@ -657,34 +813,100 @@ void PortalLeakDialog::updateDialogTitle() {
 }
 
 void PortalLeakDialog::onSuppressClicked() {
-    int row = m_table->currentRow();
-    if (row >= 0 && row < static_cast<int>(m_visibleWarningIndices.size())) {
-        int origIdx = m_visibleWarningIndices[row];
-        auto& w = m_currentWarnings[origIdx];
-        if (w.isSuppressed) {
-            m_suppressionMgr.unsuppress(w);
-            w.isSuppressed = false;
-        } else {
-            m_suppressionMgr.suppress(w);
-            w.isSuppressed = true;
-        }
-        m_suppressionMgr.saveToMap(m_map, false);
-        if (m_map) {
-            m_map->isModified = true;
-        }
-        updateDialogTitle();
-        emit mapModified();
+    QList<int> selRows = selectedVisibleRows();
+    if (selRows.isEmpty()) return;
 
-        std::vector<PortalLeakWarning> activeWarnings;
-        for (const auto& item : m_currentWarnings) {
-            if (!item.isSuppressed) {
-                activeWarnings.push_back(item);
+    bool hasUnsuppressed = false;
+    for (int r : selRows) {
+        int origIdx = m_visibleWarningIndices[r];
+        if (!m_currentWarnings[origIdx].isSuppressed) {
+            hasUnsuppressed = true;
+            break;
+        }
+    }
+
+    bool willSuppress = hasUnsuppressed;
+    for (int r : selRows) {
+        int origIdx = m_visibleWarningIndices[r];
+        auto& w = m_currentWarnings[origIdx];
+        if (willSuppress) {
+            if (!w.isSuppressed) {
+                m_suppressionMgr.suppress(w);
+                w.isSuppressed = true;
+            }
+        } else {
+            if (w.isSuppressed) {
+                m_suppressionMgr.unsuppress(w);
+                w.isSuppressed = false;
             }
         }
-        emit warningsUpdated(activeWarnings);
-
-        updateTableRows();
     }
+
+    m_suppressionMgr.saveToMap(m_map, false);
+    if (m_map) {
+        m_map->isModified = true;
+    }
+    updateDialogTitle();
+    emit mapModified();
+
+    std::vector<PortalLeakWarning> activeWarnings;
+    for (const auto& item : m_currentWarnings) {
+        if (!item.isSuppressed) {
+            activeWarnings.push_back(item);
+        }
+    }
+    emit warningsUpdated(activeWarnings);
+
+    int preferredRow = selRows.first();
+    populateZoneFilter();
+    updateTableRows(preferredRow);
+}
+
+void PortalLeakDialog::onSuppressZoneClicked() {
+    int targetZid = getTargetZoneIdForSuppression();
+    if (targetZid == -1) return;
+
+    int zoneTotal = 0, zoneSuppressed = 0;
+    getZoneWarningStats(targetZid, zoneTotal, zoneSuppressed);
+    if (zoneTotal == 0) return;
+
+    bool willSuppress = (zoneSuppressed < zoneTotal);
+
+    for (auto& w : m_currentWarnings) {
+        bool match = false;
+        if (targetZid >= 0) {
+            match = (w.zoneId == targetZid || w.zoneId2 == targetZid);
+        } else if (targetZid == -2) {
+            match = (w.zoneId < 0 && w.zoneId2 < 0);
+        }
+        if (match) {
+            if (willSuppress) {
+                m_suppressionMgr.suppress(w);
+                w.isSuppressed = true;
+            } else {
+                m_suppressionMgr.unsuppress(w);
+                w.isSuppressed = false;
+            }
+        }
+    }
+
+    m_suppressionMgr.saveToMap(m_map, false);
+    if (m_map) {
+        m_map->isModified = true;
+    }
+    updateDialogTitle();
+    emit mapModified();
+
+    std::vector<PortalLeakWarning> activeWarnings;
+    for (const auto& item : m_currentWarnings) {
+        if (!item.isSuppressed) {
+            activeWarnings.push_back(item);
+        }
+    }
+    emit warningsUpdated(activeWarnings);
+
+    populateZoneFilter();
+    updateTableRows();
 }
 
 void PortalLeakDialog::onShowSuppressedToggled(bool checked) {
@@ -696,8 +918,8 @@ void PortalLeakDialog::onUnsuppressAllClicked() {
     if (m_suppressionMgr.suppressedCount() == 0) return;
     int count = m_suppressionMgr.suppressedCount();
     auto reply = QMessageBox::question(this, tr("Restore All Warnings"),
-                                       tr("Restore all %1 suppressed warnings back to active state?").arg(count),
-                                       QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+                                        tr("Restore all %1 suppressed warnings back to active state?").arg(count),
+                                        QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
     if (reply == QMessageBox::Yes) {
         m_suppressionMgr.unsuppressAll();
         m_suppressionMgr.saveToMap(m_map, false);
@@ -730,28 +952,65 @@ void PortalLeakDialog::onTableContextMenu(const QPoint& pos) {
         return;
     }
 
-    int row = index.row();
-    if (row < 0 || row >= static_cast<int>(m_visibleWarningIndices.size())) return;
+    int clickedRow = index.row();
+    if (clickedRow < 0 || clickedRow >= static_cast<int>(m_visibleWarningIndices.size())) return;
 
-    if (m_table->currentRow() != row) {
-        m_table->selectRow(row);
+    QList<int> selRows = selectedVisibleRows();
+    if (!selRows.contains(clickedRow)) {
+        m_table->selectRow(clickedRow);
+        selRows = selectedVisibleRows();
     }
 
-    int origIdx = m_visibleWarningIndices[row];
+    int selCount = selRows.size();
+    int suppressedCount = 0;
+    for (int r : selRows) {
+        int oIdx = m_visibleWarningIndices[r];
+        if (m_currentWarnings[oIdx].isSuppressed) suppressedCount++;
+    }
+    bool allSuppressed = (suppressedCount == selCount);
+
+    int origIdx = m_visibleWarningIndices[clickedRow];
     const auto& w = m_currentWarnings[origIdx];
 
     QMenu menu(this);
 
     // 1. Suppress / Restore Warning at the VERY TOP of the context menu
     QAction* actToggleSuppress = nullptr;
-    if (w.isSuppressed) {
-        actToggleSuppress = menu.addAction(tr("↩️ Restore Warning"));
+    if (selCount > 1) {
+        if (allSuppressed) {
+            actToggleSuppress = menu.addAction(tr("↩️ Restore %1 Selected Warnings").arg(selCount));
+        } else {
+            actToggleSuppress = menu.addAction(tr("🚫 Suppress %1 Selected Warnings").arg(selCount));
+        }
     } else {
-        actToggleSuppress = menu.addAction(tr("🚫 Suppress Warning"));
+        if (w.isSuppressed) {
+            actToggleSuppress = menu.addAction(tr("↩️ Restore Warning"));
+        } else {
+            actToggleSuppress = menu.addAction(tr("🚫 Suppress Warning"));
+        }
     }
     QFont boldFont = actToggleSuppress->font();
     boldFont.setBold(true);
     actToggleSuppress->setFont(boldFont);
+
+    // 1b. Zone-wide suppression action
+    int targetZid = (w.zoneId >= 0) ? w.zoneId : w.zoneId2;
+    int zoneTotal = 0, zoneSuppressed = 0;
+    getZoneWarningStats(targetZid, zoneTotal, zoneSuppressed);
+
+    QAction* actToggleZone = nullptr;
+    if (zoneTotal > 0) {
+        QString zName = (targetZid >= 0) ? QString("Zone %1").arg(targetZid + 1) : tr("Outside / Void");
+        if (targetZid >= 0 && m_visZoneManager) {
+            const VisZone* vz = m_visZoneManager->getZone(targetZid);
+            if (vz && !vz->name.isEmpty()) zName = vz->name;
+        }
+        if (zoneSuppressed == zoneTotal) {
+            actToggleZone = menu.addAction(tr("↩️ Restore All Warnings in %1 (%2 issues)").arg(zName).arg(zoneTotal));
+        } else {
+            actToggleZone = menu.addAction(tr("🚫 Suppress All Warnings in %1 (%2 issues)").arg(zName).arg(zoneTotal));
+        }
+    }
 
     QAction* actRestoreAll = nullptr;
     if (m_suppressionMgr.suppressedCount() > 0) {
@@ -781,6 +1040,8 @@ void PortalLeakDialog::onTableContextMenu(const QPoint& pos) {
     QAction* chosen = menu.exec(m_table->viewport()->mapToGlobal(pos));
     if (chosen == actToggleSuppress) {
         onSuppressClicked();
+    } else if (chosen == actToggleZone) {
+        onSuppressZoneClicked();
     } else if (chosen == actRestoreAll) {
         onUnsuppressAllClicked();
     } else if (chosen == actJump) {

@@ -315,7 +315,9 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::checkCompiledUniverse() {
             if (info.hasVisportalmode && info.visportalmode > 0) return true;
             if (m_map->segments.contains(b)) {
                 const auto& s = m_map->segments[b];
-                if (s->isWindow || s->name.contains("door", Qt::CaseInsensitive) || s->relPath.contains("door", Qt::CaseInsensitive))
+                if ((s->isWindow || s->name.contains("door", Qt::CaseInsensitive) || s->relPath.contains("door", Qt::CaseInsensitive)) &&
+                    !s->name.contains("ceiling_window", Qt::CaseInsensitive) &&
+                    !s->relPath.contains("ceiling_window", Qt::CaseInsensitive))
                     return true;
             }
         }
@@ -327,7 +329,9 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::checkCompiledUniverse() {
                 if (info.hasVisportalmode && info.visportalmode > 0) return true;
                 if (m_map->segments.contains(o)) {
                     const auto& s = m_map->segments[o];
-                    if (s->isWindow || s->name.contains("door", Qt::CaseInsensitive) || s->relPath.contains("door", Qt::CaseInsensitive))
+                    if ((s->isWindow || s->name.contains("door", Qt::CaseInsensitive) || s->relPath.contains("door", Qt::CaseInsensitive)) &&
+                        !s->name.contains("ceiling_window", Qt::CaseInsensitive) &&
+                        !s->relPath.contains("ceiling_window", Qt::CaseInsensitive))
                         return true;
                 }
             }
@@ -361,10 +365,25 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::checkCompiledUniverse() {
         return true;
     };
 
+    auto isMaptileWallPresent = [](int maptile, int rot, int side) -> bool {
+        if (maptile <= 0 || maptile == 6) return false;
+        static const bool baseWalls[16][4] = {
+            {0, 0, 0, 0}, {1, 1, 1, 1}, {1, 0, 1, 1}, {1, 0, 0, 1},
+            {1, 0, 1, 0}, {1, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0},
+            {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0},
+            {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 1}
+        };
+        int unrotatedSide = (side - (rot & 3) + 4) % 4;
+        if (maptile >= 0 && maptile < 16) return baseWalls[maptile][unrotatedSide];
+        return false;
+    };
+
     for (size_t i = 0; i < m_dbuParser.allPortals().size(); ++i) {
         const auto& portal = m_dbuParser.allPortals()[i];
         // Giant portals are DarkBASIC outdoor sky/terrain partitioning planes, not indoor room leaks
-        if (portal.isExteriorHull || portal.spanX() > 300.0f || portal.spanZ() > 300.0f) continue;
+        if (portal.isExteriorHull) continue;
+        if (!portal.isHorizontal() && (portal.spanX() > 300.0f || portal.spanZ() > 300.0f)) continue;
+        if (portal.isHorizontal() && (portal.spanX() > 800.0f || portal.spanZ() > 800.0f)) continue;
 
         int layer = qBound(0, portal.layer(), (int)m_map->gridBlocks.size() - 1);
         float w = portal.width();
@@ -383,49 +402,39 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::checkCompiledUniverse() {
 
             for (int cy = minGY; cy <= maxGY; ++cy) {
                 for (int cx = minGX; cx <= maxGX; ++cx) {
-                    // Search for an interior room below this tile
+                    // Find highest interior room layer in this column
+                    int highestRoomLayer = -1;
                     int roomZid = -1;
-                    int topRoomLayer = -1;
                     if (m_visZoneManager) {
-                        for (int l = layer - 1; l >= 0; --l) {
+                        for (int l = m_map->header.layerMax; l >= 0; --l) {
                             int zid = m_visZoneManager->getZoneAt(l, cx, cy);
                             if (zid >= 0) {
+                                highestRoomLayer = l;
                                 roomZid = zid;
-                                topRoomLayer = l;
                                 break;
                             }
                         }
                     }
 
-                    // If no interior room exists below, this portal is over outdoor open sky - skip
-                    if (roomZid < 0) continue;
+                    // If no interior room exists in this column, skip (portal is over outdoor terrain / sky)
+                    if (highestRoomLayer < 0) continue;
 
-                    // If the room is already sealed by a roof or floor slab between topRoomLayer and this layer, it's not leaking
-                    bool sealedBelow = false;
-                    for (int l = topRoomLayer + 1; l <= layer; ++l) {
-                        if (mapGround(l, cx, cy) == 2 || isCeilingAt(l, cx, cy) || isFloorAt(l, cx, cy)) {
-                            sealedBelow = true;
+                    // If this horizontal portal is at or below the top of the room, it is inside the room volume (multi-story room / atrium)
+                    if (layer <= highestRoomLayer) continue;
+
+                    // Portal is above the top of the room. Check if the room is sealed by a ceiling or roof slab
+                    bool sealed = false;
+                    for (int l = highestRoomLayer; l <= layer; ++l) {
+                        if (mapGround(l, cx, cy) == 2 || isCeilingAt(l, cx, cy) ||
+                            (l > highestRoomLayer && isFloorAt(l, cx, cy))) {
+                            sealed = true;
                             break;
                         }
                     }
-                    if (sealedBelow) continue;
+                    if (sealed) continue;
 
-                    bool ceilingCovered = (mapGround(layer, cx, cy) == 2 || isCeilingAt(layer, cx, cy));
-                    if (ceilingCovered) continue;
-
-                    bool hasDoorWin = isDoorOrWindowAt(layer, cx, cy);
-                    if (!hasDoorWin && layer > 0) {
-                        hasDoorWin = isDoorOrWindowAt(layer - 1, cx, cy);
-                    }
-
-                    bool isLeak = false;
-                    bool isCrack = false;
-
-                    if (isSubSeg && !hasDoorWin) {
-                        isCrack = true;
-                    } else if (!hasDoorWin) {
-                        isLeak = true;
-                    }
+                    bool isLeak = !isSubSeg;
+                    bool isCrack = isSubSeg;
 
                     if (isLeak || isCrack) {
                         quint64 cellKey = (quint64(layer) << 32) | (quint64(cy) << 16) | quint64(cx);
@@ -454,11 +463,38 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::checkCompiledUniverse() {
                                     "Compiled BSP portal of sub-segment size detected at Floor %1 (%2, %3) without a door or window. Indicates misaligned geometry or CSG split seam.")
                                     .arg(layer).arg(cx).arg(cy);
                             } else {
+                                QString propNote;
+                                if (layer < m_map->gridOverlays.size() && cy < m_map->gridOverlays[layer].size() && cx < m_map->gridOverlays[layer][cy].size()) {
+                                    int o = m_map->gridOverlays[layer][cy][cx];
+                                    if (o > 0 && m_map->segments.contains(o)) {
+                                        if (m_map->segments[o]->name.contains("ceiling_window", Qt::CaseInsensitive) ||
+                                            m_map->segments[o]->relPath.contains("ceiling_window", Qt::CaseInsensitive)) {
+                                            propNote = QCoreApplication::translate("PortalLeakAnalyzer", " (Segment '%1' placed here does not seal BSP portals)").arg(m_map->segments[o]->name);
+                                        }
+                                    }
+                                }
+                                if (propNote.isEmpty()) {
+                                    for (const auto& ent : m_map->placedEntities) {
+                                        if (ent.floorLayer == layer || ent.floorLayer == layer - 1) {
+                                            int ex = static_cast<int>(std::floor(ent.x / 100.0f));
+                                            int ey = static_cast<int>(std::floor(std::abs(ent.z) / 100.0f));
+                                            if (ex == cx && ey == cy) {
+                                                auto prof = m_map->entityProfiles.value(ent.bankIndex);
+                                                QString entName = prof ? prof->name : ent.instanceName;
+                                                if (entName.contains("ceiling_window", Qt::CaseInsensitive)) {
+                                                    propNote = QCoreApplication::translate("PortalLeakAnalyzer", " (Entity '%1' placed here does not seal BSP portals)").arg(entName);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
                                 warn.severity = PortalLeakWarning::ERROR;
                                 warn.type = QCoreApplication::translate("PortalLeakAnalyzer", "Physical BSP Void Leak");
                                 warn.description = QCoreApplication::translate("PortalLeakAnalyzer",
                                     "Unsealed ceiling opening opens directly into universe void at Floor %1 (%2, %3).")
-                                    .arg(layer).arg(cx).arg(cy);
+                                    .arg(layer).arg(cx).arg(cy) + propNote;
                             }
                             res.push_back(warn);
                         }
@@ -467,84 +503,132 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::checkCompiledUniverse() {
             }
         } else {
             // Vertical wall portal
-            int gx = portal.gridX();
-            int gy = portal.gridY();
-            if (gx < 0 || gx > m_map->header.maxX || gy < 0 || gy > m_map->header.maxY) continue;
+            // In world space, a vertical portal lies on a boundary plane between adjacent grid cells.
+            // Determine if this vertical portal is along an X plane (constant X) or Z plane (constant Z):
+            bool isXPlane = (portal.spanX() < portal.spanZ());
 
-            int nx = gx + (portal.normal.x > 0.5f ? 1 : (portal.normal.x < -0.5f ? -1 : 0));
-            int ny = gy + (portal.normal.z < -0.5f ? 1 : (portal.normal.z > 0.5f ? -1 : 0));
+            int cellA_X = 0, cellB_X = 0;
+            int cellA_Y = 0, cellB_Y = 0;
+            int minG = 0, maxG = 0;
 
-            int zidA = -1;
-            int zidB = -1;
-            if (m_visZoneManager) {
-                zidA = m_visZoneManager->getZoneAt(layer, gx, gy);
-                if (nx >= 0 && nx <= m_map->header.maxX && ny >= 0 && ny <= m_map->header.maxY) {
-                    zidB = m_visZoneManager->getZoneAt(layer, nx, ny);
-                }
-            }
-
-            // If neither side is an interior room, this portal is outdoor terrain/void - ignore
-            if (zidA < 0 && zidB < 0) continue;
-
-            int roomZid = (zidA >= 0 ? zidA : zidB);
-            int roomX = (zidA >= 0 ? gx : nx);
-            int roomY = (zidA >= 0 ? gy : ny);
-
-            bool hasDoorWin = isDoorOrWindowAt(layer, roomX, roomY);
-            if (!hasDoorWin && layer > 0) {
-                hasDoorWin = isDoorOrWindowAt(layer - 1, roomX, roomY);
-            }
-
-            bool isLeak = false;
-            bool isCrack = false;
-
-            if (zidA >= 0 && zidB >= 0) {
-                // Portal connects two indoor rooms
-                if (isSubSeg && !hasDoorWin) {
-                    isCrack = true;
-                }
+            if (isXPlane) {
+                // Portal lies on constant X plane: cellA is West (X-), cellB is East (X+)
+                cellA_X = static_cast<int>(std::floor((portal.box.cenX - 5.0f) / 100.0f));
+                cellB_X = static_cast<int>(std::floor((portal.box.cenX + 5.0f) / 100.0f));
+                minG = qBound(0, static_cast<int>(std::floor(std::abs(portal.box.maxZ) / 100.0f)), m_map->header.maxY);
+                maxG = qBound(0, static_cast<int>(std::floor((std::abs(portal.box.minZ) - 0.1f) / 100.0f)), m_map->header.maxY);
             } else {
-                // One side is room, other side is exterior/void
-                if (!hasDoorWin) {
-                    if (isSubSeg) isCrack = true;
-                    else isLeak = true;
-                }
+                // Portal lies on constant Z plane: cellA is North (Z+ / smaller Y), cellB is South (Z- / larger Y)
+                cellA_Y = static_cast<int>(std::floor((std::abs(portal.box.cenZ) - 5.0f) / 100.0f));
+                cellB_Y = static_cast<int>(std::floor((std::abs(portal.box.cenZ) + 5.0f) / 100.0f));
+                minG = qBound(0, static_cast<int>(std::floor(portal.box.minX / 100.0f)), m_map->header.maxX);
+                maxG = qBound(0, static_cast<int>(std::floor((portal.box.maxX - 0.1f) / 100.0f)), m_map->header.maxX);
             }
+            if (maxG < minG) std::swap(minG, maxG);
 
-            if (isLeak || isCrack) {
-                quint64 cellKey = (quint64(layer) << 32) | (quint64(roomY) << 16) | quint64(roomX);
-                if (!reportedCells.contains(cellKey)) {
-                    reportedCells.insert(cellKey);
-                    PortalLeakWarning warn;
-                    warn.layer = layer;
-                    warn.x = roomX;
-                    warn.y = roomY;
-                    warn.zoneId = roomZid;
-                    if (m_visZoneManager) {
-                        const VisZone* z = m_visZoneManager->getZone(roomZid);
-                        if (z) warn.zoneName = z->name;
-                    }
-                    warn.isPhysicalBsp = true;
-                    warn.isStaticMap = false;
-                    warn.isMerged = false;
-                    warn.portalWidth = w;
-                    warn.portalHeight = h;
-                    warn.hasPhysicalSize = (w > 0.0f && h > 0.0f);
+            for (int g = minG; g <= maxG; ++g) {
+                int ax = isXPlane ? cellA_X : g;
+                int ay = isXPlane ? g : cellA_Y;
+                int bx = isXPlane ? cellB_X : g;
+                int by = isXPlane ? g : cellB_Y;
 
-                    if (isCrack) {
-                        warn.severity = PortalLeakWarning::WARNING;
-                        warn.type = QCoreApplication::translate("PortalLeakAnalyzer", "Physical Mesh Seam / Micro-Crack (CSG)");
-                        warn.description = QCoreApplication::translate("PortalLeakAnalyzer",
-                            "Compiled BSP portal of sub-segment size detected at Floor %1 (%2, %3) without a door or window. Indicates misaligned geometry or CSG split seam.")
-                            .arg(layer).arg(roomX).arg(roomY);
-                    } else {
-                        warn.severity = PortalLeakWarning::ERROR;
-                        warn.type = QCoreApplication::translate("PortalLeakAnalyzer", "Physical BSP Void Leak");
-                        warn.description = QCoreApplication::translate("PortalLeakAnalyzer",
-                            "Unsealed boundary opening opens directly into universe void at Floor %1 (%2, %3).")
-                            .arg(layer).arg(roomX).arg(roomY);
+                if (ax < 0 || ax > m_map->header.maxX || ay < 0 || ay > m_map->header.maxY) continue;
+                if (bx < 0 || bx > m_map->header.maxX || by < 0 || by > m_map->header.maxY) continue;
+
+                int zidA = -1;
+                int zidB = -1;
+                if (m_visZoneManager) {
+                    zidA = m_visZoneManager->getZoneAt(layer, ax, ay);
+                    zidB = m_visZoneManager->getZoneAt(layer, bx, by);
+                }
+
+                // If neither side is an interior room, this portal is outdoor terrain/void - ignore
+                if (zidA < 0 && zidB < 0) continue;
+
+                int roomZid = (zidA >= 0 ? zidA : zidB);
+                int roomX = (zidA >= 0 ? ax : bx);
+                int roomY = (zidA >= 0 ? ay : by);
+                int outX  = (zidA >= 0 ? bx : ax);
+                int outY  = (zidA >= 0 ? by : ay);
+
+                bool hasDoorWin = isDoorOrWindowAt(layer, roomX, roomY);
+                if (!hasDoorWin && layer > 0) {
+                    hasDoorWin = isDoorOrWindowAt(layer - 1, roomX, roomY);
+                }
+
+                bool isLeak = false;
+                bool isCrack = false;
+
+                if (zidA >= 0 && zidB >= 0) {
+                    // Portal connects two indoor rooms
+                    if (isSubSeg && !hasDoorWin) {
+                        isCrack = true;
                     }
-                    res.push_back(warn);
+                } else {
+                    // One side is room, other side is exterior/void
+                    int sideFacingOut = -1;
+                    if (outX > roomX) sideFacingOut = 1;      // East
+                    else if (outX < roomX) sideFacingOut = 3; // West
+                    else if (outY < roomY) sideFacingOut = 0; // North
+                    else if (outY > roomY) sideFacingOut = 2; // South
+
+                    // Check if room has a solid wall on this side
+                    bool hasWall = false;
+                    int tile = (layer < m_map->gridTileType.size() && roomY < m_map->gridTileType[layer].size() && roomX < m_map->gridTileType[layer][roomY].size())
+                               ? m_map->gridTileType[layer][roomY][roomX] : 0;
+                    int rot = (layer < m_map->gridRotation.size() && roomY < m_map->gridRotation[layer].size() && roomX < m_map->gridRotation[layer][roomY].size())
+                              ? m_map->gridRotation[layer][roomY][roomX] : 0;
+                    if (sideFacingOut >= 0 && isMaptileWallPresent(tile, rot, sideFacingOut)) {
+                        hasWall = true;
+                    }
+
+                    if (!hasDoorWin && !hasWall) {
+                        // Flat roof slab (tile 6 or ground 2) open to the sky does not have side walls facing the void
+                        bool isExteriorRoof = (tile == 6 || mapGround(layer, roomX, roomY) == 2 || isCeilingAt(layer, roomX, roomY));
+                        if (isExteriorRoof && (layer + 1 >= m_map->gridBlocks.size() || m_map->gridBlocks[layer + 1][roomY][roomX] <= 0)) {
+                            // Roof surface under open sky bordering void horizontally is not a perimeter wall leak
+                        } else {
+                            if (isSubSeg) isCrack = true;
+                            else isLeak = true;
+                        }
+                    }
+                }
+
+                if (isLeak || isCrack) {
+                    quint64 cellKey = (quint64(layer) << 32) | (quint64(roomY) << 16) | quint64(roomX);
+                    if (!reportedCells.contains(cellKey)) {
+                        reportedCells.insert(cellKey);
+                        PortalLeakWarning warn;
+                        warn.layer = layer;
+                        warn.x = roomX;
+                        warn.y = roomY;
+                        warn.zoneId = roomZid;
+                        if (m_visZoneManager) {
+                            const VisZone* z = m_visZoneManager->getZone(roomZid);
+                            if (z) warn.zoneName = z->name;
+                        }
+                        warn.isPhysicalBsp = true;
+                        warn.isStaticMap = false;
+                        warn.isMerged = false;
+                        warn.portalWidth = w;
+                        warn.portalHeight = h;
+                        warn.hasPhysicalSize = (w > 0.0f && h > 0.0f);
+
+                        if (isCrack) {
+                            warn.severity = PortalLeakWarning::WARNING;
+                            warn.type = QCoreApplication::translate("PortalLeakAnalyzer", "Physical Mesh Seam / Micro-Crack (CSG)");
+                            warn.description = QCoreApplication::translate("PortalLeakAnalyzer",
+                                "Compiled BSP portal of sub-segment size detected at Floor %1 (%2, %3) without a door or window. Indicates misaligned geometry or CSG split seam.")
+                                .arg(layer).arg(roomX).arg(roomY);
+                        } else {
+                            warn.severity = PortalLeakWarning::ERROR;
+                            warn.type = QCoreApplication::translate("PortalLeakAnalyzer", "Physical BSP Void Leak");
+                            warn.description = QCoreApplication::translate("PortalLeakAnalyzer",
+                                "Unsealed boundary opening opens directly into universe void at Floor %1 (%2, %3).")
+                                .arg(layer).arg(roomX).arg(roomY);
+                        }
+                        res.push_back(warn);
+                    }
                 }
             }
         }
@@ -628,6 +712,11 @@ bool PortalLeakAnalyzer::isCeilingAt(int layer, int x, int y) {
     if (layer < 0 || layer >= m_map->gridBlocks.size()) return false;
     if (y < 0 || y >= m_map->gridBlocks[layer].size()) return false;
     if (x < 0 || x >= m_map->gridBlocks[layer][y].size()) return false;
+
+    // In FPS Creator engine, mapsymbol == 1 hides floor & roof!
+    if (layer < m_map->gridSymbol.size() && y < m_map->gridSymbol[layer].size() && x < m_map->gridSymbol[layer][y].size()) {
+        if (m_map->gridSymbol[layer][y][x] == 1) return false;
+    }
     
     int segId = m_map->gridBlocks[layer][y][x];
     if (segId <= 0 || segId > m_map->segmentsBank.size()) return false;

@@ -350,6 +350,13 @@ void VisZoneManager::partitionRooms() {
     struct Cell3D { int l, x, y; };
     int nextZoneId = 0;
 
+    auto hasBlocksAbove = [&](int startL, int x, int y) -> bool {
+        for (int k = startL + 1; k < layers; ++k) {
+            if (m_map->gridBlocks[k][y][x] > 0) return true;
+        }
+        return false;
+    };
+
     auto floodFillZone = [&](int startL, int startX, int startY) {
         int currentZoneId = nextZoneId++;
         VisZone zone;
@@ -390,7 +397,16 @@ void VisZoneManager::partitionRooms() {
                         bool validTile = false;
                         if (nb > 0) {
                             auto nseg = m_map->segments.value(nb);
-                            if (nseg && !nseg->isScenery && !isExplicitCeilingSlab(c.l, nx, ny)) validTile = true;
+                            if (nseg && !nseg->isScenery && !isExplicitCeilingSlab(c.l, nx, ny)) {
+                                int ngnd = (c.l < m_map->gridGround.size() && ny < m_map->gridGround[c.l].size() && nx < m_map->gridGround[c.l][ny].size())
+                                           ? m_map->gridGround[c.l][ny][nx] : 0;
+                                int ntile = (c.l < m_map->gridTileType.size() && ny < m_map->gridTileType[c.l].size() && nx < m_map->gridTileType[c.l][ny].size())
+                                            ? m_map->gridTileType[c.l][ny][nx] : 0;
+                                bool isRoofSlabUnderSky = (ngnd == 2 && (ntile == 0 || ntile == 6) && !hasBlocksAbove(c.l, nx, ny));
+                                if (!isRoofSlabUnderSky) {
+                                    validTile = true;
+                                }
+                            }
                         } else if (c.l > 0) {
                             // Empty air tile inside the room:
                             // 1) Not a ceiling entity or ceiling slab on this layer

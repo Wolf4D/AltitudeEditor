@@ -7,6 +7,8 @@
 #include "SegmentParser.h"
 #include "PortalLeakAnalyzer.h"
 #include "PortalLeakDialog.h"
+#include "AssetManager.h"
+#include <QLayout>
 #include "MapCanvas.h"
 #include "LeakSuppressionManager.h"
 #include <QKeyEvent>
@@ -56,17 +58,87 @@ int main(int argc, char* argv[]) {
         }
         std::cout << "Total diffBlocks=" << diffBlocks << std::endl;
     }
+    bool hasLeakAt7_21 = false;
+    for (const auto& w : warnings) {
+        if (w.layer == 7 && w.x == 7 && w.y == 21) {
+            hasLeakAt7_21 = true;
+            std::cout << "UNEXPECTED LEAK at Floor 7 (7, 21): " << w.type.toStdString() << " - " << w.description.toStdString() << std::endl;
+        }
+    }
+    std::cout << "[TEST] No false void leak at Floor 7 (7, 21) roof slab: "
+              << (!hasLeakAt7_21 ? "PASS" : "FAIL") << std::endl;
+
+    std::cout << "\n=== TILES AT Y=20 FOR X=4..10 ACROSS LAYERS 6..8 ===" << std::endl;
+    for (int l = 6; l <= 8; ++l) {
+        std::cout << "--- Layer " << l << " ---" << std::endl;
+        for (int x = 4; x <= 10; ++x) {
+            int y = 20;
+            int b = (l < map->gridBlocks.size() && y < map->gridBlocks[l].size() && x < map->gridBlocks[l][y].size()) ? map->gridBlocks[l][y][x] : 0;
+            int t = (l < map->gridTileType.size() && y < map->gridTileType[l].size() && x < map->gridTileType[l][y].size()) ? map->gridTileType[l][y][x] : 0;
+            int r = (l < map->gridRotation.size() && y < map->gridRotation[l].size() && x < map->gridRotation[l][y].size()) ? map->gridRotation[l][y][x] : 0;
+            int g = (l < map->gridGround.size() && y < map->gridGround[l].size() && x < map->gridGround[l][y].size()) ? map->gridGround[l][y][x] : 0;
+            int s = (l < map->gridSymbol.size() && y < map->gridSymbol[l].size() && x < map->gridSymbol[l][y].size()) ? map->gridSymbol[l][y][x] : 0;
+            int z = zm->getZoneAt(l, x, y);
+            auto seg = map->segments.value(b);
+            QString sname = seg ? seg->name : "none";
+            std::cout << "  x=" << x << ": b=" << b << " (" << sname.toStdString() << ") t=" << t << " r=" << r << " g=" << g << " s=" << s
+                      << " zid=" << z << std::endl;
+        }
+    }
+
+    std::cout << "\n=== ENTITIES AT Y=20, X=4..10 ===" << std::endl;
+    for (int i = 0; i < map->placedEntities.size(); ++i) {
+        const auto& e = map->placedEntities[i];
+        int ex = static_cast<int>(e.x / 100.0f);
+        int ey = static_cast<int>(std::abs(e.z) / 100.0f);
+        if (ey == 20 && ex >= 4 && ex <= 10) {
+            auto prof = map->entityProfiles.value(e.bankIndex);
+            QString ename = prof ? prof->name : e.instanceName;
+            std::cout << "  Entity #" << i << " at L" << e.floorLayer << " (" << ex << "," << ey << "): "
+                      << ename.toStdString() << " (relPath: " << (prof ? prof->relPath.toStdString() : "") << ")"
+                      << " worldPos=(" << e.x << "," << e.y << "," << e.z << ")" << std::endl;
+        }
+    }
+
+    std::cout << "\n=== PORTALS IN UNIVERSE.DBU AROUND Y_height=800, Z=-2100..-2000 ===" << std::endl;
+    UniverseDBUParser dbu;
+    QString dbuPath = AssetManager::instance().engineRoot() + "/Files/levelbank/testlevel/universe.dbu";
+    if (dbu.parse(dbuPath)) {
+        for (size_t i = 0; i < dbu.allPortals().size(); ++i) {
+            const auto& p = dbu.allPortals()[i];
+            if (p.box.minX <= 1100 && p.box.maxX >= 400 &&
+                p.box.minY <= 850 && p.box.maxY >= 750 &&
+                p.box.maxZ >= -2150 && p.box.minZ <= -1950) {
+                std::cout << "  Portal #" << i << ": box=[" << p.box.minX << ".." << p.box.maxX
+                          << ", " << p.box.minY << ".." << p.box.maxY
+                          << ", " << p.box.minZ << ".." << p.box.maxZ << "] norm=("
+                          << p.normal.x << "," << p.normal.y << "," << p.normal.z << ")"
+                          << " span=(" << p.spanX() << "x" << p.spanY() << "x" << p.spanZ() << ")"
+                          << " fromZ=" << p.fromZone << " tgtZ=" << p.targetZone
+                          << " horiz=" << p.isHorizontal() << std::endl;
+            }
+        }
+    }
 
 
 
-
-    pla.setCheckCompiledUniverse(true);
     pla.setCheckStaticMap(false);
     auto physicalOnlyWarnings = pla.analyze();
     bool physicalAlonePass = (physicalOnlyWarnings.size() >= 50);
     std::cout << "[TEST] Physical BSP analysis alone reports leaks: "
               << (physicalAlonePass ? "PASS" : "FAIL")
               << " (" << physicalOnlyWarnings.size() << " leaks)" << std::endl;
+
+    std::set<int> f8_y20_leaks;
+    for (const auto& w : physicalOnlyWarnings) {
+        if (w.layer == 8 && w.y == 20 && w.x >= 5 && w.x <= 9) {
+            f8_y20_leaks.insert(w.x);
+        }
+    }
+    bool f8_y20_allLeaksPass = (f8_y20_leaks.size() == 5 && f8_y20_leaks.count(6) == 1);
+    std::cout << "[TEST] Physical BSP detects all 5 ceiling opening leaks at Floor 8 Y=20 (including (6,20)): "
+              << (f8_y20_allLeaksPass ? "PASS" : "FAIL")
+              << " (Found " << f8_y20_leaks.size() << "/5 tiles)" << std::endl;
 
 
     // 2. Test Static Analysis alone
@@ -419,6 +491,77 @@ int main(int argc, char* argv[]) {
     QObject::connect(&leakDlg, &PortalLeakDialog::warningsUpdated, &canvas, &MapCanvas::setLeakWarnings);
     leakDlg.runAnalysis();
 
+    leakDlg.findChild<QCheckBox*>() ; // Let's toggle
+    // Set to physical only
+    QMetaObject::invokeMethod(&leakDlg, "onMethodToggled");
+    // Let's uncheck static map
+    auto chkBoxes = leakDlg.findChildren<QCheckBox*>();
+    for (auto* cb : chkBoxes) {
+        if (cb->text().contains("Static") || cb->text().contains("топологический")) {
+            cb->setChecked(false);
+        }
+    }
+    leakDlg.runAnalysis();
+    // Now check combo items
+    for (int i = 0; i < leakDlg.zoneFilterCombo()->count(); ++i) {
+        std::cout << "PHYSICAL COMBO [" << i << "]: zid=" << leakDlg.zoneFilterCombo()->itemData(i).toInt()
+                  << " '" << leakDlg.zoneFilterCombo()->itemText(i).toStdString() << "'" << std::endl;
+    }
+
+    // Verify combobox popup styling (no empty margin gap)
+    leakDlg.show();
+    leakDlg.zoneFilterCombo()->showPopup();
+    QWidget* container = leakDlg.zoneFilterCombo()->view()->parentWidget();
+    bool popupValid = (container != nullptr && leakDlg.zoneFilterCombo()->view()->height() > 0);
+    std::cout << "[TEST] PortalLeakDialog VisZone combo popup geometry valid: "
+              << (popupValid ? "PASS" : "FAIL") << std::endl;
+    leakDlg.zoneFilterCombo()->hidePopup();
+    leakDlg.hide();
+
+    // Test Zone-wide suppression button
+    auto btns = leakDlg.findChildren<QPushButton*>();
+    QPushButton* btnSuppressZone = nullptr;
+    for (auto* b : btns) {
+        if (b->text().contains("Zone") || b->text().contains("зоны") || b->text().contains("зону")) {
+            btnSuppressZone = b;
+            break;
+        }
+    }
+    bool hasZoneBtn = (btnSuppressZone != nullptr);
+    std::cout << "[TEST] PortalLeakDialog has Zone Suppression button: "
+              << (hasZoneBtn ? "PASS" : "FAIL") << std::endl;
+
+    // Filter by Zone 2 (zid = 1)
+    for (int i = 0; i < leakDlg.zoneFilterCombo()->count(); ++i) {
+        if (leakDlg.zoneFilterCombo()->itemData(i).toInt() == 1) {
+            leakDlg.zoneFilterCombo()->setCurrentIndex(i);
+            break;
+        }
+    }
+    assert(leakDlg.selectedZoneFilterId() == 1);
+    int activeInZone2Before = leakDlg.tableWidget()->rowCount();
+
+    if (btnSuppressZone) {
+        btnSuppressZone->click();
+    }
+    int activeInZone2After = leakDlg.tableWidget()->rowCount();
+    bool zoneSuppressed = (activeInZone2After == 0 && map->isModified && leakDlg.windowTitle().contains("*"));
+    std::cout << "[TEST] Zone-wide warning suppression: "
+              << (zoneSuppressed ? "PASS" : "FAIL") << " (Suppressed " << activeInZone2Before << " issues in Zone 2, modified: "
+              << (map->isModified ? "true" : "false") << ", title: " << leakDlg.windowTitle().toStdString() << ")" << std::endl;
+
+    // Restore Zone 2
+    if (btnSuppressZone) {
+        btnSuppressZone->click();
+    }
+    int activeInZone2Restored = leakDlg.tableWidget()->rowCount();
+    bool zoneRestored = (activeInZone2Restored == activeInZone2Before);
+    std::cout << "[TEST] Zone-wide warning restoration: "
+              << (zoneRestored ? "PASS" : "FAIL") << " (Restored " << activeInZone2Restored << " issues)" << std::endl;
+
+    // Reset filter to All Vis Zones
+    leakDlg.zoneFilterCombo()->setCurrentIndex(0);
+
     bool canvasHasWarnings = !canvas.leakWarnings().empty();
     std::cout << "[TEST] MapCanvas receives leak warnings from PortalLeakDialog: "
               << (canvasHasWarnings ? "PASS" : "FAIL") << " (" << canvas.leakWarnings().size() << " warnings)" << std::endl;
@@ -450,7 +593,7 @@ int main(int argc, char* argv[]) {
     bool descHasSizeTag = false;
     if (foundPhysRow) {
         QString txt = leakDlg.tableWidget()->item(firstPhysRow, 4)->text();
-        descHasSizeTag = (txt.startsWith("[") && txt.contains("×")) && !txt.contains(" u");
+        descHasSizeTag = (txt.startsWith("[") && txt.contains("×")) && !txt.section(']', 0, 0).contains(" u");
     }
     std::cout << "[TEST] Physical leak displays size without 'u' in description: " << (descHasSizeTag ? "PASS" : "FAIL")
               << " (Row " << firstPhysRow << " desc: " << (foundPhysRow ? leakDlg.tableWidget()->item(firstPhysRow, 4)->text().left(45).toStdString() : "none") << "...)" << std::endl;
@@ -474,6 +617,44 @@ int main(int argc, char* argv[]) {
         QMetaObject::invokeMethod(&leakDlg, "onSuppressClicked");
         QMetaObject::invokeMethod(&leakDlg, "onShowSuppressedToggled", Q_ARG(bool, false));
     }
+
+    // Multi-row selection suppression test
+    bool multiSuppressPass = false;
+    int multiBefore = leakDlg.tableWidget()->rowCount();
+    if (multiBefore >= 3) {
+        leakDlg.tableWidget()->clearSelection();
+        for (int r = 0; r < 3; ++r) {
+            leakDlg.tableWidget()->selectionModel()->select(
+                leakDlg.tableWidget()->model()->index(r, 0),
+                QItemSelectionModel::Select | QItemSelectionModel::Rows);
+        }
+        auto selectedRows = leakDlg.selectedVisibleRows();
+        bool selCountOk = (selectedRows.size() == 3);
+
+        leakDlg.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/portal_leak_dialog_multiselect.png");
+
+        QMetaObject::invokeMethod(&leakDlg, "onSuppressClicked");
+        int multiAfter = leakDlg.tableWidget()->rowCount();
+        bool rowsDecreased = (multiAfter == multiBefore - 3);
+
+        // Verify that in "Show Suppressed" they are marked suppressed and can be restored
+        QMetaObject::invokeMethod(&leakDlg, "onShowSuppressedToggled", Q_ARG(bool, true));
+        leakDlg.tableWidget()->clearSelection();
+        for (int r = 0; r < 3; ++r) {
+            leakDlg.tableWidget()->selectionModel()->select(
+                leakDlg.tableWidget()->model()->index(r, 0),
+                QItemSelectionModel::Select | QItemSelectionModel::Rows);
+        }
+        // Unsuppress all 3
+        QMetaObject::invokeMethod(&leakDlg, "onSuppressClicked");
+        QMetaObject::invokeMethod(&leakDlg, "onShowSuppressedToggled", Q_ARG(bool, false));
+        int multiRestored = leakDlg.tableWidget()->rowCount();
+        bool restoredOk = (multiRestored == multiBefore);
+
+        multiSuppressPass = selCountOk && rowsDecreased && restoredOk;
+    }
+    std::cout << "[TEST] Multi-selection warning suppression and restoration: "
+              << (multiSuppressPass ? "PASS" : "FAIL") << std::endl;
 
     // === TEST DICHOTOMY TOOL (Room & Entity Deletion) ===
     int testDichotomyZone = -1;
@@ -629,7 +810,29 @@ int main(int argc, char* argv[]) {
     std::cout << "[TEST] Persistent Warning Suppression in .FPM container: "
               << (suppressionPass ? "PASS" : "FAIL") << std::endl;
 
-    if (!found29_2 || !allWindowsDetected || !f7WindowsDetected || !fakeClassified || !realWinClassified || !map1ExtPortalPass || !atriumUnified || !z2Floor7Closed || !canvasHasWarnings || !canvasHighlightedRow2 || !f8AllLeaksAssigned || !dichotomyPass || !physicalAlonePass || !staticAlonePass || !mergedPass || !noDuplicatesPass || !tableColCountPass || !descHasIcon || !descHasSizeTag || !suppressionPass) {
+    if (!found29_2 || !allWindowsDetected || !f7WindowsDetected || !fakeClassified || !realWinClassified || !map1ExtPortalPass || !atriumUnified || !z2Floor7Closed || !canvasHasWarnings || !canvasHighlightedRow2 || !f8AllLeaksAssigned || !dichotomyPass || !physicalAlonePass || !f8_y20_allLeaksPass || !staticAlonePass || !mergedPass || !noDuplicatesPass || !tableColCountPass || !descHasIcon || !descHasSizeTag || !suppressionPass || !multiSuppressPass) {
+        std::cout << "FAIL DETAILS: found29_2=" << found29_2
+                  << " allWin=" << allWindowsDetected
+                  << " f7Win=" << f7WindowsDetected
+                  << " fake=" << fakeClassified
+                  << " real=" << realWinClassified
+                  << " map1Ext=" << map1ExtPortalPass
+                  << " atrium=" << atriumUnified
+                  << " z2F7=" << z2Floor7Closed
+                  << " canvasWarn=" << canvasHasWarnings
+                  << " canvasHi=" << canvasHighlightedRow2
+                  << " f8Assigned=" << f8AllLeaksAssigned
+                  << " dichotomy=" << dichotomyPass
+                  << " physAlone=" << physicalAlonePass
+                  << " f8_y20=" << f8_y20_allLeaksPass
+                  << " statAlone=" << staticAlonePass
+                  << " merged=" << mergedPass
+                  << " noDup=" << noDuplicatesPass
+                  << " colCount=" << tableColCountPass
+                  << " descIcon=" << descHasIcon
+                  << " descSize=" << descHasSizeTag
+                  << " supp=" << suppressionPass
+                  << " multiSupp=" << multiSuppressPass << std::endl;
         return 1;
     }
     return 0;

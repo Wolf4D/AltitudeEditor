@@ -44,6 +44,7 @@ public slots:
     int selectedZoneFilterId() const { return m_selectedZoneFilterId; }
     class QComboBox* zoneFilterCombo() const { return m_cmbZoneFilter; }
     class QTableWidget* tableWidget() const { return m_table; }
+    QList<int> selectedVisibleRows() const;
 
 private slots:
     void onCellDoubleClicked(int row, int column);
@@ -53,13 +54,17 @@ private slots:
     void onResolveClicked();
     void onTableSelectionChanged();
     void onSuppressClicked();
+    void onSuppressZoneClicked();
     void onShowSuppressedToggled(bool checked);
     void onUnsuppressAllClicked();
 
 private:
     void retranslateUi();
-    void updateTableRows();
+    void updateTableRows(int preferredSelectedRow = -1);
     void populateZoneFilter();
+    int getTargetZoneIdForSuppression() const;
+    void getZoneWarningStats(int targetZoneId, int& total, int& suppressed) const;
+    void updateSuppressionButtons();
 
     std::shared_ptr<FPSCMap> m_map;
     std::shared_ptr<VisZoneManager> m_visZoneManager;
@@ -75,6 +80,7 @@ private:
     QComboBox* m_cmbZoneFilter = nullptr;
     QPushButton* m_btnResolve = nullptr;
     QPushButton* m_btnSuppress = nullptr;
+    QPushButton* m_btnSuppressZone = nullptr;
     QCheckBox* m_chkShowSuppressed = nullptr;
     QTableWidget* m_table = nullptr;
     std::vector<PortalLeakWarning> m_currentWarnings;
