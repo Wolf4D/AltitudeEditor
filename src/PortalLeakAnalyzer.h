@@ -51,6 +51,66 @@ struct DBUValidationResult {
     QString message;
 };
 
+struct ZoneConnection {
+    int fromZone = -1;
+    int toZone = -1;
+    int layer = 0;
+    int x1 = 0, y1 = 0;
+    int x2 = -1, y2 = -1;
+    bool isBreach = false;
+    bool isCrack = false;
+    bool isDoorWin = false;
+    bool isWindow = false;
+    bool isHorizontal = false;
+    float width = 0.0f;
+    float height = 0.0f;
+    QString description;
+    std::vector<int> visibleZones;
+    QMap<int, std::vector<ZoneConnection>> pathsToOtherZones;
+};
+
+struct ZonePvsInfo {
+    int zoneId = -1;
+    QString zoneName;
+    std::vector<ZoneConnection> directConnections;
+    QMap<int, std::vector<ZoneConnection>> pathsToOtherZones;
+};
+
+struct HighlightedPortalInfo {
+    int layer = -1;
+    int x1 = -1, y1 = -1;
+    int x2 = -1, y2 = -1;
+    int fromZone = -1;
+    int toZone = -1;
+    bool isBreach = false;
+    bool isWindow = false;
+    bool isCrack = false;
+    bool isExterior = false;
+    bool isHorizontal = false;
+    float width = 0.0f;
+    float height = 0.0f;
+    QString description;
+    std::vector<int> visibleZoneIds;
+    int focusedVisibleZone = -1;
+    QMap<int, std::vector<ZoneConnection>> pathsToOtherZones;
+
+    bool isValid() const {
+        return layer >= 0 && x1 >= 0 && y1 >= 0;
+    }
+    void clear() {
+        layer = -1;
+        x1 = y1 = x2 = y2 = -1;
+        fromZone = toZone = -1;
+        isBreach = isWindow = isCrack = isExterior = isHorizontal = false;
+        width = height = 0.0f;
+        description.clear();
+        visibleZoneIds.clear();
+        focusedVisibleZone = -1;
+        pathsToOtherZones.clear();
+    }
+};
+
+
 class PortalLeakAnalyzer {
 public:
     PortalLeakAnalyzer(std::shared_ptr<FPSCMap> map, std::shared_ptr<VisZoneManager> visZoneManager = nullptr);
@@ -58,6 +118,12 @@ public:
     std::vector<PortalLeakWarning> analyze();
 
     DBUValidationResult validateCompiledUniverse() const;
+
+    QMap<int, ZonePvsInfo> buildPvsGraph();
+
+    bool hasPortalLineOfSight(const ZoneConnection& fromConn, const ZoneConnection& toConn, int intermediateZoneId) const;
+    bool isPathVisibleFromFirstPortal(const std::vector<ZoneConnection>& path) const;
+    bool isSegmentClearInZone(float x1, float y1, float x2, float y2, int layer, int zoneId) const;
 
     void setVisZoneManager(std::shared_ptr<VisZoneManager> mgr) { m_visZoneManager = mgr; }
     std::shared_ptr<VisZoneManager> visZoneManager() const { return m_visZoneManager; }

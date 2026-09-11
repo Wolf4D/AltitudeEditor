@@ -29,6 +29,8 @@ QString PortalLeakWarning::suppressionKey() const {
         canonicalType = QStringLiteral("InvertedWall");
     } else if (type.contains(QStringLiteral("Void"), Qt::CaseInsensitive)) {
         canonicalType = QStringLiteral("VoidLeak");
+    } else if (type.contains(QStringLiteral("Breach"), Qt::CaseInsensitive) || type.contains(QStringLiteral("Cross-Zone"), Qt::CaseInsensitive)) {
+        canonicalType = QStringLiteral("InternalBreach");
     }
 
     if (isClash && x2 >= 0 && y2 >= 0) {
@@ -419,8 +421,96 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::checkCompiledUniverse() {
                     // If no interior room exists in this column, skip (portal is over outdoor terrain / sky)
                     if (highestRoomLayer < 0) continue;
 
-                    // If this horizontal portal is at or below the top of the room, it is inside the room volume (multi-story room / atrium)
-                    if (layer <= highestRoomLayer) continue;
+                    // If this horizontal portal is at or below the top of the room:
+                    if (layer <= highestRoomLayer) {
+                        // Check if this horizontal portal separates two different interior zones vertically!
+                        if (layer > 0 && m_visZoneManager) {
+                            int zidBelow = m_visZoneManager->getZoneAt(layer - 1, cx, cy);
+                            int zidAbove = m_visZoneManager->getZoneAt(layer, cx, cy);
+                            if (zidBelow >= 0 && zidAbove >= 0 && zidBelow != zidAbove) {
+                                // There is a floor/ceiling boundary between two DIFFERENT zones!
+                                bool hasSlab = (mapGround(layer - 1, cx, cy) == 2 || isCeilingAt(layer - 1, cx, cy) || isFloorAt(layer, cx, cy));
+
+                                // Check for window entity at (cx, cy)
+                                bool hasWindowEnt = false;
+                                for (const auto& ent : m_map->placedEntities) {
+                                    if (ent.floorLayer == layer || ent.floorLayer == layer - 1) {
+                                        int ex = static_cast<int>(std::floor(ent.x / 100.0f));
+                                        int ey = static_cast<int>(std::floor(std::abs(ent.z) / 100.0f));
+                                        if (ex == cx && ey == cy) {
+                                            auto prof = m_map->entityProfiles.value(ent.bankIndex);
+                                            if (prof && (prof->name.contains("window", Qt::CaseInsensitive) ||
+                                                         prof->category == EntityCategory::Door)) {
+                                                hasWindowEnt = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Check if a neighbor inside this multi-tile portal is an open transition
+                                bool hasNeighborOpen = false;
+                                if (minGX < maxGX || minGY < maxGY) {
+                                    for (int d = -1; d <= 1; d += 2) {
+                                        int nX = cx + d;
+                                        if (nX >= minGX && nX <= maxGX) {
+                                            if (!isCeilingAt(layer - 1, nX, cy) && !isFloorAt(layer, nX, cy) && mapGround(layer - 1, nX, cy) != 2) {
+                                                hasNeighborOpen = true;
+                                            }
+                                        }
+                                        int nY = cy + d;
+                                        if (nY >= minGY && nY <= maxGY) {
+                                            if (!isCeilingAt(layer - 1, cx, nY) && !isFloorAt(layer, cx, nY) && mapGround(layer - 1, cx, nY) != 2) {
+                                                hasNeighborOpen = true;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (hasSlab && !hasWindowEnt && !hasNeighborOpen) {
+                                    quint64 hKey = (quint64(layer) << 32) | (quint64(cy) << 16) | quint64(cx);
+                                    if (!reportedCells.contains(hKey)) {
+                                        reportedCells.insert(hKey);
+                                        PortalLeakWarning warn;
+                                        warn.layer = layer;
+                                        warn.x = cx;
+                                        warn.y = cy;
+                                        warn.zoneId = zidBelow;
+                                        warn.zoneId2 = zidAbove;
+                                        warn.isPhysicalBsp = true;
+                                        warn.isStaticMap = false;
+                                        warn.isMerged = false;
+                                        warn.portalWidth = w;
+                                        warn.portalHeight = h;
+                                        warn.hasPhysicalSize = (w > 0.0f && h > 0.0f);
+                                        warn.severity = isSubSeg ? PortalLeakWarning::WARNING : PortalLeakWarning::ERROR;
+
+                                        QString nameBelow = QString("Zone %1").arg(zidBelow + 1);
+                                        QString nameAbove = QString("Zone %1").arg(zidAbove + 1);
+                                        const VisZone* zb = m_visZoneManager->getZone(zidBelow);
+                                        const VisZone* za = m_visZoneManager->getZone(zidAbove);
+                                        if (zb && !zb->name.isEmpty()) nameBelow = zb->name;
+                                        if (za && !za->name.isEmpty()) nameAbove = za->name;
+                                        warn.zoneName = nameBelow;
+
+                                        if (isSubSeg) {
+                                            warn.type = QCoreApplication::translate("PortalLeakAnalyzer", "Physical Mesh Seam / Micro-Crack (CSG)");
+                                            warn.description = QCoreApplication::translate("PortalLeakAnalyzer",
+                                                "Inter-floor ceiling seam (%1×%2) between %3 (Floor %4) and %5 (Floor %6) at (%7, %8).")
+                                                .arg(w, 0, 'f', 0).arg(h, 0, 'f', 0).arg(nameBelow).arg(layer - 1).arg(nameAbove).arg(layer).arg(cx).arg(cy);
+                                        } else {
+                                            warn.type = QCoreApplication::translate("PortalLeakAnalyzer", "Internal Slab Breach / Inter-Floor Leak");
+                                            warn.description = QCoreApplication::translate("PortalLeakAnalyzer",
+                                                "Horizontal BSP portal (%1×%2) penetrates solid floor/ceiling slab between %3 (Floor %4) and %5 (Floor %6) at (%7, %8). Camera will erroneously render both rooms vertically.")
+                                                .arg(w, 0, 'f', 0).arg(h, 0, 'f', 0).arg(nameBelow).arg(layer - 1).arg(nameAbove).arg(layer).arg(cx).arg(cy);
+                                        }
+                                        res.push_back(warn);
+                                    }
+                                }
+                            }
+                        }
+                        continue;
+                    }
 
                     // Portal is above the top of the room. Check if the room is sealed by a ceiling or roof slab
                     bool sealed = false;
@@ -551,18 +641,40 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::checkCompiledUniverse() {
                 int outX  = (zidA >= 0 ? bx : ax);
                 int outY  = (zidA >= 0 ? by : ay);
 
-                bool hasDoorWin = isDoorOrWindowAt(layer, roomX, roomY);
+                bool hasDoorWin = isDoorOrWindowAt(layer, ax, ay) || isDoorOrWindowAt(layer, bx, by);
                 if (!hasDoorWin && layer > 0) {
-                    hasDoorWin = isDoorOrWindowAt(layer - 1, roomX, roomY);
+                    hasDoorWin = isDoorOrWindowAt(layer - 1, ax, ay) || isDoorOrWindowAt(layer - 1, bx, by);
                 }
 
                 bool isLeak = false;
                 bool isCrack = false;
+                bool isInternalBreach = false;
 
                 if (zidA >= 0 && zidB >= 0) {
                     // Portal connects two indoor rooms
-                    if (isSubSeg && !hasDoorWin) {
-                        isCrack = true;
+                    int sideAtoB = isXPlane ? 1 : 2; // East (X+) or South (Z-)
+                    int sideBtoA = isXPlane ? 3 : 0; // West (X-) or North (Z+)
+
+                    int tileA = (layer < m_map->gridTileType.size() && ay < m_map->gridTileType[layer].size() && ax < m_map->gridTileType[layer][ay].size())
+                                ? m_map->gridTileType[layer][ay][ax] : 0;
+                    int rotA = (layer < m_map->gridRotation.size() && ay < m_map->gridRotation[layer].size() && ax < m_map->gridRotation[layer][ay].size())
+                               ? m_map->gridRotation[layer][ay][ax] : 0;
+                    bool hasWallA = isMaptileWallPresent(tileA, rotA, sideAtoB);
+
+                    int tileB = (layer < m_map->gridTileType.size() && by < m_map->gridTileType[layer].size() && bx < m_map->gridTileType[layer][by].size())
+                                ? m_map->gridTileType[layer][by][bx] : 0;
+                    int rotB = (layer < m_map->gridRotation.size() && by < m_map->gridRotation[layer].size() && bx < m_map->gridRotation[layer][by].size())
+                               ? m_map->gridRotation[layer][by][bx] : 0;
+                    bool hasWallB = isMaptileWallPresent(tileB, rotB, sideBtoA);
+
+                    bool hasSolidWall = hasWallA || hasWallB;
+
+                    if (hasSolidWall && !hasDoorWin) {
+                        if (isSubSeg) {
+                            isCrack = true;
+                        } else {
+                            isInternalBreach = true;
+                        }
                     }
                 } else {
                     // One side is room, other side is exterior/void
@@ -594,7 +706,51 @@ std::vector<PortalLeakWarning> PortalLeakAnalyzer::checkCompiledUniverse() {
                     }
                 }
 
-                if (isLeak || isCrack) {
+                if (isInternalBreach) {
+                    quint64 cellKey = (quint64(layer) << 32) | (quint64(std::min(ay, by)) << 16) | quint64(std::min(ax, bx));
+                    if (!reportedCells.contains(cellKey)) {
+                        reportedCells.insert(cellKey);
+                        PortalLeakWarning warn;
+                        warn.layer = layer;
+                        warn.x = ax;
+                        warn.y = ay;
+                        warn.x2 = bx;
+                        warn.y2 = by;
+                        warn.isClash = true;
+                        warn.zoneId = zidA;
+                        warn.zoneId2 = zidB;
+                        warn.isPhysicalBsp = true;
+                        warn.isStaticMap = false;
+                        warn.isMerged = false;
+                        warn.portalWidth = w;
+                        warn.portalHeight = h;
+                        warn.hasPhysicalSize = (w > 0.0f && h > 0.0f);
+                        warn.severity = PortalLeakWarning::ERROR;
+
+                        QString nameA = QString("Zone %1").arg(zidA + 1);
+                        QString nameB = QString("Zone %1").arg(zidB + 1);
+                        if (m_visZoneManager) {
+                            const VisZone* za = m_visZoneManager->getZone(zidA);
+                            const VisZone* zb = m_visZoneManager->getZone(zidB);
+                            if (za && !za->name.isEmpty()) nameA = za->name;
+                            if (zb && !zb->name.isEmpty()) nameB = zb->name;
+                        }
+                        warn.zoneName = nameA;
+
+                        if (zidA != zidB) {
+                            warn.type = QCoreApplication::translate("PortalLeakAnalyzer", "Internal Wall Breach / Cross-Zone Leak");
+                            warn.description = QCoreApplication::translate("PortalLeakAnalyzer",
+                                "Open BSP portal (%1×%2) connects %3 and %4 through a solid wall at Floor %5 between (%6, %7) and (%8, %9). Camera will erroneously render both zones through this wall.")
+                                .arg(w, 0, 'f', 0).arg(h, 0, 'f', 0).arg(nameA).arg(nameB).arg(layer).arg(ax).arg(ay).arg(bx).arg(by);
+                        } else {
+                            warn.type = QCoreApplication::translate("PortalLeakAnalyzer", "Internal Partition Wall Breach");
+                            warn.description = QCoreApplication::translate("PortalLeakAnalyzer",
+                                "Open BSP portal (%1×%2) penetrates interior partition wall at Floor %3 between (%4, %5) and (%6, %7) in %8.")
+                                .arg(w, 0, 'f', 0).arg(h, 0, 'f', 0).arg(layer).arg(ax).arg(ay).arg(bx).arg(by).arg(nameA);
+                        }
+                        res.push_back(warn);
+                    }
+                } else if (isLeak || isCrack) {
                     quint64 cellKey = (quint64(layer) << 32) | (quint64(roomY) << 16) | quint64(roomX);
                     if (!reportedCells.contains(cellKey)) {
                         reportedCells.insert(cellKey);
@@ -1348,4 +1504,674 @@ void PortalLeakAnalyzer::checkDoubleWallClashes(std::vector<PortalLeakWarning>& 
             }
         }
     }
+}
+
+QMap<int, ZonePvsInfo> PortalLeakAnalyzer::buildPvsGraph() {
+    QMap<int, ZonePvsInfo> graph;
+    if (!m_map || !m_visZoneManager) return graph;
+
+    if (!m_hasCompiledUniverse) {
+        QString dbuPath = AssetManager::instance().engineRoot() + "/Files/levelbank/testlevel/universe.dbu";
+        if (m_dbuParser.parse(dbuPath)) {
+            m_hasCompiledUniverse = true;
+        }
+    }
+    if (m_hasCompiledUniverse && m_segmentInfoCache.isEmpty()) {
+        loadSegmentInfos();
+    }
+
+    auto isMaptileWallPresent = [](int maptile, int rot, int side) -> bool {
+        if (maptile <= 0 || maptile == 6) return false;
+        static const bool baseWalls[16][4] = {
+            {0, 0, 0, 0}, {1, 1, 1, 1}, {1, 0, 1, 1}, {1, 0, 0, 1},
+            {1, 0, 1, 0}, {1, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0},
+            {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0},
+            {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 1}
+        };
+        int unrotatedSide = (side - (rot & 3) + 4) % 4;
+        if (maptile >= 0 && maptile < 16) return baseWalls[maptile][unrotatedSide];
+        return false;
+    };
+
+    auto isDoorOrWindowAt = [&](int layer, int gx, int gy) -> bool {
+        if (!m_map) return false;
+        if (layer < 0 || layer >= m_map->gridBlocks.size()) return false;
+        if (gy < 0 || gy >= m_map->gridBlocks[layer].size()) return false;
+        if (gx < 0 || gx >= m_map->gridBlocks[layer][gy].size()) return false;
+        int b = m_map->gridBlocks[layer][gy][gx];
+        if (b > 0) {
+            auto info = m_segmentInfoCache.value(b - 1);
+            if (info.hasVisportalmode && info.visportalmode > 0) return true;
+            if (m_map->segments.contains(b)) {
+                const auto& s = m_map->segments[b];
+                if ((s->isWindow || s->name.contains("door", Qt::CaseInsensitive) || s->relPath.contains("door", Qt::CaseInsensitive)) &&
+                    !s->name.contains("ceiling_window", Qt::CaseInsensitive)) return true;
+            }
+        }
+        if (layer < m_map->gridOverlays.size() && gy < m_map->gridOverlays[layer].size() && gx < m_map->gridOverlays[layer][gy].size()) {
+            int o = m_map->gridOverlays[layer][gy][gx];
+            if (o > 0) {
+                auto info = m_segmentInfoCache.value(o - 1);
+                if (info.hasVisportalmode && info.visportalmode > 0) return true;
+                if (m_map->segments.contains(o)) {
+                    const auto& s = m_map->segments[o];
+                    if ((s->isWindow || s->name.contains("door", Qt::CaseInsensitive) || s->relPath.contains("door", Qt::CaseInsensitive)) &&
+                        !s->name.contains("ceiling_window", Qt::CaseInsensitive)) return true;
+                }
+            }
+        }
+        for (const auto& ent : m_map->placedEntities) {
+            if (ent.floorLayer == layer || ent.floorLayer == layer - 1) {
+                int ex = static_cast<int>(std::floor(ent.x / 100.0f));
+                int ey = static_cast<int>(std::floor(std::abs(ent.z) / 100.0f));
+                if (ex == gx && ey == gy) {
+                    auto prof = m_map->entityProfiles.value(ent.bankIndex);
+                    if (prof) {
+                        if (prof->category == EntityCategory::Door) return true;
+                        if ((prof->name.contains("door", Qt::CaseInsensitive) || prof->name.contains("window", Qt::CaseInsensitive)) &&
+                            !prof->name.contains("ceiling_window", Qt::CaseInsensitive)) return true;
+                    }
+                }
+            }
+        }
+        return false;
+    };
+
+    auto isWindowAt = [&](int layer, int gx, int gy) -> bool {
+        if (!m_map) return false;
+        if (layer < 0 || layer >= m_map->gridBlocks.size()) return false;
+        if (gy < 0 || gy >= m_map->gridBlocks[layer].size()) return false;
+        if (gx < 0 || gx >= m_map->gridBlocks[layer][gy].size()) return false;
+        int b = m_map->gridBlocks[layer][gy][gx];
+        if (b > 0 && m_map->segments.contains(b)) {
+            const auto& s = m_map->segments[b];
+            if (s->isWindow || s->name.contains("window", Qt::CaseInsensitive) || s->relPath.contains("window", Qt::CaseInsensitive)) return true;
+        }
+        if (layer < m_map->gridOverlays.size() && gy < m_map->gridOverlays[layer].size() && gx < m_map->gridOverlays[layer][gy].size()) {
+            int o = m_map->gridOverlays[layer][gy][gx];
+            if (o > 0 && m_map->segments.contains(o)) {
+                const auto& s = m_map->segments[o];
+                if (s->isWindow || s->name.contains("window", Qt::CaseInsensitive) || s->relPath.contains("window", Qt::CaseInsensitive)) return true;
+            }
+        }
+        for (const auto& ent : m_map->placedEntities) {
+            if (ent.floorLayer == layer || ent.floorLayer == layer - 1) {
+                int ex = static_cast<int>(std::floor(ent.x / 100.0f));
+                int ey = static_cast<int>(std::floor(std::abs(ent.z) / 100.0f));
+                if (ex == gx && ey == gy) {
+                    auto prof = m_map->entityProfiles.value(ent.bankIndex);
+                    if (prof && prof->name.contains("window", Qt::CaseInsensitive)) return true;
+                }
+            }
+        }
+        return false;
+    };
+
+    for (size_t i = 0; i < m_visZoneManager->zones().size(); ++i) {
+        ZonePvsInfo info;
+        info.zoneId = static_cast<int>(i);
+        info.zoneName = m_visZoneManager->zones()[i].name;
+        graph.insert(info.zoneId, info);
+    }
+
+    for (const auto& portal : m_dbuParser.allPortals()) {
+        if (portal.isExteriorHull) continue;
+        int layer = qBound(0, portal.layer(), (int)m_map->gridBlocks.size() - 1);
+        float w = portal.width();
+        float h = portal.height();
+        bool isSubSeg = portal.isSubSegment();
+
+        if (portal.isHorizontal()) {
+            if (layer <= 0) continue;
+            int minGX = qBound(0, static_cast<int>(std::floor(portal.box.minX / 100.0f)), m_map->header.maxX);
+            int maxGX = qBound(0, static_cast<int>(std::floor((portal.box.maxX - 0.1f) / 100.0f)), m_map->header.maxX);
+            int minGY = qBound(0, static_cast<int>(std::floor(std::abs(portal.box.maxZ) / 100.0f)), m_map->header.maxY);
+            int maxGY = qBound(0, static_cast<int>(std::floor((std::abs(portal.box.minZ) - 0.1f) / 100.0f)), m_map->header.maxY);
+            if (maxGX < minGX) std::swap(minGX, maxGX);
+            if (maxGY < minGY) std::swap(minGY, maxGY);
+
+            for (int cy = minGY; cy <= maxGY; ++cy) {
+                for (int cx = minGX; cx <= maxGX; ++cx) {
+                    int zidBelow = m_visZoneManager->getZoneAt(layer - 1, cx, cy);
+                    int zidAbove = m_visZoneManager->getZoneAt(layer, cx, cy);
+                    if (zidBelow >= 0 && zidAbove >= 0 && zidBelow != zidAbove) {
+                        bool hasSlab = (mapGround(layer - 1, cx, cy) == 2 || isCeilingAt(layer - 1, cx, cy) || isFloorAt(layer, cx, cy));
+
+                        // Check for window entity at (cx, cy)
+                        bool hasWindowEnt = false;
+                        for (const auto& ent : m_map->placedEntities) {
+                            if (ent.floorLayer == layer || ent.floorLayer == layer - 1) {
+                                int ex = static_cast<int>(std::floor(ent.x / 100.0f));
+                                int ey = static_cast<int>(std::floor(std::abs(ent.z) / 100.0f));
+                                if (ex == cx && ey == cy) {
+                                    auto prof = m_map->entityProfiles.value(ent.bankIndex);
+                                    if (prof && (prof->name.contains("window", Qt::CaseInsensitive) ||
+                                                 prof->category == EntityCategory::Door)) {
+                                        hasWindowEnt = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Check if a neighbor inside this multi-tile portal is an open transition
+                        bool hasNeighborOpen = false;
+                        if (minGX < maxGX || minGY < maxGY) {
+                            for (int d = -1; d <= 1; d += 2) {
+                                int nX = cx + d;
+                                if (nX >= minGX && nX <= maxGX) {
+                                    if (!isCeilingAt(layer - 1, nX, cy) && !isFloorAt(layer, nX, cy) && mapGround(layer - 1, nX, cy) != 2) {
+                                        hasNeighborOpen = true;
+                                    }
+                                }
+                                int nY = cy + d;
+                                if (nY >= minGY && nY <= maxGY) {
+                                    if (!isCeilingAt(layer - 1, cx, nY) && !isFloorAt(layer, cx, nY) && mapGround(layer - 1, cx, nY) != 2) {
+                                        hasNeighborOpen = true;
+                                    }
+                                }
+                            }
+                        }
+
+                        // If this tile has a solid continuous slab, but neighboring tiles in the same BSP bounding box are open:
+                        // The portal actually passes through the open neighbor tiles, not through this solid slab!
+                        if (hasSlab && !hasWindowEnt && hasNeighborOpen) {
+                            continue; // Skip false positive slab breach on intact solid floor
+                        }
+
+                        ZoneConnection conn;
+                        conn.fromZone = zidBelow;
+                        conn.toZone = zidAbove;
+                        conn.layer = layer;
+                        conn.x1 = cx; conn.y1 = cy;
+                        conn.isHorizontal = true;
+                        conn.width = w; conn.height = h;
+                        conn.isCrack = isSubSeg;
+                        conn.isBreach = hasSlab && !isSubSeg && !hasWindowEnt;
+                        conn.isWindow = hasWindowEnt;
+                        if (hasWindowEnt) {
+                            conn.description = QCoreApplication::translate("PortalLeakAnalyzer", "Inter-floor ceiling window at Floor %1 (%2, %3)").arg(layer).arg(cx).arg(cy);
+                        } else if (conn.isBreach) {
+                            conn.description = QCoreApplication::translate("PortalLeakAnalyzer", "Inter-floor slab breach at Floor %1 (%2, %3)").arg(layer).arg(cx).arg(cy);
+                        } else if (hasSlab) {
+                            conn.description = QCoreApplication::translate("PortalLeakAnalyzer", "Inter-floor ceiling seam at Floor %1 (%2, %3)").arg(layer).arg(cx).arg(cy);
+                        } else {
+                            conn.description = QCoreApplication::translate("PortalLeakAnalyzer", "Open ceiling/floor transition at Floor %1 (%2, %3)").arg(layer).arg(cx).arg(cy);
+                        }
+                        graph[zidBelow].directConnections.push_back(conn);
+
+                        ZoneConnection connRev = conn;
+                        connRev.fromZone = zidAbove;
+                        connRev.toZone = zidBelow;
+                        graph[zidAbove].directConnections.push_back(connRev);
+                    }
+                }
+            }
+        } else {
+            bool isXPlane = (portal.spanX() < portal.spanZ());
+            int cellA_X = 0, cellB_X = 0;
+            int cellA_Y = 0, cellB_Y = 0;
+            int minG = 0, maxG = 0;
+
+            if (isXPlane) {
+                cellA_X = static_cast<int>(std::floor((portal.box.cenX - 5.0f) / 100.0f));
+                cellB_X = static_cast<int>(std::floor((portal.box.cenX + 5.0f) / 100.0f));
+                minG = qBound(0, static_cast<int>(std::floor(std::abs(portal.box.maxZ) / 100.0f)), m_map->header.maxY);
+                maxG = qBound(0, static_cast<int>(std::floor((std::abs(portal.box.minZ) - 0.1f) / 100.0f)), m_map->header.maxY);
+            } else {
+                cellA_Y = static_cast<int>(std::floor((std::abs(portal.box.cenZ) - 5.0f) / 100.0f));
+                cellB_Y = static_cast<int>(std::floor((std::abs(portal.box.cenZ) + 5.0f) / 100.0f));
+                minG = qBound(0, static_cast<int>(std::floor(portal.box.minX / 100.0f)), m_map->header.maxX);
+                maxG = qBound(0, static_cast<int>(std::floor((portal.box.maxX - 0.1f) / 100.0f)), m_map->header.maxX);
+            }
+            if (maxG < minG) std::swap(minG, maxG);
+
+            for (int g = minG; g <= maxG; ++g) {
+                int ax = isXPlane ? cellA_X : g;
+                int ay = isXPlane ? g : cellA_Y;
+                int bx = isXPlane ? cellB_X : g;
+                int by = isXPlane ? g : cellB_Y;
+                if (ax < 0 || ax > m_map->header.maxX || ay < 0 || ay > m_map->header.maxY) continue;
+                if (bx < 0 || bx > m_map->header.maxX || by < 0 || by > m_map->header.maxY) continue;
+
+                int zidA = m_visZoneManager->getZoneAt(layer, ax, ay);
+                int zidB = m_visZoneManager->getZoneAt(layer, bx, by);
+                if (zidA < 0 || zidB < 0 || zidA == zidB) continue;
+
+                bool hasDoorWin = isDoorOrWindowAt(layer, ax, ay) || isDoorOrWindowAt(layer, bx, by);
+                if (!hasDoorWin && layer > 0) {
+                    hasDoorWin = isDoorOrWindowAt(layer - 1, ax, ay) || isDoorOrWindowAt(layer - 1, bx, by);
+                }
+                bool hasWindow = isWindowAt(layer, ax, ay) || isWindowAt(layer, bx, by);
+                if (!hasWindow && layer > 0) {
+                    hasWindow = isWindowAt(layer - 1, ax, ay) || isWindowAt(layer - 1, bx, by);
+                }
+
+                int sideAtoB = isXPlane ? 1 : 2;
+                int sideBtoA = isXPlane ? 3 : 0;
+                int tileA = (layer < m_map->gridTileType.size() && ay < m_map->gridTileType[layer].size() && ax < m_map->gridTileType[layer][ay].size()) ? m_map->gridTileType[layer][ay][ax] : 0;
+                int rotA = (layer < m_map->gridRotation.size() && ay < m_map->gridRotation[layer].size() && ax < m_map->gridRotation[layer][ay].size()) ? m_map->gridRotation[layer][ay][ax] : 0;
+                bool hasWallA = isMaptileWallPresent(tileA, rotA, sideAtoB);
+
+                int tileB = (layer < m_map->gridTileType.size() && by < m_map->gridTileType[layer].size() && bx < m_map->gridTileType[layer][by].size()) ? m_map->gridTileType[layer][by][bx] : 0;
+                int rotB = (layer < m_map->gridRotation.size() && by < m_map->gridRotation[layer].size() && bx < m_map->gridRotation[layer][by].size()) ? m_map->gridRotation[layer][by][bx] : 0;
+                bool hasWallB = isMaptileWallPresent(tileB, rotB, sideBtoA);
+                bool hasSolidWall = hasWallA || hasWallB;
+
+                ZoneConnection conn;
+                conn.fromZone = zidA;
+                conn.toZone = zidB;
+                conn.layer = layer;
+                conn.x1 = ax; conn.y1 = ay;
+                conn.x2 = bx; conn.y2 = by;
+                conn.width = w; conn.height = h;
+                conn.isDoorWin = hasDoorWin;
+                conn.isWindow = hasWindow;
+                conn.isCrack = hasSolidWall && !hasDoorWin && isSubSeg;
+                conn.isBreach = hasSolidWall && !hasDoorWin && !isSubSeg;
+                if (conn.isBreach) {
+                    conn.description = QCoreApplication::translate("PortalLeakAnalyzer", "Wall breach through solid wall at Floor %1 (%2, %3) ↔ (%4, %5)").arg(layer).arg(ax).arg(ay).arg(bx).arg(by);
+                } else if (conn.isCrack) {
+                    conn.description = QCoreApplication::translate("PortalLeakAnalyzer", "Micro-seam in wall at Floor %1 (%2, %3)").arg(layer).arg(ax).arg(ay);
+                } else if (conn.isWindow) {
+                    conn.description = QCoreApplication::translate("PortalLeakAnalyzer", "Window passage at Floor %1 (%2, %3)").arg(layer).arg(ax).arg(ay);
+                } else if (conn.isDoorWin) {
+                    conn.description = QCoreApplication::translate("PortalLeakAnalyzer", "Doorway at Floor %1 (%2, %3)").arg(layer).arg(ax).arg(ay);
+                } else {
+                    conn.description = QCoreApplication::translate("PortalLeakAnalyzer", "Open doorway at Floor %1 (%2, %3)").arg(layer).arg(ax).arg(ay);
+                }
+                graph[zidA].directConnections.push_back(conn);
+
+                ZoneConnection connRev = conn;
+                connRev.fromZone = zidB;
+                connRev.toZone = zidA;
+                connRev.x1 = bx; connRev.y1 = by;
+                connRev.x2 = ax; connRev.y2 = ay;
+                graph[zidB].directConnections.push_back(connRev);
+            }
+        }
+    }
+
+    // Incorporate topological portals from VisZoneManager not already present from universe.dbu
+    for (const auto& mp : m_visZoneManager->portals()) {
+        if (mp.isExterior) continue;
+        int zidA = mp.zoneA;
+        int zidB = mp.zoneB;
+        if (zidA < 0 || zidB < 0 || zidA == zidB) continue;
+        if (!graph.contains(zidA) || !graph.contains(zidB)) continue;
+
+        bool existsAtoB = false;
+        for (const auto& existing : graph[zidA].directConnections) {
+            if (existing.toZone == zidB && existing.layer == mp.floor &&
+                ((existing.x1 == mp.tileA.x() && existing.y1 == mp.tileA.y()) ||
+                 (existing.x1 == mp.tileB.x() && existing.y1 == mp.tileB.y()))) {
+                existsAtoB = true;
+                break;
+            }
+        }
+
+        if (!existsAtoB) {
+            ZoneConnection conn;
+            conn.fromZone = zidA;
+            conn.toZone = zidB;
+            conn.layer = mp.floor;
+            conn.x1 = mp.tileA.x(); conn.y1 = mp.tileA.y();
+            conn.x2 = mp.tileB.x(); conn.y2 = mp.tileB.y();
+            conn.isDoorWin = (mp.type == PortalType::InterZoneDoorway);
+            conn.isWindow = (mp.type == PortalType::InterZoneWindow);
+            conn.isHorizontal = false;
+            conn.width = 100.0f;
+            conn.height = 100.0f;
+            if (conn.isWindow) {
+                conn.description = QCoreApplication::translate("PortalLeakAnalyzer", "Window passage at Floor %1 (%2, %3)").arg(conn.layer).arg(conn.x1).arg(conn.y1);
+            } else {
+                conn.description = QCoreApplication::translate("PortalLeakAnalyzer", "Doorway at Floor %1 (%2, %3)").arg(conn.layer).arg(conn.x1).arg(conn.y1);
+            }
+            graph[zidA].directConnections.push_back(conn);
+
+            ZoneConnection connRev = conn;
+            connRev.fromZone = zidB;
+            connRev.toZone = zidA;
+            connRev.x1 = mp.tileB.x(); connRev.y1 = mp.tileB.y();
+            connRev.x2 = mp.tileA.x(); connRev.y2 = mp.tileA.y();
+            graph[zidB].directConnections.push_back(connRev);
+        }
+    }
+
+    for (auto it = graph.begin(); it != graph.end(); ++it) {
+        int startZid = it.key();
+        auto& pvsInfo = it.value();
+
+        for (auto& directConn : pvsInfo.directConnections) {
+            int immediateZone = directConn.toZone;
+            if (immediateZone < 0) continue;
+
+            directConn.visibleZones.push_back(immediateZone);
+            directConn.pathsToOtherZones.insert(immediateZone, {directConn});
+            if (!pvsInfo.pathsToOtherZones.contains(immediateZone)) {
+                pvsInfo.pathsToOtherZones.insert(immediateZone, {directConn});
+            }
+
+            std::queue<std::vector<ZoneConnection>> q;
+            q.push({directConn});
+
+            while (!q.empty()) {
+                auto path = q.front();
+                q.pop();
+
+                if (path.size() >= 4) continue;
+
+                const auto& lastConn = path.back();
+                int curZone = lastConn.toZone;
+
+                if (!graph.contains(curZone)) continue;
+
+                for (const auto& nextConn : graph[curZone].directConnections) {
+                    int nextTarget = nextConn.toZone;
+                    if (nextTarget < 0 || nextTarget == startZid) continue;
+
+                    if (nextConn.layer == lastConn.layer &&
+                        nextConn.x1 == lastConn.x2 && nextConn.y1 == lastConn.y2 &&
+                        nextConn.x2 == lastConn.x1 && nextConn.y2 == lastConn.y1) {
+                        continue;
+                    }
+
+                    bool inPath = false;
+                    for (const auto& step : path) {
+                        if (step.fromZone == nextTarget || step.toZone == nextTarget) {
+                            inPath = true;
+                            break;
+                        }
+                    }
+                    if (inPath) continue;
+
+                    if (!hasPortalLineOfSight(lastConn, nextConn, curZone)) {
+                        continue;
+                    }
+
+                    std::vector<ZoneConnection> nextPath = path;
+                    nextPath.push_back(nextConn);
+
+                    if (nextPath.size() >= 3) {
+                        if (!isPathVisibleFromFirstPortal(nextPath)) {
+                            continue;
+                        }
+                    }
+
+                    directConn.visibleZones.push_back(nextTarget);
+
+                    if (!directConn.pathsToOtherZones.contains(nextTarget) ||
+                        nextPath.size() < directConn.pathsToOtherZones[nextTarget].size()) {
+                        directConn.pathsToOtherZones[nextTarget] = nextPath;
+                    }
+
+                    if (!pvsInfo.pathsToOtherZones.contains(nextTarget) ||
+                        nextPath.size() < pvsInfo.pathsToOtherZones[nextTarget].size()) {
+                        pvsInfo.pathsToOtherZones[nextTarget] = nextPath;
+                    }
+
+                    q.push(nextPath);
+                }
+            }
+
+            std::sort(directConn.visibleZones.begin(), directConn.visibleZones.end());
+            directConn.visibleZones.erase(
+                std::unique(directConn.visibleZones.begin(), directConn.visibleZones.end()),
+                directConn.visibleZones.end()
+            );
+        }
+    }
+
+    return graph;
+}
+
+namespace {
+struct Aperture2D {
+    float x1 = 0, y1 = 0;
+    float x2 = 0, y2 = 0;
+    float nx = 0, ny = 0;
+    int layer = 0;
+    bool isHorizontal = false;
+};
+
+static Aperture2D getPortalAperture(const ZoneConnection& conn, int zoneId) {
+    Aperture2D ap;
+    ap.layer = conn.layer;
+    ap.isHorizontal = conn.isHorizontal;
+
+    int inX = 0, inY = 0, outX = 0, outY = 0;
+    if (conn.toZone == zoneId) {
+        inX = conn.x2; inY = conn.y2;
+        outX = conn.x1; outY = conn.y1;
+    } else {
+        inX = conn.x1; inY = conn.y1;
+        outX = conn.x2; outY = conn.y2;
+    }
+
+    if (conn.isHorizontal) {
+        ap.x1 = inX + 0.2f; ap.y1 = inY + 0.2f;
+        ap.x2 = inX + 0.8f; ap.y2 = inY + 0.8f;
+        ap.nx = 0.0f; ap.ny = 0.0f;
+        return ap;
+    }
+
+    if (inX != outX && outX >= 0) {
+        float bx = static_cast<float>(std::max(inX, outX));
+        ap.x1 = bx; ap.y1 = inY + 0.15f;
+        ap.x2 = bx; ap.y2 = inY + 0.85f;
+        ap.nx = (inX < outX) ? -1.0f : 1.0f;
+        ap.ny = 0.0f;
+    } else if (inY != outY && outY >= 0) {
+        float by = static_cast<float>(std::max(inY, outY));
+        ap.x1 = inX + 0.15f; ap.y1 = by;
+        ap.x2 = inX + 0.85f; ap.y2 = by;
+        ap.nx = 0.0f;
+        ap.ny = (inY < outY) ? -1.0f : 1.0f;
+    } else {
+        ap.x1 = inX + 0.2f; ap.y1 = inY + 0.5f;
+        ap.x2 = inX + 0.8f; ap.y2 = inY + 0.5f;
+        ap.nx = 0.0f; ap.ny = 0.0f;
+    }
+    return ap;
+}
+
+static bool segmentsIntersect2D(float ax, float ay, float bx, float by,
+                                float cx, float cy, float dx, float dy,
+                                float& outT, float& outU, float& outIx, float& outIy) {
+    float rx = bx - ax;
+    float ry = by - ay;
+    float sx = dx - cx;
+    float sy = dy - cy;
+
+    float denom = rx * sy - ry * sx;
+    if (std::abs(denom) < 1e-6f) return false;
+
+    float qpx = cx - ax;
+    float qpy = cy - ay;
+
+    float t = (qpx * sy - qpy * sx) / denom;
+    float u = (qpx * ry - qpy * rx) / denom;
+
+    if (t >= 0.0f && t <= 1.0f && u >= 0.0f && u <= 1.0f) {
+        outT = t;
+        outU = u;
+        outIx = ax + t * rx;
+        outIy = ay + t * ry;
+        return true;
+    }
+    return false;
+}
+} // anonymous namespace
+
+bool PortalLeakAnalyzer::isSegmentClearInZone(float x1, float y1, float x2, float y2, int layer, int zoneId) const {
+    if (!m_visZoneManager || !m_map) return true;
+
+    float dx = x2 - x1;
+    float dy = y2 - y1;
+    float dist = std::sqrt(dx * dx + dy * dy);
+    if (dist < 0.01f) return true;
+
+    int numSteps = std::max(3, static_cast<int>(std::ceil(dist / 0.05f)));
+    int prevTx = -1, prevTy = -1;
+
+    for (int i = 0; i <= numSteps; ++i) {
+        float t = static_cast<float>(i) / static_cast<float>(numSteps);
+        float cx = x1 + t * dx;
+        float cy = y1 + t * dy;
+
+        int tx = static_cast<int>(std::floor(cx));
+        int ty = static_cast<int>(std::floor(cy));
+
+        if (tx < 0 || tx > m_map->header.maxX || ty < 0 || ty > m_map->header.maxY) {
+            return false;
+        }
+
+        int zid = m_visZoneManager->getZoneAt(layer, tx, ty);
+        if (zid != zoneId) {
+            return false;
+        }
+
+        if (prevTx >= 0 && prevTy >= 0 && (tx != prevTx || ty != prevTy)) {
+            if (tx == prevTx + 1 && ty == prevTy) {
+                bool w1 = m_visZoneManager->isMaptileWallPresent(layer, prevTx, prevTy, 1);
+                bool w2 = m_visZoneManager->isMaptileWallPresent(layer, tx, ty, 3);
+                if ((w1 || w2) && !m_visZoneManager->isDoorOrWindowOnEdge(layer, prevTx, prevTy, tx, ty, 1)) {
+                    return false;
+                }
+            } else if (tx == prevTx - 1 && ty == prevTy) {
+                bool w1 = m_visZoneManager->isMaptileWallPresent(layer, prevTx, prevTy, 3);
+                bool w2 = m_visZoneManager->isMaptileWallPresent(layer, tx, ty, 1);
+                if ((w1 || w2) && !m_visZoneManager->isDoorOrWindowOnEdge(layer, prevTx, prevTy, tx, ty, 3)) {
+                    return false;
+                }
+            } else if (ty == prevTy + 1 && tx == prevTx) {
+                bool w1 = m_visZoneManager->isMaptileWallPresent(layer, prevTx, prevTy, 2);
+                bool w2 = m_visZoneManager->isMaptileWallPresent(layer, tx, ty, 0);
+                if ((w1 || w2) && !m_visZoneManager->isDoorOrWindowOnEdge(layer, prevTx, prevTy, tx, ty, 2)) {
+                    return false;
+                }
+            } else if (ty == prevTy - 1 && tx == prevTx) {
+                bool w1 = m_visZoneManager->isMaptileWallPresent(layer, prevTx, prevTy, 0);
+                bool w2 = m_visZoneManager->isMaptileWallPresent(layer, tx, ty, 2);
+                if ((w1 || w2) && !m_visZoneManager->isDoorOrWindowOnEdge(layer, prevTx, prevTy, tx, ty, 0)) {
+                    return false;
+                }
+            } else {
+                int c1 = m_visZoneManager->getZoneAt(layer, prevTx, ty);
+                int c2 = m_visZoneManager->getZoneAt(layer, tx, prevTy);
+                if (c1 != zoneId || c2 != zoneId) {
+                    return false;
+                }
+            }
+        }
+
+        prevTx = tx;
+        prevTy = ty;
+    }
+
+    return true;
+}
+
+bool PortalLeakAnalyzer::hasPortalLineOfSight(const ZoneConnection& fromConn, const ZoneConnection& toConn, int intermediateZoneId) const {
+    if (!m_visZoneManager || !m_map) return true;
+
+    if (fromConn.layer == toConn.layer &&
+        fromConn.x1 == toConn.x2 && fromConn.y1 == toConn.y2 &&
+        fromConn.x2 == toConn.x1 && fromConn.y2 == toConn.y1) {
+        return false;
+    }
+
+    int layer = fromConn.layer;
+    if (fromConn.layer != toConn.layer) {
+        if (!fromConn.isHorizontal && !toConn.isHorizontal) {
+            const VisZone* z = m_visZoneManager->getZone(intermediateZoneId);
+            if (!z || z->minFloor > std::min(fromConn.layer, toConn.layer) || z->maxFloor < std::max(fromConn.layer, toConn.layer)) {
+                return false;
+            }
+        }
+        layer = fromConn.isHorizontal ? toConn.layer : fromConn.layer;
+    }
+
+    Aperture2D apA = getPortalAperture(fromConn, intermediateZoneId);
+    Aperture2D apB = getPortalAperture(toConn, intermediateZoneId);
+
+    static const float samples[3] = { 0.2f, 0.5f, 0.8f };
+
+    for (float sA : samples) {
+        float pAx = apA.x1 + sA * (apA.x2 - apA.x1) + 0.05f * apA.nx;
+        float pAy = apA.y1 + sA * (apA.y2 - apA.y1) + 0.05f * apA.ny;
+
+        for (float sB : samples) {
+            float pBx = apB.x1 + sB * (apB.x2 - apB.x1) + 0.05f * apB.nx;
+            float pBy = apB.y1 + sB * (apB.y2 - apB.y1) + 0.05f * apB.nx;
+
+            if (isSegmentClearInZone(pAx, pAy, pBx, pBy, layer, intermediateZoneId)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool PortalLeakAnalyzer::isPathVisibleFromFirstPortal(const std::vector<ZoneConnection>& path) const {
+    if (path.size() <= 1) return true;
+    if (path.size() == 2) {
+        return hasPortalLineOfSight(path[0], path[1], path[0].toZone);
+    }
+    if (!m_visZoneManager || !m_map) return true;
+
+    const auto& firstConn = path.front();
+    const auto& lastConn = path.back();
+
+    Aperture2D apFirst = getPortalAperture(firstConn, firstConn.toZone);
+    Aperture2D apLast = getPortalAperture(lastConn, lastConn.fromZone);
+
+    static const float samples[3] = { 0.2f, 0.5f, 0.8f };
+
+    for (float sA : samples) {
+        float pAx = apFirst.x1 + sA * (apFirst.x2 - apFirst.x1) + 0.05f * apFirst.nx;
+        float pAy = apFirst.y1 + sA * (apFirst.y2 - apFirst.y1) + 0.05f * apFirst.ny;
+
+        for (float sB : samples) {
+            float pBx = apLast.x1 + sB * (apLast.x2 - apLast.x1) + 0.05f * apLast.nx;
+            float pBy = apLast.y1 + sB * (apLast.y2 - apLast.y1) + 0.05f * apLast.ny;
+
+            bool allIntersects = true;
+            float prevT = 0.0f;
+            float prevIx = pAx, prevIy = pAy;
+
+            for (size_t i = 1; i < path.size() - 1; ++i) {
+                const auto& midConn = path[i];
+                Aperture2D apMid = getPortalAperture(midConn, midConn.fromZone);
+
+                float t = 0, u = 0, ix = 0, iy = 0;
+                if (!segmentsIntersect2D(pAx, pAy, pBx, pBy, apMid.x1, apMid.y1, apMid.x2, apMid.y2, t, u, ix, iy) || t <= prevT) {
+                    allIntersects = false;
+                    break;
+                }
+
+                int zoneId = midConn.fromZone;
+                int layer = midConn.layer;
+                if (!isSegmentClearInZone(prevIx, prevIy, ix, iy, layer, zoneId)) {
+                    allIntersects = false;
+                    break;
+                }
+
+                prevT = t;
+                prevIx = ix;
+                prevIy = iy;
+            }
+
+            if (!allIntersects) continue;
+
+            int lastZone = lastConn.fromZone;
+            int lastLayer = lastConn.layer;
+            if (isSegmentClearInZone(prevIx, prevIy, pBx, pBy, lastLayer, lastZone)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }

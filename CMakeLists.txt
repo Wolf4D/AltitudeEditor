@@ -25,6 +25,7 @@ set(SOURCES
     src/EntityInspector.cpp
     src/PortalLeakAnalyzer.cpp
     src/PortalLeakDialog.cpp
+    src/ZoneVisibilityDialog.cpp
     src/LeakSuppressionManager.cpp
     src/UniverseDBUParser.cpp
     src/VisZoneManager.cpp
@@ -52,6 +53,7 @@ set(HEADERS
     src/EntityInspector.h
     src/PortalLeakAnalyzer.h
     src/PortalLeakDialog.h
+    src/ZoneVisibilityDialog.h
     src/LeakSuppressionManager.h
     src/SegmentEditorDialog.h
     src/UniverseDBUParser.h
@@ -92,9 +94,11 @@ add_executable(test_standalone
     src/MemoryAnalyzer.cpp
     src/PortalLeakAnalyzer.cpp
     src/PortalLeakDialog.cpp
+    src/ZoneVisibilityDialog.cpp
     src/LeakSuppressionManager.cpp
     src/UniverseDBUParser.cpp
     src/VisZoneManager.cpp
+    src/VisZoneDock.cpp
 )
 target_link_libraries(test_standalone PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Concurrent)
 

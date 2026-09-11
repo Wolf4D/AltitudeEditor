@@ -41,6 +41,8 @@ private slots:
     void onConfigureEnginePath();
     void onOpenMemoryAnalyzer();
     void onOpenPortalLeakDetector();
+    void onOpenZoneVisibilityTracer(int initialZoneId = -1);
+    void onOpenVisZoneDock();
 
     void onFloorComboChanged(int index);
     void onFloorSpinChanged(int value);
@@ -119,7 +121,9 @@ private:
     QAction* m_actMemoryAnalyzer = nullptr;
     QAction* m_actLaunchMem = nullptr;
     QAction* m_actLaunchLeaks = nullptr;
+    QAction* m_actLaunchTracer = nullptr;
     QAction* m_actSegmentEditor = nullptr;
+    QAction* m_actTraceVisibility = nullptr;
     QAction* m_actDichotomyDelete = nullptr;
     QAction* m_actAbout = nullptr;
 

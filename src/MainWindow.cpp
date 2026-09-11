@@ -6,6 +6,7 @@
 #include "MemoryAnalyzerDialog.h"
 #include "MemoryAnalyzer.h"
 #include "PortalLeakDialog.h"
+#include "ZoneVisibilityDialog.h"
 #include <tuple>
 #include <set>
 #include <QtConcurrent>
@@ -22,6 +23,7 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QToolButton>
+#include <QPainterPath>
 #include <QPainter>
 #include <QPolygonF>
 #include <QProgressDialog>
@@ -128,6 +130,36 @@ static QIcon makeColorZonesIcon() {
     p.setPen(QPen(QColor(255, 195, 45), 1.2f));
     p.setBrush(QColor(245, 165, 25, 210));
     p.drawRoundedRect(QRectF(5.5, 9.0, 9.0, 8.5), 2.0, 2.0);
+
+    return QIcon(px);
+}
+
+static QIcon makeTracerIcon() {
+    QPixmap px(20, 20);
+    px.fill(Qt::transparent);
+    QPainter p(&px);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    // Cyan eye outline
+    p.setPen(QPen(QColor(56, 189, 248), 1.6f));
+    p.setBrush(QBrush(QColor(15, 23, 42, 180)));
+    QPainterPath eyePath;
+    eyePath.moveTo(2.0, 10.0);
+    eyePath.quadTo(10.0, 3.0, 18.0, 10.0);
+    eyePath.quadTo(10.0, 17.0, 2.0, 10.0);
+    p.drawPath(eyePath);
+
+    // Pupil
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(14, 165, 233));
+    p.drawEllipse(QPointF(10.0, 10.0), 3.5, 3.5);
+
+    p.setBrush(QColor(240, 249, 255));
+    p.drawEllipse(QPointF(11.0, 9.0), 1.2, 1.2);
+
+    // Laser / Ray beam extending from pupil
+    p.setPen(QPen(QColor(239, 68, 68), 1.5f, Qt::DashLine));
+    p.drawLine(QPointF(13.0, 10.0), QPointF(19.0, 10.0));
 
     return QIcon(px);
 }
@@ -240,7 +272,7 @@ MainWindow::MainWindow(QWidget* parent)
     m_inspectorDock->setMinimumWidth(330);
     addDockWidget(Qt::RightDockWidgetArea, m_inspectorDock);
 
-    // Right Dock 2: Visibility Zones (PVS / Portals) - Opens in right dock
+    // Right Dock 2: Visibility Zones & Portals (PVS) with unified Tracer tab
     m_visZoneDock = new VisZoneDock(this);
     m_visZoneDock->setVisZoneManager(m_visZoneManager);
     m_visZoneDock->setMinimumWidth(330);
@@ -277,11 +309,21 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_visZoneDock, &VisZoneDock::colorAllZonesToggled, m_canvas, &MapCanvas::setColorAllVisZones);
     connect(m_visZoneDock, &VisZoneDock::entitySelected, this, &MainWindow::onEntitySelected);
     connect(m_visZoneDock, &VisZoneDock::dichotomyDeleteZoneRequested, this, &MainWindow::deleteVisZone);
+    connect(m_visZoneDock, &VisZoneDock::traceVisibilityRequested, this, &MainWindow::onOpenZoneVisibilityTracer);
+    connect(m_visZoneDock, &VisZoneDock::cellSelected, m_canvas, &MapCanvas::highlightCell);
+    connect(m_visZoneDock, &VisZoneDock::tracePathSelected, m_canvas, &MapCanvas::setTracePath);
+    connect(m_visZoneDock, &VisZoneDock::portalHighlighted, m_canvas, &MapCanvas::setHighlightedPortal);
+    connect(m_visZoneDock, &VisZoneDock::portalHighlightCleared, m_canvas, &MapCanvas::clearHighlightedPortal);
+    connect(m_visZoneDock, &VisZoneDock::editSegmentRequested, this, [this](int l, int x, int y) {
+        onOpenSegmentEditor(l, x, y);
+    });
     connect(m_canvas, &MapCanvas::visZoneSelected, m_visZoneDock, &VisZoneDock::onExternalZoneSelected);
     connect(m_canvas, &MapCanvas::dichotomyDeleteZoneRequested, this, &MainWindow::deleteVisZone);
+    connect(m_canvas, &MapCanvas::traceVisibilityRequested, this, &MainWindow::onOpenZoneVisibilityTracer);
     connect(m_canvas, &MapCanvas::segmentInspectRequested, this, [this](int l, int x, int y) {
         onOpenSegmentEditor(l, x, y);
     });
+    m_visZoneDock->onIsolationOptionChanged();
 }
 
 void MainWindow::createMenusAndToolbars() {
@@ -362,14 +404,7 @@ void MainWindow::createMenusAndToolbars() {
     m_viewMenu->addAction(m_visZoneDock->toggleViewAction());
 
     m_portalsMenu = menuBar()->addMenu(QString());
-    m_actPvsPanel = m_portalsMenu->addAction(QString(), this, [this]() {
-        m_visZoneDock->show();
-        m_visZoneDock->raise();
-        m_visZoneDock->activateWindow();
-        if (m_actColorAllZones && !m_actColorAllZones->isChecked()) {
-            m_actColorAllZones->setChecked(true);
-        }
-    }, QKeySequence(Qt::CTRL + Qt::Key_P));
+    m_actPvsPanel = m_portalsMenu->addAction(QString(), this, &MainWindow::onOpenVisZoneDock, QKeySequence(Qt::CTRL + Qt::Key_P));
     m_actResetView = m_portalsMenu->addAction(QString(), m_visZoneDock, &VisZoneDock::resetToNormalView, QKeySequence(Qt::Key_Escape));
     m_portalsMenu->addSeparator();
 
@@ -389,9 +424,11 @@ void MainWindow::createMenusAndToolbars() {
     m_toolsMenu = menuBar()->addMenu(QString());
     m_actMemoryAnalyzer = m_toolsMenu->addAction(QString(), this, &MainWindow::onOpenMemoryAnalyzer, QKeySequence(Qt::CTRL + Qt::Key_M));
     m_actLeakDetector = m_toolsMenu->addAction(QString(), this, &MainWindow::onOpenPortalLeakDetector);
+    m_actTraceVisibility = m_toolsMenu->addAction(makeTracerIcon(), QString(), this, [this]() { onOpenZoneVisibilityTracer(); }, QKeySequence(Qt::CTRL + Qt::Key_T));
     m_actSegmentEditor = m_toolsMenu->addAction(QString(), this, [this]() { onOpenSegmentEditor(); }, QKeySequence(Qt::CTRL + Qt::Key_E));
     m_toolsMenu->addSeparator();
     m_toolsMenu->addAction(m_actDichotomyDelete);
+    m_portalsMenu->addAction(m_actTraceVisibility);
 
     // Language Menu
     m_languageMenu = menuBar()->addMenu(QString());
@@ -530,6 +567,12 @@ void MainWindow::createMenusAndToolbars() {
     if (btnLeaks) {
         btnLeaks->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     }
+
+    m_actLaunchTracer = mainBar->addAction(makeTracerIcon(), QString(), this, [this]() { onOpenZoneVisibilityTracer(); });
+    QToolButton* btnTracer = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actLaunchTracer));
+    if (btnTracer) {
+        btnTracer->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    }
     mainBar->addSeparator();
 
     // Visibility Zones & Portals Panel Toggle Button (in main toolbar)
@@ -541,12 +584,10 @@ void MainWindow::createMenusAndToolbars() {
         btnVis->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     }
     connect(m_actToggleVisZone, &QAction::toggled, this, [this](bool checked) {
-        m_visZoneDock->setVisible(checked);
         if (checked) {
-            m_visZoneDock->raise();
-            if (m_actColorAllZones && !m_actColorAllZones->isChecked()) {
-                m_actColorAllZones->setChecked(true);
-            }
+            onOpenVisZoneDock();
+        } else {
+            m_visZoneDock->hide();
         }
     });
     connect(m_visZoneDock, &QDockWidget::visibilityChanged, this, [this](bool visible) {
@@ -624,6 +665,10 @@ void MainWindow::retranslateUi() {
     if (m_actPvsPanel) m_actPvsPanel->setText(tr("👁 &Visibility Zones & Portals Panel (PVS)..."));
     if (m_actResetView) m_actResetView->setText(tr("🔄 &Show All Zones (Normal View)"));
     if (m_actLeakDetector) m_actLeakDetector->setText(tr("&Leak Detector..."));
+    if (m_actTraceVisibility) {
+        m_actTraceVisibility->setText(tr("👁️ &Trace Zone Visibility (PVS)..."));
+        m_actTraceVisibility->setToolTip(tr("Inspect why zones are rendered and trace visibility pathways (Ctrl+T)"));
+    }
     if (m_actMemoryAnalyzer) m_actMemoryAnalyzer->setText(tr("&Memory Analyzer..."));
     if (m_actSegmentEditor) m_actSegmentEditor->setText(tr("🧱 &Segment Inspector && Editor..."));
     if (m_actDichotomyDelete) {
@@ -642,6 +687,10 @@ void MainWindow::retranslateUi() {
     if (m_actLaunchLeaks) {
         m_actLaunchLeaks->setText(tr("🔍 Leaks"));
         m_actLaunchLeaks->setToolTip(tr("Scan compiled universe.dbu and map geometry for occlusion leaks"));
+    }
+    if (m_actLaunchTracer) {
+        m_actLaunchTracer->setText(tr("👁️ Trace PVS"));
+        m_actLaunchTracer->setToolTip(tr("Trace PVS Visibility Pathways & Leak Chains (Ctrl+T)"));
     }
     if (m_actToggleVisZone) {
         m_actToggleVisZone->setText(tr("👁 VisZones"));
@@ -1421,6 +1470,42 @@ void MainWindow::onOpenPortalLeakDetector() {
     m_canvas->setPortals(analyzer.allPortals(), analyzer.allZones());
 }
 
+void MainWindow::onOpenVisZoneDock() {
+    if (m_visZoneDock) {
+        m_visZoneDock->show();
+        m_visZoneDock->raise();
+        m_visZoneDock->activateWindow();
+        m_visZoneDock->setTab(0);
+        if (m_actColorAllZones && !m_actColorAllZones->isChecked()) {
+            m_actColorAllZones->setChecked(true);
+        }
+    }
+}
+
+void MainWindow::onOpenZoneVisibilityTracer(int initialZoneId) {
+    if (!m_currentMap) {
+        QMessageBox::warning(this, tr("Error"), tr("Please open a map first."));
+        return;
+    }
+    int initialZone = initialZoneId;
+    if (initialZone < 0 && m_canvas && m_canvas->activeVisZone() >= 0) {
+        initialZone = m_canvas->activeVisZone();
+    }
+    if (initialZone < 0 && m_visZoneDock) {
+        int az = m_visZoneDock->activeZoneId();
+        if (az >= 0) initialZone = az;
+    }
+    if (initialZone < 0) initialZone = 0;
+
+    if (m_visZoneDock) {
+        m_visZoneDock->show();
+        m_visZoneDock->raise();
+        m_visZoneDock->activateWindow();
+        m_visZoneDock->onExternalZoneSelected(initialZone);
+        m_visZoneDock->setTab(1);
+    }
+}
+
 void MainWindow::onOpenSegmentEditor(int layer, int x, int y) {
     if (!m_currentMap) {
         QMessageBox::warning(this, tr("Error"), tr("Please open a map first."));
@@ -1484,7 +1569,12 @@ void MainWindow::onSegmentModified(int layer, int x, int y) {
         m_canvas->update();
     }
 
-    if (m_portalLeakDialog) {
+    if (m_portalLeakDialog && m_portalLeakDialog->isVisible()) {
         m_portalLeakDialog->runAnalysis();
+    }
+
+    if (m_visZoneDock && m_visZoneDock->isVisible()) {
+        m_visZoneDock->setVisZoneManager(m_visZoneManager);
+        m_visZoneDock->refreshGraph();
     }
 }

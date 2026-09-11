@@ -1,8 +1,9 @@
 #include "VisZoneManager.h"
-#include <cmath>
-#include <queue>
+#include <QColor>
+#include <QQueue>
 #include <set>
-#include <QDebug>
+#include <cmath>
+#include <iostream>
 
 bool VisZoneManager::isMaptileWallPresent(int l, int x, int y, int side) const {
     if (!m_map) return false;
@@ -67,7 +68,7 @@ bool VisZoneManager::isDoorOrWindowOnEdge(int l, int x1, int y1, int x2, int y2,
     if (l >= 0 && l < m_map->gridTileOverlays.size()) {
         if (y1 >= 0 && y1 < m_map->gridTileOverlays[l].size() && x1 >= 0 && x1 < m_map->gridTileOverlays[l][y1].size()) {
             for (const auto& o : m_map->gridTileOverlays[l][y1][x1]) {
-                if (checkOverlay(o.segmentId, o.rotate, sideFrom1)) return true;
+                if (checkOverlay(o.segmentId, o.orient, sideFrom1)) return true;
             }
         }
     } else if (l >= 0 && l < m_map->gridOverlays.size()) {
@@ -82,7 +83,7 @@ bool VisZoneManager::isDoorOrWindowOnEdge(int l, int x1, int y1, int x2, int y2,
     if (l >= 0 && l < m_map->gridTileOverlays.size()) {
         if (y2 >= 0 && y2 < m_map->gridTileOverlays[l].size() && x2 >= 0 && x2 < m_map->gridTileOverlays[l][y2].size()) {
             for (const auto& o : m_map->gridTileOverlays[l][y2][x2]) {
-                if (checkOverlay(o.segmentId, o.rotate, sideFrom2)) return true;
+                if (checkOverlay(o.segmentId, o.orient, sideFrom2)) return true;
             }
         }
     } else if (l >= 0 && l < m_map->gridOverlays.size()) {
@@ -127,8 +128,23 @@ bool VisZoneManager::isDoorOrWindowOnEdge(int l, int x1, int y1, int x2, int y2,
                 path.replace("slipgate", "");
                 path.replace("outdoor", "");
 
-                bool isWin = name.contains("window") || name.contains("glass") ||
-                             path.contains("window") || path.contains("glass");
+                // Furniture, props, and containers are never wall apertures (doors/windows)
+                bool isFurnitureOrProp = name.contains("shelf") || name.contains("cupboard") ||
+                                         name.contains("cabinet") || name.contains("table") ||
+                                         name.contains("desk") || name.contains("chair") ||
+                                         name.contains("stool") || name.contains("bench") ||
+                                         name.contains("bottle") || name.contains("jar") ||
+                                         name.contains("case") || name.contains("box") ||
+                                         name.contains("crate") || name.contains("barrel") ||
+                                         name.contains("locker") || name.contains("wardrobe") ||
+                                         name.contains("counter");
+                if (isFurnitureOrProp) continue;
+
+                bool isWin = name.contains("window") || name.contains("fullview") ||
+                             name.contains("skylight") || name.contains("porthole") ||
+                             path.contains("window") ||
+                             ((name.contains("glass") || path.contains("glass")) &&
+                              (path.contains("doorsglass") || path.contains("\\glass\\") || path.contains("/glass/") || name.contains("glass_wall") || name.contains("glass_door")));
                 bool isDr = (prof && prof->category == EntityCategory::Door) ||
                             name.contains("door") || (name.contains("gate") && !name.contains("slipgate")) ||
                             path.contains("doors") || path.contains("\\gate") || path.contains("/gate");

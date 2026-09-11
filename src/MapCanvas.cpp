@@ -8,6 +8,7 @@
 #include <QKeyEvent>
 #include <QMenu>
 #include <cmath>
+#include <set>
 #include <QElapsedTimer>
 
 static const float TILE_SIZE = 100.0f;
@@ -296,7 +297,12 @@ void MapCanvas::renderMap(QPainter& p) {
         drawLeakWarnings(p);
     }
 
-    // 7c. Interactive Translation Gizmo on selected entity
+    // 7c. Visibility Trace Path Overlay (when Tracer is active)
+    if (!m_activeTracePath.empty()) {
+        drawTracePath(p);
+    }
+
+    // 7d. Interactive Translation Gizmo on selected entity
     drawGizmo(p);
 
     if (m_highlightedLayer == m_currentFloor && m_highlightedX >= 0 && m_highlightedY >= 0) {
@@ -327,7 +333,10 @@ void MapCanvas::renderMap(QPainter& p) {
         p.drawLine(hlRect.bottomRight(), hlRect.bottomRight() - QPointF(0, arm));
     }
 
-    // 8. HUD Overlays
+    // 8. VisZone Badges (Topmost Layer over Entities, CSG cutouts, and Gizmos)
+    drawZoneBadges(p);
+
+    // 9. HUD Overlays
     drawHUD(p);
 }
 
@@ -446,13 +455,17 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
 
             // Visibility Zone Isolation / Culling
             float cellOpacity = opacity;
-            if (m_activeVisZoneId >= 0 && m_cullInactiveVisZones && m_visZoneManager) {
-                bool inZone = m_visZoneManager->isTileInZone(m_activeVisZoneId, layer, x, y);
+            bool isDimmedGray = false;
+            bool shouldIsolate = (m_activeVisZoneId >= 0 && m_cullInactiveVisZones) || m_highlightedPortal.isValid();
+            if (shouldIsolate && m_visZoneManager) {
+                bool inZone = isTileInActiveOrPath(layer, x, y);
                 if (!inZone) {
-                    if (m_visZoneDimOpacity <= 0.001f) {
-                        continue; // Strictly hidden!
+                    if (m_visZoneDimOpacity <= 0.01f) {
+                        continue; // Strictly hidden if user explicitly pulls slider to 0%
+                    } else {
+                        cellOpacity = opacity * m_visZoneDimOpacity;
+                        isDimmedGray = true;
                     }
-                    cellOpacity = opacity * m_visZoneDimOpacity;
                 }
             }
             p.setOpacity(cellOpacity);
@@ -689,6 +702,10 @@ void MapCanvas::drawSegments(QPainter& p, int layer, float opacity) {
                 p.setPen(QPen(QColor(60, 45, 30, 180), 1.0f));
                 p.drawLine(innerLine);
             }
+
+            if (isDimmedGray) {
+                p.fillRect(cellRect, QColor(10, 15, 25, 120)); // Soft dark wash over inactive textures & walls
+            }
         }
     }
 
@@ -732,14 +749,17 @@ void MapCanvas::drawZonesAndLights(QPainter& p) {
         const PlacedEntity& ent = m_map->placedEntities[i];
         if (ent.floorLayer != m_currentFloor) continue;
 
+        bool inZone = true;
         // Visibility Zone Isolation / Culling
-        if (m_activeVisZoneId >= 0 && m_cullInactiveVisZones && m_visZoneManager) {
-            bool inZone = m_visZoneManager->isEntityInZone(m_activeVisZoneId, i);
+        bool shouldIsolate = (m_activeVisZoneId >= 0 && m_cullInactiveVisZones) || m_highlightedPortal.isValid();
+        if (shouldIsolate && m_visZoneManager) {
+            inZone = isEntityInActiveOrPath(i);
             if (!inZone) {
-                if (m_visZoneDimOpacity <= 0.001f) {
+                if (m_visZoneDimOpacity <= 0.01f) {
                     continue;
+                } else {
+                    p.setOpacity(m_visZoneDimOpacity);
                 }
-                p.setOpacity(m_visZoneDimOpacity);
             } else {
                 p.setOpacity(1.0f);
             }
@@ -752,7 +772,7 @@ void MapCanvas::drawZonesAndLights(QPainter& p) {
         if (m_showLights && lRange > 0) {
             float radScreen = lRange * m_zoom;
             QRadialGradient grad(entScreen, radScreen);
-            QColor lColor = ent.effectiveLightColor();
+            QColor lColor = inZone ? ent.effectiveLightColor() : QColor(130, 140, 150);
             lColor.setAlpha(91);
             grad.setColorAt(0.0f, lColor);
             lColor.setAlpha(26);
@@ -796,13 +816,15 @@ void MapCanvas::drawEntities(QPainter& p) {
 
         // Visibility Zone Isolation / Culling
         float entOpacity = 1.0f;
-        if (m_activeVisZoneId >= 0 && m_cullInactiveVisZones && m_visZoneManager) {
-            bool inZone = m_visZoneManager->isEntityInZone(m_activeVisZoneId, i);
+        bool shouldIsolate = (m_activeVisZoneId >= 0 && m_cullInactiveVisZones) || m_highlightedPortal.isValid();
+        if (shouldIsolate && m_visZoneManager) {
+            bool inZone = isEntityInActiveOrPath(i);
             if (!inZone) {
-                if (m_visZoneDimOpacity <= 0.001f) {
-                    continue; // Strictly hidden!
+                if (m_visZoneDimOpacity <= 0.01f) {
+                    continue; // Strictly hidden if user sets slider to 0%
+                } else {
+                    entOpacity = m_visZoneDimOpacity;
                 }
-                entOpacity = m_visZoneDimOpacity;
             }
         }
         p.setOpacity(entOpacity);
@@ -1031,6 +1053,219 @@ MapCanvas::GizmoHandle MapCanvas::hitTestGizmo(const QPointF& screenPos) const {
     return GizmoHandle::None;
 }
 
+std::vector<MapCanvas::VisZoneBadge> MapCanvas::getVisibleZoneBadges() const {
+    std::vector<VisZoneBadge> badges;
+    if (!m_visZoneManager || !m_map) return badges;
+    if (m_zoom < 0.15f) return badges;
+
+    auto computeBadgeRect = [&](const std::vector<QPoint>& tiles, const QString& text, bool isActive) -> QRectF {
+        if (tiles.empty()) return QRectF();
+
+        int sumX = 0, sumY = 0;
+        for (const auto& t : tiles) {
+            sumX += t.x();
+            sumY += t.y();
+        }
+        float avgX = static_cast<float>(sumX) / tiles.size();
+        float avgY = static_cast<float>(sumY) / tiles.size();
+
+        float finalX = avgX + 0.5f;
+        float finalY = avgY + 0.5f;
+
+        // Ensure the badge center point lies within one of the zone's tiles
+        // (crucial for concave, L-shaped, or U-shaped rooms)
+        int cTileX = static_cast<int>(std::floor(finalX));
+        int cTileY = static_cast<int>(std::floor(finalY));
+        bool inside = false;
+        for (const auto& t : tiles) {
+            if (t.x() == cTileX && t.y() == cTileY) {
+                inside = true;
+                break;
+            }
+        }
+        if (!inside) {
+            float bestDistSq = 1e9f;
+            for (const auto& t : tiles) {
+                float dx = (t.x() + 0.5f) - finalX;
+                float dy = (t.y() + 0.5f) - finalY;
+                float dSq = dx * dx + dy * dy;
+                if (dSq < bestDistSq) {
+                    bestDistSq = dSq;
+                    finalX = t.x() + 0.5f;
+                    finalY = t.y() + 0.5f;
+                }
+            }
+        }
+
+        QPointF centerScreen = worldToScreen(QPointF(finalX * TILE_SIZE, finalY * TILE_SIZE));
+
+        QFont badgeFont("Segoe UI", 9, QFont::Bold);
+        QFontMetrics fm(badgeFont);
+        int tw = fm.horizontalAdvance(text) + (isActive ? 14 : 10);
+        int th = fm.height() + (isActive ? 6 : 4);
+        return QRectF(centerScreen.x() - tw / 2.0f, centerScreen.y() - th / 2.0f, tw, th);
+    };
+
+    if (m_activeVisZoneId >= 0) {
+        std::set<int> visibleFromPortal;
+        if (m_highlightedPortal.isValid()) {
+            if (m_highlightedPortal.focusedVisibleZone >= 0) {
+                visibleFromPortal.insert(m_highlightedPortal.focusedVisibleZone);
+            } else if (m_highlightedPortal.toZone >= 0) {
+                visibleFromPortal.insert(m_highlightedPortal.toZone);
+            }
+        }
+
+        // 1. Inactive background zones
+        for (const auto& z : m_visZoneManager->zones()) {
+            if (z.id == m_activeVisZoneId) continue;
+            if (visibleFromPortal.find(z.id) != visibleFromPortal.end()) continue;
+            if (!z.hasFloor(m_currentFloor)) continue;
+
+            const auto& tiles = z.getTilesOnFloor(m_currentFloor);
+            if (tiles.empty()) continue;
+
+            QString text = QString("Z%1").arg(z.id + 1);
+            QRectF rect = computeBadgeRect(tiles, text, false);
+            if (rect.isEmpty()) continue;
+
+            VisZoneBadge b;
+            b.zoneId = z.id;
+            b.rect = rect;
+            b.text = text;
+            b.borderColor = QColor(90, 105, 125, 160);
+            b.textColor = QColor(160, 175, 195);
+            b.fillColor = QColor(15, 23, 42, 230);
+            b.isActive = false;
+            b.isFocused = false;
+            badges.push_back(b);
+        }
+
+        // 2. Visible zone(s) from highlighted portal
+        if (m_highlightedPortal.isValid()) {
+            for (int vzId : visibleFromPortal) {
+                if (vzId == m_activeVisZoneId) continue;
+                const VisZone* vz = m_visZoneManager->getZone(vzId);
+                if (!vz || !vz->hasFloor(m_currentFloor)) continue;
+                const auto& vzTiles = vz->getTilesOnFloor(m_currentFloor);
+                if (vzTiles.empty()) continue;
+
+                bool isFocused = (vzId == m_highlightedPortal.focusedVisibleZone);
+                bool isBreach = m_highlightedPortal.isBreach;
+
+                QString text;
+                if (isBreach) {
+                    text = isFocused ? QString("Z%1 [🚨 УТЕЧКА - ВЫБРАНА]").arg(vz->id + 1)
+                                     : QString("Z%1 [🚨 Утечка]").arg(vz->id + 1);
+                } else {
+                    text = isFocused ? QString("Z%1 [👁 ВЫБРАНА]").arg(vz->id + 1)
+                                     : QString("Z%1 [Видно]").arg(vz->id + 1);
+                }
+
+                QRectF rect = computeBadgeRect(vzTiles, text, false);
+                if (rect.isEmpty()) continue;
+
+                VisZoneBadge b;
+                b.zoneId = vz->id;
+                b.rect = rect;
+                b.text = text;
+                b.borderColor = isBreach ? QColor(239, 68, 68) : QColor(56, 189, 248);
+                b.textColor = isBreach ? QColor(254, 202, 202) : QColor(186, 230, 253);
+                b.fillColor = QColor(15, 23, 42, 240);
+                b.isActive = false;
+                b.isFocused = isFocused;
+                badges.push_back(b);
+            }
+        }
+
+        // 3. Active zone (illumined)
+        const VisZone* curZone = m_visZoneManager->getZone(m_activeVisZoneId);
+        if (curZone && curZone->hasFloor(m_currentFloor)) {
+            const auto& tiles = curZone->getTilesOnFloor(m_currentFloor);
+            if (!tiles.empty()) {
+                QString text = QString("Z%1 [Активная]").arg(curZone->id + 1);
+                QRectF rect = computeBadgeRect(tiles, text, true);
+                if (!rect.isEmpty()) {
+                    VisZoneBadge b;
+                    b.zoneId = curZone->id;
+                    b.rect = rect;
+                    b.text = text;
+                    b.borderColor = curZone->color;
+                    b.textColor = Qt::white;
+                    b.fillColor = QColor(15, 23, 42, 245);
+                    b.isActive = true;
+                    b.isFocused = false;
+                    badges.push_back(b);
+                }
+            }
+        }
+    } else if (m_colorAllVisZones) {
+        for (const auto& zone : m_visZoneManager->zones()) {
+            if (!zone.hasFloor(m_currentFloor)) continue;
+            const auto& tiles = zone.getTilesOnFloor(m_currentFloor);
+            if (tiles.empty()) continue;
+
+            QString text = QString("Z%1").arg(zone.id + 1);
+            QRectF rect = computeBadgeRect(tiles, text, false);
+            if (rect.isEmpty()) continue;
+
+            VisZoneBadge b;
+            b.zoneId = zone.id;
+            b.rect = rect;
+            b.text = text;
+            b.borderColor = zone.color;
+            b.textColor = Qt::white;
+            b.fillColor = QColor(18, 22, 30, 230);
+            b.isActive = false;
+            b.isFocused = false;
+            badges.push_back(b);
+        }
+    }
+
+    return badges;
+}
+
+void MapCanvas::drawZoneBadges(QPainter& p) {
+    auto badges = getVisibleZoneBadges();
+    if (badges.empty()) return;
+
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+
+    QFont badgeFont("Segoe UI", 9, QFont::Bold);
+    p.setFont(badgeFont);
+
+    for (const auto& badge : badges) {
+        bool isHovered = (badge.zoneId == m_hoveredZoneBadgeId);
+
+        // 1. Drop shadow for distinct visual separation above entities and floor textures
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor(0, 0, 0, 180));
+        p.drawRoundedRect(badge.rect.translated(1, 2), 4, 4);
+
+        // 2. Hover glow
+        if (isHovered) {
+            QRectF glowRect = badge.rect.adjusted(-2, -2, 2, 2);
+            p.setBrush(QColor(255, 255, 255, 35));
+            p.setPen(QPen(QColor(255, 255, 255, 200), 1.8f));
+            p.drawRoundedRect(glowRect, 5, 5);
+        }
+
+        // 3. Badge body & border
+        p.setBrush(badge.fillColor);
+        float penWidth = badge.isActive ? 2.2f : (badge.isFocused ? 2.0f : 1.5f);
+        QColor borderCol = isHovered ? Qt::white : badge.borderColor;
+        p.setPen(QPen(borderCol, penWidth));
+        p.drawRoundedRect(badge.rect, 4, 4);
+
+        // 4. Badge text
+        p.setPen(isHovered ? Qt::white : badge.textColor);
+        p.drawText(badge.rect, Qt::AlignCenter, badge.text);
+    }
+
+    p.restore();
+}
+
 void MapCanvas::drawHUD(QPainter& p) {
     p.save();
     p.setFont(QFont("Segoe UI", 10, QFont::Bold));
@@ -1076,6 +1311,23 @@ void MapCanvas::mousePressEvent(QMouseEvent* event) {
 
     if (event->button() == Qt::LeftButton) {
         if (!m_map) return;
+
+        // 0. Topmost Priority: VisZone Badge Click (On top of entities, CSG, and gizmos)
+        // Check visible zone badges first so clicking on a zone label selects the zone
+        // even if an entity, waypoint, or gizmo is located underneath it.
+        auto badges = getVisibleZoneBadges();
+        for (auto it = badges.rbegin(); it != badges.rend(); ++it) {
+            QRectF hitRect = it->rect.adjusted(-4, -4, 4, 4);
+            if (hitRect.contains(event->pos())) {
+                int zid = it->zoneId;
+                selectEntity(-1);
+                setActiveVisZone(zid);
+                emit visZoneSelected(zid);
+                event->accept();
+                update();
+                return;
+            }
+        }
 
         // 1. First check if clicking on the Gizmo of selected entity
         if (m_selectedEntityIndex >= 0 && m_selectedEntityIndex < m_map->placedEntities.size()) {
@@ -1143,11 +1395,20 @@ void MapCanvas::mousePressEvent(QMouseEvent* event) {
             selectEntity(-1);
             int tileX = static_cast<int>(std::floor(worldPos.x() / TILE_SIZE));
             int tileY = static_cast<int>(std::floor(worldPos.y() / TILE_SIZE));
-            if (m_visZoneManager) {
-                int zId = m_visZoneManager->getZoneAt(m_currentFloor, tileX, tileY);
-                if (zId >= 0 && zId != m_activeVisZoneId) {
+            int zId = m_visZoneManager ? m_visZoneManager->getZoneAt(m_currentFloor, tileX, tileY) : -1;
+            if (zId >= 0) {
+                if (zId != m_activeVisZoneId) {
                     setActiveVisZone(zId);
                     emit visZoneSelected(zId);
+                }
+            } else {
+                // Clicked into empty space outside all zones -> reset zone selection
+                if (m_activeVisZoneId >= 0 || m_cullInactiveVisZones) {
+                    setActiveVisZone(-1);
+                    setVisZoneCulling(false, 0.0f);
+                    clearTracePath();
+                    clearHighlight();
+                    emit visZoneSelected(-1);
                 }
             }
         }
@@ -1189,27 +1450,52 @@ void MapCanvas::mouseMoveEvent(QMouseEvent* event) {
         return;
     }
 
-    // 2. Handle Gizmo Hover Cursor
-    GizmoHandle hitG = (m_selectedEntityIndex >= 0) ? hitTestGizmo(event->pos()) : GizmoHandle::None;
-    if (hitG != m_hoveredGizmo) {
-        m_hoveredGizmo = hitG;
-        if (m_hoveredGizmo == GizmoHandle::CenterFree) {
-            setCursor(Qt::SizeAllCursor);
-        } else if (m_hoveredGizmo == GizmoHandle::AxisX) {
-            setCursor(Qt::SizeHorCursor);
-        } else if (m_hoveredGizmo == GizmoHandle::AxisZ) {
-            setCursor(Qt::SizeVerCursor);
-        } else {
+    bool needUpdate = false;
+
+    // 0. Check zone badge hover
+    int hoveredBadgeId = -1;
+    if (m_activeGizmo == GizmoHandle::None) {
+        auto badges = getVisibleZoneBadges();
+        for (auto it = badges.rbegin(); it != badges.rend(); ++it) {
+            QRectF hitRect = it->rect.adjusted(-3, -3, 3, 3);
+            if (hitRect.contains(event->pos())) {
+                hoveredBadgeId = it->zoneId;
+                break;
+            }
+        }
+    }
+
+    if (m_hoveredZoneBadgeId != hoveredBadgeId) {
+        m_hoveredZoneBadgeId = hoveredBadgeId;
+        needUpdate = true;
+    }
+
+    // 2. Handle Cursor: Zone Badge Hover -> PointingHandCursor, Gizmo Hover -> Transform Cursor
+    if (m_hoveredZoneBadgeId >= 0 && m_activeGizmo == GizmoHandle::None) {
+        setCursor(Qt::PointingHandCursor);
+    } else {
+        GizmoHandle hitG = (m_selectedEntityIndex >= 0) ? hitTestGizmo(event->pos()) : GizmoHandle::None;
+        if (hitG != m_hoveredGizmo) {
+            m_hoveredGizmo = hitG;
+            if (m_hoveredGizmo == GizmoHandle::CenterFree) {
+                setCursor(Qt::SizeAllCursor);
+            } else if (m_hoveredGizmo == GizmoHandle::AxisX) {
+                setCursor(Qt::SizeHorCursor);
+            } else if (m_hoveredGizmo == GizmoHandle::AxisZ) {
+                setCursor(Qt::SizeVerCursor);
+            } else {
+                setCursor(Qt::ArrowCursor);
+            }
+            update();
+        } else if (m_hoveredGizmo == GizmoHandle::None) {
             setCursor(Qt::ArrowCursor);
         }
-        update();
     }
 
     QPointF worldPos = screenToWorld(event->pos());
     int tileX = static_cast<int>(std::floor(worldPos.x() / TILE_SIZE));
     int tileY = static_cast<int>(std::floor(worldPos.y() / TILE_SIZE));
 
-    bool needUpdate = false;
     QPoint newTile(tileX, tileY);
     if (m_hoveredTile != newTile) {
         m_hoveredTile = newTile;
@@ -1247,7 +1533,9 @@ void MapCanvas::mouseMoveEvent(QMouseEvent* event) {
         .arg(worldPos.x(), 0, 'f', 1)
         .arg(-worldPos.y(), 0, 'f', 1);
 
-    if (m_hoveredEntityIndex >= 0) {
+    if (m_hoveredZoneBadgeId >= 0) {
+        info += QString(" | VisZone %1 (Click to select)").arg(m_hoveredZoneBadgeId + 1);
+    } else if (m_hoveredEntityIndex >= 0) {
         const PlacedEntity& ent = m_map->placedEntities[m_hoveredEntityIndex];
         info += QString(" | Entity: %1 [%2]")
             .arg(ent.instanceName.isEmpty() ? (ent.profile ? ent.profile->name : "Object") : ent.instanceName)
@@ -1267,6 +1555,7 @@ void MapCanvas::leaveEvent(QEvent* event) {
     m_hoveredTile = QPoint(-1, -1);
     m_hoveredEntityIndex = -1;
     m_hoveredGizmo = GizmoHandle::None;
+    m_hoveredZoneBadgeId = -1;
     setCursor(Qt::ArrowCursor);
     update();
 }
@@ -1278,6 +1567,31 @@ void MapCanvas::mouseReleaseEvent(QMouseEvent* event) {
 
         // Check if right clicked on an entity to show context menu
         if ((event->pos() - m_lastMousePos).manhattanLength() < 6 && m_map) {
+            // 0. Check if right clicked on a zone badge first!
+            auto badges = getVisibleZoneBadges();
+            for (auto it = badges.rbegin(); it != badges.rend(); ++it) {
+                QRectF hitRect = it->rect.adjusted(-4, -4, 4, 4);
+                if (hitRect.contains(event->pos())) {
+                    int zid = it->zoneId;
+                    selectEntity(-1);
+                    setActiveVisZone(zid);
+                    emit visZoneSelected(zid);
+                    QMenu menu(this);
+                    QAction* titleAct = menu.addAction(tr("Visibility Zone %1").arg(zid + 1));
+                    titleAct->setEnabled(false);
+                    menu.addSeparator();
+                    QAction* actTrace = menu.addAction(tr("👁️ Trace Visibility from Zone %1 (Ctrl+T)").arg(zid + 1));
+                    QAction* actDichotomy = menu.addAction(tr("✂️ Dichotomy Tool: Delete Room (Zone %1)").arg(zid + 1));
+                    QAction* chosen = menu.exec(mapToGlobal(event->pos()));
+                    if (chosen == actTrace) {
+                        emit traceVisibilityRequested(zid);
+                    } else if (chosen == actDichotomy) {
+                        emit dichotomyDeleteZoneRequested(zid);
+                    }
+                    event->accept();
+                    return;
+                }
+            }
             QPointF worldPos = screenToWorld(event->pos());
             int clickedEntity = -1;
             float bestDist = 24.0f / m_zoom;
@@ -1339,6 +1653,10 @@ void MapCanvas::mouseReleaseEvent(QMouseEvent* event) {
                     if (segId > 0) {
                         actInspectSeg = menu.addAction(tr("🧱 Inspect & Edit Segment..."));
                     }
+                    QAction* actTraceVis = nullptr;
+                    if (zoneAtTile >= 0) {
+                        actTraceVis = menu.addAction(tr("👁️ Trace Visibility from Zone %1 (Ctrl+T)...").arg(zoneAtTile + 1));
+                    }
                     QAction* actDichotomy = nullptr;
                     if (zoneAtTile >= 0) {
                         actDichotomy = menu.addAction(tr("✂️ Dichotomy Tool: Delete Room (Zone %1)").arg(zoneAtTile + 1));
@@ -1346,6 +1664,8 @@ void MapCanvas::mouseReleaseEvent(QMouseEvent* event) {
                     QAction* chosen = menu.exec(mapToGlobal(event->pos()));
                     if (actInspectSeg && chosen == actInspectSeg) {
                         emit segmentInspectRequested(m_currentFloor, tileX, tileY);
+                    } else if (actTraceVis && chosen == actTraceVis) {
+                        emit traceVisibilityRequested(zoneAtTile);
                     } else if (actDichotomy && chosen == actDichotomy) {
                         emit dichotomyDeleteZoneRequested(zoneAtTile);
                     }
@@ -1434,6 +1754,18 @@ void MapCanvas::keyPressEvent(QKeyEvent* event) {
                 return;
             }
             break;
+        case Qt::Key_T:
+        case Qt::Key_V:
+            if (!(event->modifiers() & (Qt::ControlModifier | Qt::AltModifier))) {
+                int targetZone = m_activeVisZoneId;
+                if (targetZone < 0 && m_visZoneManager) {
+                    targetZone = m_visZoneManager->getZoneAt(m_currentFloor, m_hoveredTile.x(), m_hoveredTile.y());
+                }
+                emit traceVisibilityRequested(targetZone);
+                event->accept();
+                return;
+            }
+            break;
         case Qt::Key_PageUp:
         case Qt::Key_Plus:
         case Qt::Key_Equal:
@@ -1499,6 +1831,7 @@ void MapCanvas::setPortals(const std::vector<DBUPortal>& portals, const std::vec
 void MapCanvas::setActiveVisZone(int zoneId) {
     if (m_activeVisZoneId != zoneId) {
         m_activeVisZoneId = zoneId;
+        m_highlightedPortal.clear();
         if (zoneId >= 0) {
             m_cullInactiveVisZones = true;
         } else {
@@ -1542,65 +1875,135 @@ void MapCanvas::drawPortals(QPainter& p) {
 
     // 0. Render VisZone Contours & Tile Tints
     if (m_visZoneManager) {
-        if (m_colorAllVisZones) {
+        if (m_activeVisZoneId >= 0) {
+            auto drawZonePerimeter = [&](const std::vector<QPoint>& tiles, const QColor& fillColor, const QPen& contourPen, const QString& badgeText, const QColor& badgeBorder, const QColor& badgeTextColor) {
+                if (tiles.empty()) return;
+                p.save();
+                p.setRenderHint(QPainter::Antialiasing, true);
+
+                std::set<std::pair<int, int>> tileSet;
+                for (const auto& t : tiles) {
+                    tileSet.insert({t.x(), t.y()});
+                    QRectF cr = getCellRectScreen(t.x(), t.y());
+                    p.fillRect(cr, fillColor);
+                }
+
+                p.setPen(contourPen);
+                for (const auto& t : tiles) {
+                    int tx = t.x();
+                    int ty = t.y();
+                    QRectF cr = getCellRectScreen(tx, ty);
+
+                    if (tileSet.find({tx, ty - 1}) == tileSet.end()) {
+                        p.drawLine(cr.topLeft(), cr.topRight());
+                    }
+                    if (tileSet.find({tx, ty + 1}) == tileSet.end()) {
+                        p.drawLine(cr.bottomLeft(), cr.bottomRight());
+                    }
+                    if (tileSet.find({tx - 1, ty}) == tileSet.end()) {
+                        p.drawLine(cr.topLeft(), cr.bottomLeft());
+                    }
+                    if (tileSet.find({tx + 1, ty}) == tileSet.end()) {
+                        p.drawLine(cr.topRight(), cr.bottomRight());
+                    }
+                }
+
+                p.restore();
+            };
+
+            std::set<int> visibleFromPortal;
+            if (m_highlightedPortal.isValid()) {
+                if (m_highlightedPortal.focusedVisibleZone >= 0) {
+                    visibleFromPortal.insert(m_highlightedPortal.focusedVisibleZone);
+                } else if (m_highlightedPortal.toZone >= 0) {
+                    visibleFromPortal.insert(m_highlightedPortal.toZone);
+                }
+            }
+
+            // 1. Draw inactive surrounding zones in neutral gray (background)
+            for (const auto& z : m_visZoneManager->zones()) {
+                if (z.id == m_activeVisZoneId) continue;
+                if (visibleFromPortal.find(z.id) != visibleFromPortal.end()) continue;
+                if (!z.hasFloor(m_currentFloor)) continue;
+
+                const auto& tiles = z.getTilesOnFloor(m_currentFloor);
+                if (tiles.empty()) continue;
+
+                QColor grayFill(70, 85, 105, 40);
+                QPen grayContour(QColor(130, 145, 165, 180), 1.5f, Qt::SolidLine, Qt::SquareCap);
+                QString badgeText = QString("Z%1").arg(z.id + 1);
+                drawZonePerimeter(tiles, grayFill, grayContour, badgeText, QColor(90, 105, 125, 160), QColor(160, 175, 195));
+            }
+
+            // 2. Draw visible zone(s) from highlighted portal with cyan contour
+            if (m_highlightedPortal.isValid()) {
+                for (int vzId : visibleFromPortal) {
+                    if (vzId == m_activeVisZoneId) continue;
+                    const VisZone* vz = m_visZoneManager->getZone(vzId);
+                    if (!vz || !vz->hasFloor(m_currentFloor)) continue;
+                    const auto& vzTiles = vz->getTilesOnFloor(m_currentFloor);
+                    if (vzTiles.empty()) continue;
+
+                    bool isFocused = (vzId == m_highlightedPortal.focusedVisibleZone);
+                    bool isBreach = m_highlightedPortal.isBreach;
+
+                    QColor cyanFill;
+                    if (isBreach) {
+                        cyanFill = isFocused ? QColor(239, 68, 68, 70) : QColor(239, 68, 68, 35);
+                    } else {
+                        cyanFill = isFocused ? QColor(56, 189, 248, 70) : QColor(56, 189, 248, 35);
+                    }
+
+                    float contourWidth = isFocused ? 4.5f : 2.5f;
+                    QPen cyanContour(isBreach ? QColor(239, 68, 68) : QColor(56, 189, 248),
+                                     contourWidth,
+                                     isFocused ? Qt::SolidLine : Qt::DashLine,
+                                     Qt::SquareCap);
+
+                    QString badgeText;
+                    if (isBreach) {
+                        badgeText = isFocused ? QString("Z%1 [🚨 УТЕЧКА - ВЫБРАНА]").arg(vz->id + 1)
+                                              : QString("Z%1 [🚨 Утечка]").arg(vz->id + 1);
+                    } else {
+                        badgeText = isFocused ? QString("Z%1 [👁 ВЫБРАНА]").arg(vz->id + 1)
+                                              : QString("Z%1 [Видно]").arg(vz->id + 1);
+                    }
+                    QColor badgeBorder = isBreach ? QColor(239, 68, 68) : QColor(56, 189, 248);
+                    QColor badgeTextCol = isBreach ? QColor(254, 202, 202) : QColor(186, 230, 253);
+
+                    drawZonePerimeter(vzTiles, cyanFill, cyanContour, badgeText, badgeBorder, badgeTextCol);
+                }
+            }
+
+            // 3. Draw active zone fully illuminated
+            const VisZone* curZone = m_visZoneManager->getZone(m_activeVisZoneId);
+            if (curZone && curZone->hasFloor(m_currentFloor)) {
+                const auto& tiles = curZone->getTilesOnFloor(m_currentFloor);
+                if (!tiles.empty()) {
+                    QColor activeFill = curZone->color;
+                    activeFill.setAlpha(85);
+                    QPen activeContour(curZone->color, 3.5f, Qt::SolidLine, Qt::SquareCap);
+                    QString badgeText = QString("Z%1 [Активная]").arg(curZone->id + 1);
+                    drawZonePerimeter(tiles, activeFill, activeContour, badgeText, curZone->color, Qt::white);
+                }
+            }
+        } else if (m_colorAllVisZones) {
             for (const auto& zone : m_visZoneManager->zones()) {
                 if (!zone.hasFloor(m_currentFloor)) continue;
                 const auto& tiles = zone.getTilesOnFloor(m_currentFloor);
                 if (tiles.empty()) continue;
-                bool isActive = (zone.id == m_activeVisZoneId);
 
                 p.save();
                 QColor zColor = zone.color;
-                zColor.setAlpha(isActive ? 70 : 40);
+                zColor.setAlpha(40);
                 p.setBrush(zColor);
-                p.setPen(QPen(zone.color, isActive ? 2.5f : 1.2f, isActive ? Qt::DashLine : Qt::SolidLine));
+                p.setPen(QPen(zone.color, 1.2f, Qt::SolidLine));
 
                 for (const auto& tile : tiles) {
                     QRectF cr = getCellRectScreen(tile.x(), tile.y());
                     p.drawRect(cr);
                 }
 
-                if (m_zoom >= 0.20f) {
-                    int sumX = 0, sumY = 0;
-                    for (const auto& t : tiles) {
-                        sumX += t.x();
-                        sumY += t.y();
-                    }
-                    float avgX = static_cast<float>(sumX) / tiles.size();
-                    float avgY = static_cast<float>(sumY) / tiles.size();
-                    QPointF centerScreen = worldToScreen(QPointF((avgX + 0.5f) * TILE_SIZE, (avgY + 0.5f) * TILE_SIZE));
-
-                    QString badgeText = QString("Z%1").arg(zone.id + 1);
-                    QFont badgeFont("Segoe UI", 9, QFont::Bold);
-                    QFontMetrics fm(badgeFont);
-                    int tw = fm.horizontalAdvance(badgeText) + 8;
-                    int th = fm.height() + 4;
-                    QRectF badgeRect(centerScreen.x() - tw / 2.0f, centerScreen.y() - th / 2.0f, tw, th);
-
-                    p.setBrush(QColor(18, 22, 30, 215));
-                    p.setPen(QPen(zone.color, 1.2f));
-                    p.drawRoundedRect(badgeRect, 3, 3);
-
-                    p.setFont(badgeFont);
-                    p.setPen(Qt::white);
-                    p.drawText(badgeRect, Qt::AlignCenter, badgeText);
-                }
-
-                p.restore();
-            }
-        } else if (m_activeVisZoneId >= 0) {
-            const VisZone* curZone = m_visZoneManager->getZone(m_activeVisZoneId);
-            if (curZone && curZone->hasFloor(m_currentFloor)) {
-                const auto& tiles = curZone->getTilesOnFloor(m_currentFloor);
-                p.save();
-                QColor zColor = curZone->color;
-                zColor.setAlpha(45);
-                p.setBrush(zColor);
-                p.setPen(QPen(curZone->color, 2.5f, Qt::DashLine));
-                for (const auto& tile : tiles) {
-                    QRectF cr = getCellRectScreen(tile.x(), tile.y());
-                    p.drawRect(cr);
-                }
                 p.restore();
             }
         }
@@ -1638,7 +2041,10 @@ void MapCanvas::drawPortals(QPainter& p) {
             } else {
                 pColor = isConnectedToActive ? QColor(0, 255, 180, 240) : QColor(0, 185, 255, 180);
             }
-            float pWidth = isConnectedToActive ? 4.5f : 2.5f;
+            if (m_activeVisZoneId >= 0 && !isConnectedToActive) {
+                pColor = QColor(130, 145, 160, 140);
+            }
+            float pWidth = isConnectedToActive ? 4.5f : 1.8f;
 
             p.setPen(QPen(pColor, pWidth, pStyle, Qt::RoundCap));
             p.drawLine(p1, p2);
@@ -1669,6 +2075,147 @@ void MapCanvas::drawPortals(QPainter& p) {
             }
         }
     }
+
+    // 0c. Render Highlighted Portal from Dock Selection
+    if (m_highlightedPortal.isValid() && m_highlightedPortal.layer == m_currentFloor) {
+        p.save();
+        float pulse = 0.5f + 0.5f * std::sin(m_animPhase * 3.5f);
+        QColor portalColor = m_highlightedPortal.isBreach 
+            ? QColor::fromRgbF(1.0f, 0.2f * (1.0f - pulse), 0.1f)
+            : QColor::fromRgbF(0.0f, 0.9f + 0.1f * pulse, 0.7f + 0.3f * pulse);
+
+        if (m_highlightedPortal.isHorizontal) {
+            // Horizontal slab breach / portal
+            QRectF cr = getCellRectScreen(m_highlightedPortal.x1, m_highlightedPortal.y1);
+            p.setPen(QPen(portalColor, 5.0f, Qt::SolidLine));
+            QColor fill = portalColor;
+            fill.setAlphaF(0.25f + 0.15f * pulse);
+            p.setBrush(fill);
+            p.drawRect(cr);
+
+            // Bold Hatch lines inside tile
+            p.setPen(QPen(portalColor, 3.0f, Qt::SolidLine));
+            p.drawLine(cr.topLeft(), cr.bottomRight());
+            p.drawLine(cr.bottomLeft(), cr.topRight());
+
+            // Badge
+            QString pLabel = m_highlightedPortal.isBreach 
+                ? QString("🚨 Пробоина перекрытия (Эт.%1)").arg(m_highlightedPortal.layer)
+                : QString("⬆ Проем перекрытия (Эт.%1)").arg(m_highlightedPortal.layer);
+            QFont pFont("Segoe UI", 9, QFont::Bold);
+            QFontMetrics fm(pFont);
+            int tw = fm.horizontalAdvance(pLabel) + 12;
+            int th = fm.height() + 6;
+            QRectF badgeRect(cr.center().x() - tw / 2.0f, cr.top() - th - 4, tw, th);
+            p.setBrush(QColor(18, 22, 30, 230));
+            p.setPen(QPen(portalColor, 2.0f));
+            p.drawRoundedRect(badgeRect, 4, 4);
+            p.setFont(pFont);
+            p.setPen(Qt::white);
+            p.drawText(badgeRect, Qt::AlignCenter, pLabel);
+        } else {
+            // Vertical portal between cells (x1, y1) and (x2, y2)
+            int x1 = m_highlightedPortal.x1;
+            int y1 = m_highlightedPortal.y1;
+            int x2 = m_highlightedPortal.x2;
+            int y2 = m_highlightedPortal.y2;
+
+            QPointF p1, p2;
+            if (x2 >= 0 && y2 >= 0) {
+                if (x1 != x2) {
+                    float edgeX = qMax(x1, x2) * TILE_SIZE;
+                    p1 = worldToScreen(QPointF(edgeX, y1 * TILE_SIZE));
+                    p2 = worldToScreen(QPointF(edgeX, (y1 + 1) * TILE_SIZE));
+                } else if (y1 != y2) {
+                    float edgeY = qMax(y1, y2) * TILE_SIZE;
+                    p1 = worldToScreen(QPointF(x1 * TILE_SIZE, edgeY));
+                    p2 = worldToScreen(QPointF((x1 + 1) * TILE_SIZE, edgeY));
+                } else {
+                    p1 = worldToScreen(QPointF(x1 * TILE_SIZE, (y1 + 0.5f) * TILE_SIZE));
+                    p2 = worldToScreen(QPointF((x1 + 1) * TILE_SIZE, (y1 + 0.5f) * TILE_SIZE));
+                }
+            } else {
+                p1 = worldToScreen(QPointF(x1 * TILE_SIZE, (y1 + 0.5f) * TILE_SIZE));
+                p2 = worldToScreen(QPointF((x1 + 1) * TILE_SIZE, (y1 + 0.5f) * TILE_SIZE));
+            }
+
+            // Layer 1: Extra-wide outer halo
+            QColor haloColor = portalColor;
+            haloColor.setAlpha(65 + static_cast<int>(35 * pulse));
+            p.setPen(QPen(haloColor, 28.0f, Qt::SolidLine, Qt::RoundCap));
+            p.drawLine(p1, p2);
+
+            // Layer 2: Bright medium glow
+            QColor glowColor = portalColor;
+            glowColor.setAlpha(140 + static_cast<int>(50 * pulse));
+            p.setPen(QPen(glowColor, 14.0f, Qt::SolidLine, Qt::RoundCap));
+            p.drawLine(p1, p2);
+
+            // Layer 3: Extra-thick solid core line
+            p.setPen(QPen(portalColor, 6.5f, Qt::SolidLine, Qt::RoundCap));
+            p.drawLine(p1, p2);
+
+            // Bold Perpendicular ticks
+            QPointF dir = (p2 - p1);
+            float len = std::hypot(dir.x(), dir.y());
+            if (len > 0.1f) {
+                QPointF perp(-dir.y() / len * 12.0f, dir.x() / len * 12.0f);
+                p.setPen(QPen(portalColor, 3.5f, Qt::SolidLine, Qt::RoundCap));
+                p.drawLine(p1 - perp, p1 + perp);
+                p.drawLine(p2 - perp, p2 + perp);
+            }
+
+            // Bold Line of Sight arrow into destination zone
+            if (x2 >= 0 && y2 >= 0) {
+                QPointF fromScreen = worldToScreen(QPointF((x1 + 0.5f) * TILE_SIZE, (y1 + 0.5f) * TILE_SIZE));
+                QPointF toScreen = worldToScreen(QPointF((x2 + 0.5f) * TILE_SIZE, (y2 + 0.5f) * TILE_SIZE));
+                QPointF rayDir = toScreen - fromScreen;
+                float rayLen = std::hypot(rayDir.x(), rayDir.y());
+                if (rayLen > 1.0f) {
+                    QPointF rayNorm = rayDir / rayLen;
+                    QPointF pMid = (p1 + p2) * 0.5f;
+                    QPointF arrowEnd = pMid + rayNorm * qBound(25.0f, 50.0f * m_zoom, 85.0f);
+
+                    p.setPen(QPen(portalColor, 3.5f, Qt::SolidLine, Qt::RoundCap));
+                    p.drawLine(pMid, arrowEnd);
+
+                    // Bold Arrowhead
+                    QPointF arrowSide(-rayNorm.y() * 9.0f, rayNorm.x() * 9.0f);
+                    p.drawLine(arrowEnd, arrowEnd - rayNorm * 13.0f + arrowSide);
+                    p.drawLine(arrowEnd, arrowEnd - rayNorm * 13.0f - arrowSide);
+                }
+            }
+
+            // Badge
+            QPointF centerScreen = (p1 + p2) * 0.5f;
+            QString pLabel;
+            if (m_highlightedPortal.isBreach) {
+                pLabel = QString("🚨 ПРОБОИНА ➔ Z%1").arg(m_highlightedPortal.toZone + 1);
+            } else if (m_highlightedPortal.isWindow) {
+                pLabel = QString("🪟 ОКНО ➔ Z%1").arg(m_highlightedPortal.toZone + 1);
+            } else if (m_highlightedPortal.isExterior) {
+                pLabel = QString("🚪 ВЫХОД ➔ Улица");
+            } else {
+                pLabel = QString("🚪 ПОРТАЛ ➔ Z%1").arg(m_highlightedPortal.toZone + 1);
+            }
+
+            QFont pFont("Segoe UI", 9, QFont::Bold);
+            QFontMetrics fm(pFont);
+            int tw = fm.horizontalAdvance(pLabel) + 12;
+            int th = fm.height() + 6;
+            QRectF badgeRect(centerScreen.x() - tw / 2.0f, centerScreen.y() - th / 2.0f - 18.0f, tw, th);
+
+            p.setBrush(QColor(18, 22, 30, 235));
+            p.setPen(QPen(portalColor, 2.0f));
+            p.drawRoundedRect(badgeRect, 4, 4);
+
+            p.setFont(pFont);
+            p.setPen(m_highlightedPortal.isBreach ? QColor(255, 120, 120) : Qt::white);
+            p.drawText(badgeRect, Qt::AlignCenter, pLabel);
+        }
+        p.restore();
+    }
+
     
     // 1. Render Doorway Portals on current floor (if VisZoneManager not active)
     if (!m_visZoneManager && m_showPortals) {
@@ -1768,17 +2315,21 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
 
             if (tileOlays.isEmpty()) continue;
 
-            if (m_activeVisZoneId >= 0 && m_cullInactiveVisZones && m_visZoneManager) {
-                bool inZone = m_visZoneManager->isTileInZone(m_activeVisZoneId, m_currentFloor, x, y);
+            bool shouldIsolate = (m_activeVisZoneId >= 0 && m_cullInactiveVisZones) || m_highlightedPortal.isValid();
+            bool inZone = true;
+            if (shouldIsolate && m_visZoneManager) {
+                inZone = isTileInActiveOrPath(m_currentFloor, x, y);
                 if (!inZone) {
-                    if (m_visZoneDimOpacity <= 0.001f) {
+                    if (m_visZoneDimOpacity <= 0.01f) {
                         continue;
+                    } else {
+                        p.setOpacity(m_visZoneDimOpacity);
                     }
-                    p.setOpacity(m_visZoneDimOpacity);
                 } else {
                     p.setOpacity(1.0f);
                 }
             }
+            bool isInactive = shouldIsolate && !inZone;
 
             // Draw gantry/platform floor first, then CSG punch cutouts on top
             std::stable_sort(tileOlays.begin(), tileOlays.end(), [&](const PlacedOverlay& a, const PlacedOverlay& b) {
@@ -1863,12 +2414,12 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
                         // 1. Draw Void / Cutout Hole Fill
                         p.fillRect(cutoutRect, QColor(22, 25, 34, 220));
 
-                        // 2. Draw Vibrant Green Glowing Overlay Fill
-                        QColor fillGreen(46, 204, 113, 85);
+                        // 2. Draw Glowing Overlay Fill
+                        QColor fillGreen = isInactive ? QColor(70, 85, 100, 30) : QColor(46, 204, 113, 85);
                         p.fillRect(cutoutRect, fillGreen);
 
-                        // 3. Draw BOLD Glowing Emerald-Green Border spanning full wall thickness
-                        QColor cutoutGreen(46, 204, 113, 255);
+                        // 3. Draw Glowing Border spanning full wall thickness
+                        QColor cutoutGreen = isInactive ? QColor(120, 135, 150, 180) : QColor(46, 204, 113, 255);
                         p.setPen(QPen(cutoutGreen, 2.5f, Qt::SolidLine, Qt::SquareCap));
                         p.drawRect(cutoutRect);
 
@@ -1883,8 +2434,9 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
                         }
 
                         // Cutout Label
-                        p.setPen(QColor(160, 255, 180));
-                        p.setFont(QFont("Segoe UI", 8, QFont::Bold));
+                        p.setPen(isInactive ? QColor(140, 155, 170) : QColor(160, 255, 180));
+                        QFont csgFont("Segoe UI", 8, QFont::Bold);
+                        p.setFont(csgFont);
                         bool isWindow = (oId == 1) || seg->isWindow || seg->name.contains("window", Qt::CaseInsensitive) || seg->relPath.contains("window", Qt::CaseInsensitive);
                         QString label = isWindow ? QStringLiteral("CSG Cutout (Window)") : QStringLiteral("CSG Cutout (Doorway)");
                         if (effectiveRot == 0) {
@@ -1912,14 +2464,17 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
                         }
                     }
                     if (!drewTex) {
-                        p.fillRect(cellRect, QColor(40, 48, 58, 220));
-                        // High-tech metal grating crosshatch
-                        p.setPen(QPen(QColor(80, 115, 145, 130), 1.0f));
+                        p.fillRect(cellRect, isInactive ? QColor(30, 36, 44, 220) : QColor(40, 48, 58, 220));
+                        // Metal grating crosshatch
+                        p.setPen(QPen(isInactive ? QColor(70, 85, 100, 100) : QColor(80, 115, 145, 130), 1.0f));
                         float step = cellRect.width() / 4.0f;
                         for (int k = 1; k < 4; ++k) {
                             p.drawLine(cellRect.left() + k * step, cellRect.top(), cellRect.left() + k * step, cellRect.bottom());
                             p.drawLine(cellRect.left(), cellRect.top() + k * step, cellRect.right(), cellRect.top() + k * step);
                         }
+                    }
+                    if (isInactive) {
+                        p.fillRect(cellRect, QColor(10, 15, 25, 110)); // Dark wash over inactive gantry surface
                     }
 
                     if (seg->isStairs) {
@@ -1928,20 +2483,20 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
                         p.rotate(orient * 90.0);
                         QRectF localRect(-cellRect.width() / 2.0f, -cellRect.height() / 2.0f, cellRect.width(), cellRect.height());
 
-                        p.setPen(QPen(QColor(255, 185, 30, 220), 1.8f));
+                        p.setPen(QPen(isInactive ? QColor(130, 140, 155, 180) : QColor(255, 185, 30, 220), 1.8f));
                         float stepH = cellRect.height() / 6.0f;
                         for (int s = 1; s < 6; ++s) {
                             float sy = localRect.top() + s * stepH;
                             p.drawLine(localRect.left() + 4, sy, localRect.right() - 4, sy);
                         }
-                        p.setPen(QPen(QColor(255, 215, 0), 2.0f));
+                        p.setPen(QPen(isInactive ? QColor(140, 155, 170) : QColor(255, 215, 0), 2.0f));
                         p.drawLine(0, localRect.height() * 0.28f, 0, -localRect.height() * 0.28f);
                         p.drawLine(-5, -localRect.height() * 0.28f + 7, 0, -localRect.height() * 0.28f);
                         p.drawLine(5, -localRect.height() * 0.28f + 7, 0, -localRect.height() * 0.28f);
                         p.restore();
                     } else {
                         // Railings strictly according to engine FPSC-Game.DBA:48558-48592
-                        QPen railPen(QColor(245, 185, 25), 2.5f, Qt::DashLine);
+                        QPen railPen(isInactive ? QColor(120, 135, 150, 140) : QColor(245, 185, 25), isInactive ? 1.8f : 2.5f, Qt::DashLine);
                         p.setPen(railPen);
 
                         if (getGantryRailingOnSide(seg->kindOf, seg->mode, orient, 0)) {
@@ -1958,7 +2513,7 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
                         }
                     }
 
-                    p.setPen(QColor(255, 210, 90));
+                    p.setPen(isInactive ? QColor(130, 140, 155) : QColor(255, 210, 90));
                     p.setFont(QFont("Segoe UI", 7, QFont::Bold));
                     QString pLabel = seg->isStairs ? QStringLiteral("STAIRS") : QStringLiteral("GANTRY");
                     p.drawText(cellRect, Qt::AlignCenter, pLabel);
@@ -1973,8 +2528,8 @@ void MapCanvas::drawCSGCutouts(QPainter& p) {
                         case 2: trimRect = QRectF(cellRect.left(), cellRect.bottom() - trimW, cellRect.width(), trimW); break;
                         case 3: trimRect = QRectF(cellRect.left(), cellRect.top(), trimW, cellRect.height()); break;
                     }
-                    p.fillRect(trimRect, QColor(70, 130, 180, 160)); // Steel-blue decorative trim
-                    p.setPen(QPen(QColor(135, 206, 250, 200), 1.0f));
+                    p.fillRect(trimRect, isInactive ? QColor(50, 60, 70, 140) : QColor(70, 130, 180, 160)); // Steel-blue decorative trim
+                    p.setPen(QPen(isInactive ? QColor(90, 100, 115, 160) : QColor(135, 206, 250, 200), 1.0f));
                     p.drawRect(trimRect);
                 }
             }
@@ -2012,16 +2567,36 @@ void MapCanvas::drawLeakWarnings(QPainter& p) {
         if (!rect.intersects(viewBounds)) continue;
 
         if (w->isClash) {
-            // Amber clash indicator
-            QColor fill(255, 170, 0, static_cast<int>(35 + 20 * pulse));
-            QColor border(255, 180, 20, 220);
+            bool isBreach = w->type.contains(QStringLiteral("Breach"), Qt::CaseInsensitive);
+            QColor border = isBreach ? QColor(255, 60, 60, 240) : QColor(255, 180, 20, 220);
+            QColor fill = isBreach ? QColor(255, 50, 50, static_cast<int>(40 + 25 * pulse))
+                                   : QColor(255, 170, 0, static_cast<int>(35 + 20 * pulse));
             p.setPen(QPen(border, 2.0f, Qt::DashLine));
             p.setBrush(fill);
             p.drawRect(rect);
 
-            // Icon
+            // If x2, y2 are set, also draw the cell rect and a thick indicator on the shared edge
+            if (w->x2 >= 0 && w->y2 >= 0) {
+                QRectF rect2 = getCellRectScreen(w->x2, w->y2);
+                p.drawRect(rect2);
+
+                QPointF p1, p2;
+                if (w->x != w->x2) {
+                    float sharedX = (w->x < w->x2) ? rect.right() : rect.left();
+                    p1 = QPointF(sharedX, rect.top());
+                    p2 = QPointF(sharedX, rect.bottom());
+                } else {
+                    float sharedY = (w->y < w->y2) ? rect.bottom() : rect.top();
+                    p1 = QPointF(rect.left(), sharedY);
+                    p2 = QPointF(rect.right(), sharedY);
+                }
+                QPen wallPen(isBreach ? QColor(255, 40, 40, 255) : QColor(255, 200, 40, 255), 4.0f, Qt::SolidLine, Qt::RoundCap);
+                p.setPen(wallPen);
+                p.drawLine(p1, p2);
+            }
+
             p.setPen(border);
-            p.drawText(rect.adjusted(2, 2, -2, -2), Qt::AlignTop | Qt::AlignRight, QStringLiteral("⚡"));
+            p.drawText(rect.adjusted(2, 2, -2, -2), Qt::AlignTop | Qt::AlignRight, isBreach ? QStringLiteral("🚫") : QStringLiteral("⚡"));
         } else {
             // Red leak indicator (missing ceiling, exterior breach, etc.)
             QColor fill(255, 40, 40, static_cast<int>(35 + 25 * pulse));
@@ -2038,4 +2613,402 @@ void MapCanvas::drawLeakWarnings(QPainter& p) {
 
     p.restore();
 }
+
+void MapCanvas::setTracePath(const std::vector<ZoneConnection>& path) {
+    m_activeTracePath = path;
+    update();
+}
+
+void MapCanvas::clearTracePath() {
+    m_activeTracePath.clear();
+    update();
+}
+
+void MapCanvas::drawTracePath(QPainter& p) {
+    if (m_activeTracePath.empty() || !m_map) return;
+
+    // If no segment/portal in this trace path belongs to the current floor, do not render foreign-floor rays
+    bool hasAnyStepOnCurrentFloor = false;
+    for (const auto& conn : m_activeTracePath) {
+        if (conn.layer == m_currentFloor) {
+            hasAnyStepOnCurrentFloor = true;
+            break;
+        }
+    }
+    if (!hasAnyStepOnCurrentFloor) return;
+
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+
+    float pulse = 0.5f + 0.5f * std::sin(m_animPhase * 3.5f);
+
+    auto getZoneCenterScreen = [this](int zoneId) -> QPointF {
+        if (!m_visZoneManager) return QPointF(-1.0, -1.0);
+        const VisZone* z = m_visZoneManager->getZone(zoneId);
+        if (!z) return QPointF(-1.0, -1.0);
+        const auto& floorTiles = z->getTilesOnFloor(m_currentFloor);
+        if (floorTiles.empty()) return QPointF(-1.0, -1.0);
+        float sumX = 0, sumY = 0;
+        for (const QPoint& pt : floorTiles) {
+            sumX += (pt.x() + 0.5f) * TILE_SIZE;
+            sumY += (pt.y() + 0.5f) * TILE_SIZE;
+        }
+        return worldToScreen(QPointF(sumX / floorTiles.size(), sumY / floorTiles.size()));
+    };
+
+    auto getPortalPointWorld = [this](const ZoneConnection& conn) -> QPointF {
+        if (conn.layer != m_currentFloor || conn.x1 < 0 || conn.y1 < 0) return QPointF(-1.0, -1.0);
+        float worldX = (conn.x1 + 0.5f) * TILE_SIZE;
+        float worldY = (conn.y1 + 0.5f) * TILE_SIZE;
+        if (conn.x2 >= 0 && conn.y2 >= 0) {
+            worldX = (conn.x1 + conn.x2 + 1.0f) * 0.5f * TILE_SIZE;
+            worldY = (conn.y1 + conn.y2 + 1.0f) * 0.5f * TILE_SIZE;
+        }
+        return QPointF(worldX, worldY);
+    };
+
+    auto getZoneCenterWorld = [this](int zoneId) -> QPointF {
+        if (!m_visZoneManager) return QPointF(-1.0, -1.0);
+        const VisZone* z = m_visZoneManager->getZone(zoneId);
+        if (!z) return QPointF(-1.0, -1.0);
+        const auto& floorTiles = z->getTilesOnFloor(m_currentFloor);
+        if (floorTiles.empty()) return QPointF(-1.0, -1.0);
+        float sumX = 0, sumY = 0;
+        for (const QPoint& pt : floorTiles) {
+            sumX += (pt.x() + 0.5f) * TILE_SIZE;
+            sumY += (pt.y() + 0.5f) * TILE_SIZE;
+        }
+        return QPointF(sumX / floorTiles.size(), sumY / floorTiles.size());
+    };
+
+    std::vector<QPointF> portalWorldPts;
+    portalWorldPts.reserve(m_activeTracePath.size());
+    for (const auto& conn : m_activeTracePath) {
+        portalWorldPts.push_back(getPortalPointWorld(conn));
+    }
+
+    if (portalWorldPts.empty() || portalWorldPts.front().x() < 0) return;
+
+    QPointF wStart(-1, -1);
+    QPointF wEnd(-1, -1);
+    QPointF dir(0, 1);
+
+    auto clipRayToZone = [this](QPointF startPt, QPointF rayDir, int zoneId, float maxDist) -> QPointF {
+        if (!m_visZoneManager || maxDist <= 0.0f || zoneId < 0) return startPt;
+        float stepSize = 4.0f; // pixels per step (~0.04 tile)
+        int steps = static_cast<int>(maxDist / stepSize);
+        QPointF lastValid = startPt;
+
+        int prevTx = -1, prevTy = -1;
+        for (int i = 1; i <= steps; ++i) {
+            QPointF cur = startPt + rayDir * (i * stepSize);
+            int tx = static_cast<int>(std::floor(cur.x() / TILE_SIZE));
+            int ty = static_cast<int>(std::floor(cur.y() / TILE_SIZE));
+
+            if (!m_map || tx < 0 || tx > m_map->header.maxX || ty < 0 || ty > m_map->header.maxY) {
+                break;
+            }
+
+            // Must stay inside the specified zone on current floor
+            if (m_visZoneManager->getZoneAt(m_currentFloor, tx, ty) != zoneId) {
+                break;
+            }
+
+            // Check if crossing a solid wall between adjacent tiles inside the zone
+            if (prevTx >= 0 && prevTy >= 0 && (tx != prevTx || ty != prevTy)) {
+                if (tx == prevTx + 1 && ty == prevTy) {
+                    bool w1 = m_visZoneManager->isMaptileWallPresent(m_currentFloor, prevTx, prevTy, 1);
+                    bool w2 = m_visZoneManager->isMaptileWallPresent(m_currentFloor, tx, ty, 3);
+                    if ((w1 || w2) && !m_visZoneManager->isDoorOrWindowOnEdge(m_currentFloor, prevTx, prevTy, tx, ty, 1)) {
+                        break;
+                    }
+                } else if (tx == prevTx - 1 && ty == prevTy) {
+                    bool w1 = m_visZoneManager->isMaptileWallPresent(m_currentFloor, prevTx, prevTy, 3);
+                    bool w2 = m_visZoneManager->isMaptileWallPresent(m_currentFloor, tx, ty, 1);
+                    if ((w1 || w2) && !m_visZoneManager->isDoorOrWindowOnEdge(m_currentFloor, prevTx, prevTy, tx, ty, 3)) {
+                        break;
+                    }
+                } else if (ty == prevTy + 1 && tx == prevTx) {
+                    bool w1 = m_visZoneManager->isMaptileWallPresent(m_currentFloor, prevTx, prevTy, 2);
+                    bool w2 = m_visZoneManager->isMaptileWallPresent(m_currentFloor, tx, ty, 0);
+                    if ((w1 || w2) && !m_visZoneManager->isDoorOrWindowOnEdge(m_currentFloor, prevTx, prevTy, tx, ty, 2)) {
+                        break;
+                    }
+                } else if (ty == prevTy - 1 && tx == prevTx) {
+                    bool w1 = m_visZoneManager->isMaptileWallPresent(m_currentFloor, prevTx, prevTy, 0);
+                    bool w2 = m_visZoneManager->isMaptileWallPresent(m_currentFloor, tx, ty, 2);
+                    if ((w1 || w2) && !m_visZoneManager->isDoorOrWindowOnEdge(m_currentFloor, prevTx, prevTy, tx, ty, 0)) {
+                        break;
+                    }
+                }
+            }
+
+            lastValid = cur;
+            prevTx = tx;
+            prevTy = ty;
+        }
+        return lastValid;
+    };
+
+    if (m_activeTracePath.size() == 1) {
+        const auto& conn = m_activeTracePath.front();
+        QPointF pw = portalWorldPts.front();
+        QPointF cwStart = getZoneCenterWorld(conn.fromZone);
+
+        // Normal from fromZone into toZone
+        QPointF normal(0, 1);
+        if (conn.x2 >= 0 && conn.y2 >= 0) {
+            float dx = conn.x2 - conn.x1;
+            float dy = conn.y2 - conn.y1;
+            float len = std::hypot(dx, dy);
+            if (len > 0.001f) normal = QPointF(dx / len, dy / len);
+        } else if (conn.isHorizontal) {
+            normal = QPointF(0, 1);
+        } else {
+            normal = QPointF(1, 0);
+        }
+
+        dir = normal;
+        if (cwStart.x() >= 0) {
+            QPointF fromCenter = pw - cwStart;
+            float len = std::hypot(fromCenter.x(), fromCenter.y());
+            if (len > 0.001f) {
+                QPointF uFromCenter = fromCenter / len;
+                if (uFromCenter.x() * normal.x() + uFromCenter.y() * normal.y() > 0.1f) {
+                    dir = uFromCenter;
+                    wStart = cwStart;
+                }
+            }
+        }
+
+        if (wStart.x() < 0) {
+            wStart = clipRayToZone(pw, -dir, conn.fromZone, 50.0f * TILE_SIZE);
+        }
+        wEnd = clipRayToZone(pw, dir, conn.toZone, 50.0f * TILE_SIZE);
+    } else {
+        // Multi-hop path: Ray direction is determined strictly by the portal-to-portal line of sight!
+        QPointF p0 = portalWorldPts.front();
+        QPointF pLast = portalWorldPts.back();
+        QPointF delta = pLast - p0;
+        float dist = std::hypot(delta.x(), delta.y());
+        if (dist > 0.001f) {
+            dir = delta / dist;
+        } else {
+            dir = QPointF(0, 1);
+        }
+
+        // Trace ray backwards inside source zone to wall, and forwards inside target zone to wall.
+        // Neither point will ever exit the respective zone boundaries!
+        wStart = clipRayToZone(p0, -dir, m_activeTracePath.front().fromZone, 50.0f * TILE_SIZE);
+        wEnd = clipRayToZone(pLast, dir, m_activeTracePath.back().toZone, 50.0f * TILE_SIZE);
+    }
+
+    // Build the strictly collinear line-of-sight waypoints:
+    struct PathSegment {
+        QPointF from;
+        QPointF to;
+        bool isBreach;
+    };
+    std::vector<PathSegment> segments;
+
+    // Segment 1: Zone A start -> Portal 0 (strictly along `dir`)
+    if (wStart.x() >= 0 && std::hypot(wStart.x() - portalWorldPts.front().x(), wStart.y() - portalWorldPts.front().y()) > 1.0f) {
+        segments.push_back({
+            worldToScreen(wStart),
+            worldToScreen(portalWorldPts.front()),
+            m_activeTracePath.front().isBreach || m_activeTracePath.front().isCrack
+        });
+    }
+
+    // Segment 2..N: Inter-portal segments (strictly along `dir` for collinear sight)
+    for (size_t i = 0; i + 1 < portalWorldPts.size(); ++i) {
+        if (portalWorldPts[i].x() >= 0 && portalWorldPts[i + 1].x() >= 0) {
+            bool breach = m_activeTracePath[i + 1].isBreach || m_activeTracePath[i + 1].isCrack;
+            segments.push_back({
+                worldToScreen(portalWorldPts[i]),
+                worldToScreen(portalWorldPts[i + 1]),
+                breach
+            });
+        }
+    }
+
+    // Segment Last: Last Portal -> Penetration into Target Zone (strictly along `dir`, NO bend to room center!)
+    if (wEnd.x() >= 0 && std::hypot(wEnd.x() - portalWorldPts.back().x(), wEnd.y() - portalWorldPts.back().y()) > 1.0f) {
+        segments.push_back({
+            worldToScreen(portalWorldPts.back()),
+            worldToScreen(wEnd),
+            m_activeTracePath.back().isBreach || m_activeTracePath.back().isCrack
+        });
+    }
+
+    // 1. Draw soft glow under rays
+    for (const auto& seg : segments) {
+        QColor glowColor = seg.isBreach ? QColor(239, 68, 68, static_cast<int>(50 + 30 * pulse))
+                                        : QColor(56, 189, 248, static_cast<int>(40 + 25 * pulse));
+        p.setPen(QPen(glowColor, 6.0f, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.drawLine(seg.from, seg.to);
+    }
+
+    // 2. Draw core ray & directional arrow
+    for (const auto& seg : segments) {
+        QColor rayColor = seg.isBreach ? QColor(239, 68, 68, static_cast<int>(210 + 45 * pulse))
+                                       : QColor(56, 189, 248, static_cast<int>(190 + 55 * pulse));
+        float penWidth = seg.isBreach ? 3.0f : 2.2f;
+        p.setPen(QPen(rayColor, penWidth, seg.isBreach ? Qt::DashLine : Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.drawLine(seg.from, seg.to);
+
+        // Draw directional arrowhead at midpoint
+        QPointF delta = seg.to - seg.from;
+        float dist = std::hypot(delta.x(), delta.y());
+        if (dist > 35.0f) {
+            QPointF mid = (seg.from + seg.to) * 0.5;
+            QPointF u = delta / dist;
+            QPointF n(-u.y(), u.x());
+            float arrLen = 7.0f;
+            float arrWidth = 4.5f;
+            QPointF tip = mid + u * (arrLen * 0.6f);
+            QPointF left = mid - u * (arrLen * 0.4f) + n * arrWidth;
+            QPointF right = mid - u * (arrLen * 0.4f) - n * arrWidth;
+
+            p.setBrush(rayColor);
+            p.setPen(Qt::NoPen);
+            QPolygonF poly;
+            poly << tip << left << right;
+            p.drawPolygon(poly);
+        }
+    }
+
+    // 3. Draw portal aperture markers
+    for (size_t i = 0; i < m_activeTracePath.size(); ++i) {
+        const auto& conn = m_activeTracePath[i];
+        bool isBreachStep = (conn.isBreach || conn.isCrack);
+        QPointF pPortal = (i < portalWorldPts.size() && portalWorldPts[i].x() >= 0)
+            ? worldToScreen(portalWorldPts[i]) : QPointF(-1, -1);
+
+        if (pPortal.x() >= 0) {
+            if (isBreachStep) {
+                QRectF cellRect = getCellRectScreen(conn.x1, conn.y1);
+                p.setBrush(QColor(239, 68, 68, static_cast<int>(60 + 40 * pulse)));
+                p.setPen(QPen(QColor(255, 60, 60, 240), 2.5f));
+                p.drawRect(cellRect);
+
+                p.setBrush(QColor(255, 30, 30, 230));
+                p.drawEllipse(pPortal, 6.0f + 2.0f * pulse, 6.0f + 2.0f * pulse);
+
+                p.setFont(QFont("Segoe UI", 9, QFont::Bold));
+                p.setPen(QColor(255, 220, 220));
+                p.drawText(cellRect.adjusted(2, 2, -2, -2), Qt::AlignCenter, QStringLiteral("🚨 LEAK"));
+            } else {
+                p.setBrush(QColor(14, 165, 233, 220));
+                p.setPen(QPen(QColor(255, 255, 255), 1.5f));
+                p.drawEllipse(pPortal, 5.0f, 5.0f);
+            }
+        }
+    }
+
+    p.restore();
+}
+
+void MapCanvas::setHighlightedPortal(const HighlightedPortalInfo& info) {
+    m_highlightedPortal = info;
+    if (info.isValid()) {
+        if (info.focusedVisibleZone >= 0 && m_visZoneManager) {
+            const VisZone* vz = m_visZoneManager->getZone(info.focusedVisibleZone);
+            if (vz) {
+                if (!vz->hasFloor(m_currentFloor)) {
+                    setFloor(vz->floor);
+                }
+                const auto& pts = vz->getTilesOnFloor(m_currentFloor);
+                const auto& targetTiles = pts.empty() ? vz->tiles : pts;
+                if (!targetTiles.empty()) {
+                    float sumX = 0, sumY = 0;
+                    for (const auto& t : targetTiles) {
+                        sumX += (t.x() + 0.5f) * TILE_SIZE;
+                        sumY += (t.y() + 0.5f) * TILE_SIZE;
+                    }
+                    float cx = sumX / targetTiles.size();
+                    float cy = sumY / targetTiles.size();
+                    if (m_zoom < 0.5f) {
+                        m_zoom = 0.8f;
+                        emit zoomChanged(m_zoom);
+                    }
+                    m_panOffset = QPointF(width() / 2.0f - cx * m_zoom, height() / 2.0f - cy * m_zoom);
+                }
+            }
+        } else if (info.layer >= 0) {
+            if (info.layer != m_currentFloor) {
+                setFloor(info.layer);
+            }
+            float cellWorldX = (info.x1 * TILE_SIZE) + (TILE_SIZE / 2.0f);
+            float cellWorldY = (info.y1 * TILE_SIZE) + (TILE_SIZE / 2.0f);
+            if (m_zoom < 0.5f) {
+                m_zoom = 0.8f;
+                emit zoomChanged(m_zoom);
+            }
+            m_panOffset = QPointF(width() / 2.0f - cellWorldX * m_zoom, height() / 2.0f - cellWorldY * m_zoom);
+        }
+    }
+    update();
+}
+
+void MapCanvas::clearHighlightedPortal() {
+    m_highlightedPortal.clear();
+    update();
+}
+
+bool MapCanvas::isTileInActiveOrPath(int layer, int x, int y) const {
+    if (m_activeVisZoneId < 0 && !m_highlightedPortal.isValid()) return true;
+    if (m_visZoneManager && m_activeVisZoneId >= 0 && m_visZoneManager->isTileInZone(m_activeVisZoneId, layer, x, y)) {
+        return true;
+    }
+    if (m_highlightedPortal.isValid() && m_visZoneManager) {
+        if (m_highlightedPortal.focusedVisibleZone >= 0) {
+            if (m_visZoneManager->isTileInZone(m_highlightedPortal.focusedVisibleZone, layer, x, y)) {
+                return true;
+            }
+        } else if (m_highlightedPortal.toZone >= 0) {
+            if (m_visZoneManager->isTileInZone(m_highlightedPortal.toZone, layer, x, y)) {
+                return true;
+            }
+        }
+    }
+    if (!m_activeTracePath.empty() && m_visZoneManager) {
+        for (const auto& conn : m_activeTracePath) {
+            if (m_visZoneManager->isTileInZone(conn.fromZone, layer, x, y) ||
+                m_visZoneManager->isTileInZone(conn.toZone, layer, x, y)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool MapCanvas::isEntityInActiveOrPath(int entityIndex) const {
+    if (m_activeVisZoneId < 0 && !m_highlightedPortal.isValid()) return true;
+    if (m_visZoneManager && m_activeVisZoneId >= 0 && m_visZoneManager->isEntityInZone(m_activeVisZoneId, entityIndex)) {
+        return true;
+    }
+    if (m_highlightedPortal.isValid() && m_visZoneManager) {
+        if (m_highlightedPortal.focusedVisibleZone >= 0) {
+            if (m_visZoneManager->isEntityInZone(m_highlightedPortal.focusedVisibleZone, entityIndex)) {
+                return true;
+            }
+        } else if (m_highlightedPortal.toZone >= 0) {
+            if (m_visZoneManager->isEntityInZone(m_highlightedPortal.toZone, entityIndex)) {
+                return true;
+            }
+        }
+    }
+    if (!m_activeTracePath.empty() && m_visZoneManager) {
+        for (const auto& conn : m_activeTracePath) {
+            if (m_visZoneManager->isEntityInZone(conn.fromZone, entityIndex) ||
+                m_visZoneManager->isEntityInZone(conn.toZone, entityIndex)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+
 

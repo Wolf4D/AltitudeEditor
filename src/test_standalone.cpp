@@ -7,13 +7,18 @@
 #include "SegmentParser.h"
 #include "PortalLeakAnalyzer.h"
 #include "PortalLeakDialog.h"
+#include "ZoneVisibilityDialog.h"
 #include "AssetManager.h"
 #include <QLayout>
 #include "MapCanvas.h"
 #include "LeakSuppressionManager.h"
 #include <QKeyEvent>
 #include <QFile>
+#include <QElapsedTimer>
 #include <QTranslator>
+#include <QPushButton>
+#include <QListWidget>
+#include "VisZoneDock.h"
 #include <set>
 #include <tuple>
 
@@ -56,6 +61,128 @@ int main(int argc, char* argv[]) {
                 }
             }
         }
+
+        auto tzm = std::make_shared<VisZoneManager>();
+        tzm->buildFromMap(tempMap);
+        PortalLeakAnalyzer tpla(tempMap, tzm);
+        auto tpvs = tpla.buildPvsGraph();
+
+        std::cout << "\n=== TEMP.FPM ZONE 2 (id=1) ANALYSIS ===" << std::endl;
+        for (const auto& conn : tpvs[1].directConnections) {
+            std::cout << "Conn: layer=" << conn.layer << " (" << conn.x1 << "," << conn.y1 << ") -> (" 
+                      << conn.x2 << "," << conn.y2 << ") toZone=" << (conn.toZone + 1)
+                      << " isDoorWin=" << conn.isDoorWin << " desc=" << conn.description.toStdString()
+                      << " visibleZones: [";
+            for (int vz : conn.visibleZones) std::cout << "Z" << (vz + 1) << " ";
+            std::cout << "]" << std::endl;
+        }
+
+        std::cout << "pathsToOtherZones from Zone 2:" << std::endl;
+        for (auto it = tpvs[1].pathsToOtherZones.begin(); it != tpvs[1].pathsToOtherZones.end(); ++it) {
+            std::cout << "  To Z" << (it.key() + 1) << " (path len=" << it.value().size() << "): ";
+            for (const auto& step : it.value()) {
+                std::cout << "[Z" << (step.fromZone + 1) << " -> Z" << (step.toZone + 1)
+                          << " @ L" << step.layer << " (" << step.x1 << "," << step.y1 << ")] ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << "\n--- Floor 5 Zone Map around (22..30, 5..14) ---" << std::endl;
+        for (int y = 5; y <= 14; ++y) {
+            std::cout << "Y=" << std::setw(2) << y << ": ";
+            for (int x = 22; x <= 30; ++x) {
+                int zid = tzm->getZoneAt(5, x, y);
+                if (zid < 0) std::cout << "  . ";
+                else std::cout << " Z" << std::setw(2) << (zid + 1);
+            }
+            std::cout << std::endl;
+        }
+
+        std::cout << "\nDirect connections for Zone 9 (id=8):" << std::endl;
+        for (const auto& c : tpvs[8].directConnections) {
+            std::cout << "  Z9 conn: L" << c.layer << " (" << c.x1 << "," << c.y1 << ") -> (" 
+                      << c.x2 << "," << c.y2 << ") toZone=" << (c.toZone + 1)
+                      << " isDoorWin=" << c.isDoorWin << " desc=" << c.description.toStdString() << std::endl;
+        }
+        std::cout << "\n=== ZONE 4 INSPECTION (temp.fpm) ===" << std::endl;
+        for (const auto& mp : tzm->portals()) {
+            if (mp.zoneA == 3 || mp.zoneB == 3) { // Zone 4 (0-indexed 3)
+                std::cout << "  Z4 Portal: L" << mp.floor << " (" << mp.tileA.x() << "," << mp.tileA.y() << ") -> ("
+                          << mp.tileB.x() << "," << mp.tileB.y() << ") zA=" << (mp.zoneA + 1)
+                          << " zB=" << (mp.zoneB + 1) << " ext=" << mp.isExterior << " name=" << mp.name.toStdString() << std::endl;
+            }
+        }
+        for (const auto& e : tempMap->placedEntities) {
+            int ex = int(e.x / 100.0f);
+            int ey = int(std::abs(e.z) / 100.0f);
+            if (e.floorLayer == 6 && ex >= 24 && ex <= 28 && ey >= 0 && ey <= 4) {
+                auto prof = tempMap->entityProfiles.value(e.bankIndex);
+                std::cout << "  Z4 Ent: L" << e.floorLayer << " (" << ex << "," << ey << ") world=("
+                          << e.x << "," << e.z << ") name='" << (prof ? prof->name.toStdString() : e.instanceName.toStdString())
+                          << "' path='" << (prof ? prof->relPath.toStdString() : "")
+                          << "' cat=" << (prof ? static_cast<int>(prof->category) : -1) << std::endl;
+            }
+        }
+        for (int l = 4; l <= 7; ++l) {
+            std::cout << "  Z4 at L" << l << " (26, 2): b=" << tempMap->gridBlocks[l][2][26]
+                      << " t=" << tempMap->gridTileType[l][2][26]
+                      << " r=" << tempMap->gridRotation[l][2][26]
+                      << " zid=" << tzm->getZoneAt(l, 26, 2);
+            if (l < tempMap->gridTileOverlays.size() && 2 < tempMap->gridTileOverlays[l].size() && 26 < tempMap->gridTileOverlays[l][2].size()) {
+                std::cout << " overlays=" << tempMap->gridTileOverlays[l][2][26].size();
+                for (const auto& o : tempMap->gridTileOverlays[l][2][26]) {
+                    auto seg = tempMap->segments.value(o.segmentId);
+                    std::cout << " [seg=" << o.segmentId << " r=" << o.rotate << " " << (seg ? seg->name.toStdString() : "") << "]";
+                }
+            }
+            std::cout << std::endl;
+        }
+        if (6 < tempMap->gridTileOverlays.size() && 2 < tempMap->gridTileOverlays[6].size() && 26 < tempMap->gridTileOverlays[6][2].size()) {
+            std::cout << "  Overlays at (26, 2): " << tempMap->gridTileOverlays[6][2][26].size() << std::endl;
+            for (const auto& o : tempMap->gridTileOverlays[6][2][26]) {
+                auto seg = tempMap->segments.value(o.segmentId);
+                std::cout << "    seg=" << o.segmentId << " rot=" << o.rotate << " punch=" << (seg ? seg->hasPunch : 0)
+                          << " win=" << (seg ? seg->isWindow : 0) << " name=" << (seg ? seg->name.toStdString() : "") << std::endl;
+            }
+        }
+        if (6 < tempMap->gridTileOverlays.size() && 1 < tempMap->gridTileOverlays[6].size() && 26 < tempMap->gridTileOverlays[6][1].size()) {
+            std::cout << "  Overlays at (26, 1): " << tempMap->gridTileOverlays[6][1][26].size() << std::endl;
+            for (const auto& o : tempMap->gridTileOverlays[6][1][26]) {
+                auto seg = tempMap->segments.value(o.segmentId);
+                std::cout << "    seg=" << o.segmentId << " rot=" << o.rotate << " punch=" << (seg ? seg->hasPunch : 0)
+                          << " win=" << (seg ? seg->isWindow : 0) << " name=" << (seg ? seg->name.toStdString() : "") << std::endl;
+            }
+        }
+
+        std::cout << "\n=== ZONE 17 INSPECTION (temp.fpm) ===" << std::endl;
+        for (const auto& mp : tzm->portals()) {
+            if (mp.zoneA == 16 || mp.zoneB == 16) { // Zone 17 (0-indexed 16)
+                std::cout << "  Z17 Portal: L" << mp.floor << " (" << mp.tileA.x() << "," << mp.tileA.y() << ") -> ("
+                          << mp.tileB.x() << "," << mp.tileB.y() << ") zA=" << (mp.zoneA + 1)
+                          << " zB=" << (mp.zoneB + 1) << " ext=" << mp.isExterior << " name=" << mp.name.toStdString() << std::endl;
+            }
+        }
+        for (int y : {10, 11, 19, 20}) {
+            for (int x : {27, 28}) {
+                std::cout << "  Z17 tile L5 (" << x << "," << y << "): b=" << tempMap->gridBlocks[5][y][x]
+                          << " t=" << tempMap->gridTileType[5][y][x]
+                          << " r=" << tempMap->gridRotation[5][y][x]
+                          << " zid=" << tzm->getZoneAt(5, x, y)
+                          << " wallN=" << tzm->isMaptileWallPresent(5, x, y, 0)
+                          << " wallS=" << tzm->isMaptileWallPresent(5, x, y, 2) << std::endl;
+            }
+        }
+        for (auto it = tempMap->entityProfiles.begin(); it != tempMap->entityProfiles.end(); ++it) {
+            const auto& p = it.value();
+            QString n = p->name.toLower();
+            QString r = p->relPath.toLower();
+            if (n.contains("glass") || r.contains("glass") || n.contains("window") || r.contains("window")) {
+                std::cout << "Profile with glass/window: name='" << p->name.toStdString()
+                          << "' path='" << p->relPath.toStdString()
+                          << "' cat=" << static_cast<int>(p->category) << std::endl;
+            }
+        }
+        std::cout << "========================================\n" << std::endl;
+
         std::cout << "Total diffBlocks=" << diffBlocks << std::endl;
     }
     bool hasLeakAt7_21 = false;
@@ -656,6 +783,108 @@ int main(int argc, char* argv[]) {
     std::cout << "[TEST] Multi-selection warning suppression and restoration: "
               << (multiSuppressPass ? "PASS" : "FAIL") << std::endl;
 
+    // === TEST INTERNAL WALL BREACH & CROSS-ZONE DETECTION ===
+    bool internalBreachPass = false;
+    for (const auto& w : leakDlg.currentWarnings()) {
+        if (w.type.contains("Breach", Qt::CaseInsensitive)) {
+            internalBreachPass = true;
+            std::cout << "[INTERNAL BREACH DETECTED] " << w.type.toStdString()
+                      << " at Floor " << w.layer << " (" << w.x << "," << w.y << ") <-> ("
+                      << w.x2 << "," << w.y2 << ") z1=" << w.zoneId << " z2=" << w.zoneId2
+                      << " size=" << w.portalWidth << "x" << w.portalHeight
+                      << "\n  Desc: " << w.description.toStdString() << std::endl;
+        }
+    }
+    std::cout << "[TEST] Internal Cross-Zone Wall Breach Detection: "
+              << (internalBreachPass ? "PASS" : "FAIL") << std::endl;
+
+    // === TEST VISIBILITY CHAIN TRACER / PVS GRAPH ===
+    PortalLeakAnalyzer pvsAnalyzer(map, zm);
+    pvsAnalyzer.setCheckCompiledUniverse(true);
+    pvsAnalyzer.setCheckStaticMap(true);
+    auto pvsGraph = pvsAnalyzer.buildPvsGraph();
+    bool pvsGraphOk = (!pvsGraph.isEmpty());
+    std::cout << "[TEST] Visibility Chain Tracer / PVS Graph built: "
+              << (pvsGraphOk ? "PASS" : "FAIL") << " (" << pvsGraph.size() << " zones in graph)" << std::endl;
+    for (auto it = pvsGraph.begin(); it != pvsGraph.end(); ++it) {
+        if (!it.value().pathsToOtherZones.isEmpty()) {
+            std::cout << "  Zone " << (it.key() + 1) << " (" << it.value().zoneName.toStdString()
+                      << ") renders " << it.value().pathsToOtherZones.size() << " other zones:" << std::endl;
+            for (auto pit = it.value().pathsToOtherZones.begin(); pit != it.value().pathsToOtherZones.end(); ++pit) {
+                int targetZid = pit.key();
+                std::cout << "    -> Zone " << (targetZid + 1) << " via chain (" << pit.value().size() << " steps): ";
+                for (size_t s = 0; s < pit.value().size(); ++s) {
+                    const auto& step = pit.value()[s];
+                    std::cout << "[Z" << (step.fromZone + 1) << " -> Z" << (step.toZone + 1)
+                              << (step.isBreach ? " (BREACH!)" : (step.isDoorWin ? " (Door)" : " (Open)"))
+                              << " " << step.description.toStdString() << "] ";
+                }
+                std::cout << std::endl;
+            }
+        }
+    }
+
+    // === TEST ZONE VISIBILITY DIALOG & CULPRIT NAVIGATION ===
+    bool visDialogPass = false;
+    {
+        ZoneVisibilityDialog dlg(map, zm, 67); // Zone 68 (0-indexed 67)
+        bool hasReachableRows = (dlg.reachableTable()->rowCount() > 0);
+
+        int receivedLayer = -1, receivedX = -1, receivedY = -1;
+        QObject::connect(&dlg, &ZoneVisibilityDialog::cellSelected, [&](int l, int x, int y) {
+            receivedLayer = l;
+            receivedX = x;
+            receivedY = y;
+        });
+
+        // Trigger jump to culprit on selected row
+        dlg.onJumpToCulpritClicked();
+
+        bool jumpTriggered = (receivedLayer >= 0 && receivedX >= 0 && receivedY >= 0);
+        visDialogPass = hasReachableRows && jumpTriggered;
+        std::cout << "  ZoneVisibilityDialog: origin=Z" << (dlg.currentOriginZoneId() + 1)
+                  << ", reachableRows=" << dlg.reachableTable()->rowCount()
+                  << ", culpritJump=(" << receivedLayer << "," << receivedX << "," << receivedY << ")" << std::endl;
+    }
+    std::cout << "[TEST] ZoneVisibilityDialog GUI & Culprit Navigation: "
+              << (visDialogPass ? "PASS" : "FAIL") << std::endl;
+
+    // === BENCHMARK: RESTORE ALL SUPPRESSED WARNINGS ===
+    {
+        // Select and suppress all rows
+        int totalRows = leakDlg.tableWidget()->rowCount();
+        std::cout << "Benchmarking restore with " << totalRows << " warnings..." << std::endl;
+        leakDlg.tableWidget()->clearSelection();
+        for (int r = 0; r < totalRows; ++r) {
+            leakDlg.tableWidget()->selectionModel()->select(
+                leakDlg.tableWidget()->model()->index(r, 0),
+                QItemSelectionModel::Select | QItemSelectionModel::Rows);
+        }
+        QElapsedTimer timer;
+        timer.start();
+        QMetaObject::invokeMethod(&leakDlg, "onSuppressClicked");
+        qint64 suppressAllTime = timer.elapsed();
+        std::cout << "  Suppress all (" << totalRows << " rows) took: " << suppressAllTime << " ms" << std::endl;
+
+        // Show suppressed so all suppressed rows are visible
+        QMetaObject::invokeMethod(&leakDlg, "onShowSuppressedToggled", Q_ARG(bool, true));
+        int suppRows = leakDlg.tableWidget()->rowCount();
+        std::cout << "  Suppressed rows in table: " << suppRows << std::endl;
+
+        // Select all suppressed rows
+        for (int r = 0; r < suppRows; ++r) {
+            leakDlg.tableWidget()->selectionModel()->select(
+                leakDlg.tableWidget()->model()->index(r, 0),
+                QItemSelectionModel::Select | QItemSelectionModel::Rows);
+        }
+        timer.restart();
+        QMetaObject::invokeMethod(&leakDlg, "onSuppressClicked");
+        qint64 restoreAllViaButtonTime = timer.elapsed();
+        std::cout << "  Unsuppress all via button (" << suppRows << " rows) took: " << restoreAllViaButtonTime << " ms" << std::endl;
+
+        QMetaObject::invokeMethod(&leakDlg, "onShowSuppressedToggled", Q_ARG(bool, false));
+    }
+
     // === TEST DICHOTOMY TOOL (Room & Entity Deletion) ===
     int testDichotomyZone = -1;
     for (size_t i = 0; i < zm->zones().size(); ++i) {
@@ -810,7 +1039,463 @@ int main(int argc, char* argv[]) {
     std::cout << "[TEST] Persistent Warning Suppression in .FPM container: "
               << (suppressionPass ? "PASS" : "FAIL") << std::endl;
 
-    if (!found29_2 || !allWindowsDetected || !f7WindowsDetected || !fakeClassified || !realWinClassified || !map1ExtPortalPass || !atriumUnified || !z2Floor7Closed || !canvasHasWarnings || !canvasHighlightedRow2 || !f8AllLeaksAssigned || !dichotomyPass || !physicalAlonePass || !f8_y20_allLeaksPass || !staticAlonePass || !mergedPass || !noDuplicatesPass || !tableColCountPass || !descHasIcon || !descHasSizeTag || !suppressionPass || !multiSuppressPass) {
+    bool visZoneDockFlowTestPass = false;
+    {
+        MapCanvas canvas;
+        canvas.resize(800, 600);
+        canvas.setMap(map);
+        canvas.setVisZoneManager(zm);
+
+        VisZoneDock dock;
+        dock.resize(340, 600);
+        dock.setMap(map);
+        dock.setVisZoneManager(zm);
+
+        QObject::connect(&dock, &VisZoneDock::zoneSelected, &canvas, &MapCanvas::setActiveVisZone);
+        QObject::connect(&dock, &VisZoneDock::portalHighlighted, &canvas, &MapCanvas::setHighlightedPortal);
+        QObject::connect(&dock, &VisZoneDock::portalHighlightCleared, &canvas, &MapCanvas::clearHighlightedPortal);
+
+        dock.refreshGraph();
+
+        auto listPortals = dock.findChild<QListWidget*>("listPortals");
+        bool listValid = false;
+        bool singleClickKeepsActiveZone = false;
+        bool chipHighlightsZone = false;
+        bool multiRowWrapPass = false;
+
+        int chosenZid = -1;
+        for (const auto& z : zm->zones()) {
+            dock.onExternalZoneSelected(z.id);
+            app.processEvents();
+            if (!listPortals || listPortals->count() == 0) continue;
+
+            for (int r = 0; r < listPortals->count(); ++r) {
+                QWidget* w = listPortals->itemWidget(listPortals->item(r));
+                if (!w) continue;
+                auto chips = w->findChildren<QPushButton*>();
+                if (chips.size() >= 3 && chips.back()->y() > chips.front()->y()) {
+                    chosenZid = z.id;
+                    listValid = true;
+
+                    multiRowWrapPass = true;
+
+                    QPushButton* chip = chips.front();
+                    int activeBefore = dock.activeZoneId();
+                    chip->click();
+                    app.processEvents();
+
+                    QPixmap pDock = dock.grab();
+                    pDock.save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/verified_dock_chip_focused.png");
+                    QPixmap pCanvas = canvas.grab();
+                    pCanvas.save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/verified_focused_zone_canvas.png");
+
+                    int activeAfter = dock.activeZoneId();
+                    singleClickKeepsActiveZone = (activeBefore == activeAfter && activeAfter == chosenZid);
+
+                    const auto& hi = canvas.highlightedPortal();
+                    chipHighlightsZone = (hi.isValid() && hi.focusedVisibleZone >= 0 && chip->text().startsWith(QStringLiteral("●")));
+                    break;
+                }
+            }
+            if (chosenZid >= 0) break;
+        }
+
+        visZoneDockFlowTestPass = listValid && singleClickKeepsActiveZone && chipHighlightsZone && multiRowWrapPass;
+        std::cout << "[TEST] VisZoneDock FlowLayout multi-row chips and single-click focus: "
+                  << (visZoneDockFlowTestPass ? "PASS" : "FAIL")
+                  << " (zone=" << (chosenZid + 1)
+                  << ", listValid=" << listValid
+                  << ", singleClickKeepsActiveZone=" << singleClickKeepsActiveZone
+                  << ", chipHighlightsZone=" << chipHighlightsZone
+                  << ", multiRowWrapPass=" << multiRowWrapPass << ")" << std::endl;
+    }
+
+    bool losOcclusionTestPass = true;
+    bool zone4PortalsPass = false;
+    if (tempMap) {
+        auto tzm = std::make_shared<VisZoneManager>();
+        tzm->buildFromMap(tempMap);
+        PortalLeakAnalyzer tpla(tempMap, tzm);
+        auto tpvs = tpla.buildPvsGraph();
+
+        // Check Zone 2 (id=1)
+        if (tpvs.contains(1)) {
+            for (const auto& conn : tpvs[1].directConnections) {
+                if (conn.layer == 5 && conn.x1 == 28 && conn.y1 == 7) {
+                    for (int vz : conn.visibleZones) {
+                        // Z17 (id=16), Z23 (id=22), Z25 (id=24) must NOT be visible!
+                        if (vz == 16 || vz == 22 || vz == 24) {
+                            losOcclusionTestPass = false;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Test Dock GUI with tempMap
+        MapCanvas tcanvas;
+        tcanvas.resize(800, 600);
+        tcanvas.setMap(tempMap);
+        tcanvas.setVisZoneManager(tzm);
+
+        VisZoneDock tdock;
+        tdock.resize(340, 600);
+        tdock.setMap(tempMap);
+        tdock.setVisZoneManager(tzm);
+
+        QObject::connect(&tdock, &VisZoneDock::zoneSelected, &tcanvas, &MapCanvas::setActiveVisZone);
+        QObject::connect(&tdock, &VisZoneDock::portalHighlighted, &tcanvas, &MapCanvas::setHighlightedPortal);
+        QObject::connect(&tdock, &VisZoneDock::portalHighlightCleared, &tcanvas, &MapCanvas::clearHighlightedPortal);
+        QObject::connect(&tdock, &VisZoneDock::tracePathSelected, &tcanvas, &MapCanvas::setTracePath);
+
+        tdock.refreshGraph();
+        tdock.onExternalZoneSelected(1); // Select Zone 2
+        app.processEvents();
+
+        tcanvas.setFloor(5);
+        auto tlist = tdock.findChild<QListWidget*>("listPortals");
+        if (tlist && tlist->count() > 0) {
+            for (int r = 0; r < tlist->count(); ++r) {
+                auto* itm = tlist->item(r);
+                auto* w = tlist->itemWidget(itm);
+                if (w) {
+                    auto lbls = w->findChildren<QLabel*>();
+                    bool match = false;
+                    for (auto* l : lbls) {
+                        if (l->text().contains("28") && l->text().contains("7")) {
+                            match = true;
+                            break;
+                        }
+                    }
+                    if (match) {
+                        tlist->setCurrentItem(itm);
+                        QMetaObject::invokeMethod(&tdock, "onPortalClicked", Q_ARG(QListWidgetItem*, itm));
+                        app.processEvents();
+
+                        auto chips = w->findChildren<QPushButton*>();
+                        for (auto* c : chips) {
+                            if (c->text().contains("4")) { // Click Zone 4 chip!
+                                c->click();
+                                app.processEvents();
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        tcanvas.highlightCell(5, 28, 7);
+        app.processEvents();
+
+        tdock.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/verified_los_zone2_z9.png");
+        tcanvas.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/verified_los_canvas.png");
+
+        std::cout << "=== DIAGNOSTIC FOR ZONE 4 & ZONE 5 ===" << std::endl;
+        std::cout << "tzm->zones().size() = " << tzm->zones().size() << std::endl;
+        if (tzm->zones().size() >= 5) {
+            const auto& z4 = tzm->zones()[3];
+            const auto& z5 = tzm->zones()[4];
+            std::cout << "Zone 4: " << z4.name.toStdString() << " tiles=" << z4.tiles.size()
+                      << " floors=" << z4.minFloor << ".." << z4.maxFloor
+                      << " portalIndices=" << z4.portalIndices.size() << std::endl;
+            for (int pi : z4.portalIndices) {
+                const auto* p = tzm->getPortal(pi);
+                if (p) {
+                    std::cout << "  Z4 Portal #" << pi << ": floor=" << p->floor
+                              << " isExt=" << p->isExterior
+                              << " Z" << (p->zoneA + 1) << "(" << p->tileA.x() << "," << p->tileA.y() << ")"
+                              << " <-> Z" << (p->zoneB + 1) << "(" << p->tileB.x() << "," << p->tileB.y() << ")"
+                              << " type=" << (int)p->type << std::endl;
+                }
+            }
+            std::cout << "Zone 5: " << z5.name.toStdString() << " tiles=" << z5.tiles.size()
+                      << " floors=" << z5.minFloor << ".." << z5.maxFloor
+                      << " portalIndices=" << z5.portalIndices.size() << std::endl;
+            for (int pi : z5.portalIndices) {
+                const auto* p = tzm->getPortal(pi);
+                if (p) {
+                    std::cout << "  Z5 Portal #" << pi << ": floor=" << p->floor
+                              << " isExt=" << p->isExterior
+                              << " Z" << (p->zoneA + 1) << "(" << p->tileA.x() << "," << p->tileA.y() << ")"
+                              << " <-> Z" << (p->zoneB + 1) << "(" << p->tileB.x() << "," << p->tileB.y() << ")"
+                              << " type=" << (int)p->type << std::endl;
+                }
+            }
+        }
+
+        tdock.onExternalZoneSelected(3); // Select Zone 4 (index 3)
+        app.processEvents();
+
+        auto tlist4 = tdock.findChild<QListWidget*>("listPortals");
+        std::cout << "tdock portals count for Zone 4: " << (tlist4 ? tlist4->count() : -1) << std::endl;
+        if (tlist4) {
+            for (int r = 0; r < tlist4->count(); ++r) {
+                auto* itm = tlist4->item(r);
+                std::cout << "  Row " << r << ": text=" << itm->text().toStdString()
+                          << " (data=" << itm->data(Qt::UserRole).toInt() << ")" << std::endl;
+            }
+        }
+        tcanvas.setFloor(4);
+        tcanvas.highlightCell(4, 26, 4);
+        app.processEvents();
+        tdock.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/verified_zone4_dock.png");
+        tcanvas.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/verified_zone4_canvas.png");
+
+        // Verify Zone 4 tiles and dimming of inactive zones
+        bool z4Tile26Active = tcanvas.isTileInActiveOrPath(4, 26, 4); // In Zone 4 -> true
+        bool z4Tile27Active = tcanvas.isTileInActiveOrPath(4, 27, 4); // Also in Zone 4 -> true (unified corridor!)
+        bool z2DimmedWhenNotFocused = !tcanvas.isTileInActiveOrPath(4, 29, 4); // Zone 2 should be dimmed!
+
+        // Now focus on Zone 2 chip in row 0 (Portal #0 leading to Zone 2)
+        bool z2FocusedInZone = false;
+        if (tlist4 && tlist4->count() > 0) {
+            auto* w0 = tlist4->itemWidget(tlist4->item(0));
+            if (w0) {
+                auto chips0 = w0->findChildren<QPushButton*>();
+                for (auto* c : chips0) {
+                    if (c->text().contains("2")) {
+                        c->click();
+                        app.processEvents();
+                        break;
+                    }
+                }
+                z2FocusedInZone = tcanvas.isTileInActiveOrPath(4, 29, 4); // Zone 2 is now focused -> true!
+
+                tcanvas.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/verified_zone4_focused_z2_canvas.png");
+                tdock.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/verified_zone4_focused_z2_dock.png");
+            }
+        }
+
+        bool dimmingPass = z4Tile26Active && z4Tile27Active && z2DimmedWhenNotFocused && z2FocusedInZone;
+        std::cout << "[TEST] Zone 4 Unified Corridor & Zone 2 Dimming/Focus: "
+                  << (dimmingPass ? "PASS" : "FAIL")
+                  << " (z4_26=" << z4Tile26Active
+                  << ", z4_27=" << z4Tile27Active
+                  << ", z2DimInit=" << z2DimmedWhenNotFocused
+                  << ", z2Focus=" << z2FocusedInZone << ")" << std::endl;
+
+        bool zone4FoundZ2Conn = false;
+        if (tpvs.contains(3)) {
+            for (const auto& c : tpvs[3].directConnections) {
+                if (c.toZone == 1 && c.layer == 4 && c.x1 == 27 && c.y1 == 4) { // Zone 2 (idx 1) on Floor 4 at (27,4)
+                    zone4FoundZ2Conn = true;
+                }
+            }
+        }
+
+        bool floor6TracePass = false;
+        std::vector<ZoneConnection> emittedTracePath;
+        QObject::connect(&tdock, &VisZoneDock::tracePathSelected, [&](const std::vector<ZoneConnection>& path) {
+            emittedTracePath = path;
+            tcanvas.setTracePath(path);
+        });
+        QObject::connect(&tdock, &VisZoneDock::cellSelected, &tcanvas, &MapCanvas::highlightCell);
+
+        if (tlist4 && tlist4->count() >= 3) {
+            for (int r = 0; r < tlist4->count(); ++r) {
+                auto* w = tlist4->itemWidget(tlist4->item(r));
+                if (!w) continue;
+                auto* lbl = w->findChild<QLabel*>();
+                if (lbl && (lbl->text().contains("Эт.6:") || lbl->text().contains("Floor 6:"))) {
+                    auto chips = w->findChildren<QPushButton*>();
+                    for (auto* c : chips) {
+                        if (c->text().contains("2")) {
+                            c->click();
+                            app.processEvents();
+                            break;
+                        }
+                    }
+                    bool canvasFloorIs6 = (tcanvas.currentFloor() == 6);
+                    bool pathIsFloor6 = (!emittedTracePath.empty() && emittedTracePath.front().layer == 6 &&
+                                         emittedTracePath.front().x1 == 26 && emittedTracePath.front().y1 == 2 &&
+                                         emittedTracePath.front().toZone == 1);
+                    floor6TracePass = canvasFloorIs6 && pathIsFloor6;
+                    std::cout << "Floor 6 portal test: canvasFloor=" << tcanvas.currentFloor()
+                              << " pathSteps=" << emittedTracePath.size();
+                    if (!emittedTracePath.empty()) {
+                        std::cout << " step0 layer=" << emittedTracePath.front().layer
+                                  << " (" << emittedTracePath.front().x1 << "," << emittedTracePath.front().y1 << ")"
+                                  << " -> Z" << (emittedTracePath.front().toZone + 1);
+                    }
+                    std::cout << std::endl;
+
+                    tcanvas.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/verified_floor6_straight_ray.png");
+                    tdock.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/verified_floor6_straight_dock.png");
+
+                    // Now switch canvas floor to 5 to verify floor 6 ray is not drawn across floor 5
+                    tcanvas.setFloor(5);
+                    app.processEvents();
+                    tcanvas.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/verified_floor5_no_wall_pierce.png");
+                    break;
+                }
+            }
+
+            // Test Floor 5 portal selection and straight line ray into Zone 2:
+            for (int r = 0; r < tlist4->count(); ++r) {
+                auto* w = tlist4->itemWidget(tlist4->item(r));
+                if (!w) continue;
+                auto* lbl = w->findChild<QLabel*>();
+                if (lbl && (lbl->text().contains("Эт.5:") || lbl->text().contains("Floor 5:"))) {
+                    auto chips = w->findChildren<QPushButton*>();
+                    for (auto* c : chips) {
+                        if (c->text().contains("2")) {
+                            c->click();
+                            app.processEvents();
+                            break;
+                        }
+                    }
+                    std::cout << "Floor 5 portal test (Z4 -> Z8 -> Z2): canvasFloor=" << tcanvas.currentFloor()
+                              << " pathSteps=" << emittedTracePath.size();
+                    for (const auto& step : emittedTracePath) {
+                        std::cout << " [L" << step.layer << " (" << step.x1 << "," << step.y1 << " to " << step.x2 << "," << step.y2 << " isH=" << step.isHorizontal << ") Z" << (step.fromZone + 1) << "->Z" << (step.toZone + 1) << "]";
+                    }
+                    std::cout << std::endl;
+                    tcanvas.setGeometry(0, 0, 1024, 768);
+                    tcanvas.setFloor(5);
+                    tcanvas.highlightCell(5, 27, 5);
+                    app.processEvents();
+                    tcanvas.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/verified_floor5_straight_ray_into_z2.png");
+                    tdock.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/verified_floor5_straight_dock.png");
+                    break;
+                }
+            }
+        }
+
+        zone4PortalsPass = (tlist4 && tlist4->count() == 3) && zone4FoundZ2Conn && dimmingPass && floor6TracePass;
+        std::cout << "[TEST] Zone 4 -> Zone 2 Portal & Dock List Inclusion: "
+                  << (zone4PortalsPass ? "PASS" : "FAIL")
+                  << " (dockRows=" << (tlist4 ? tlist4->count() : 0)
+                  << ", z2Conn=" << zone4FoundZ2Conn
+                  << ", dimmingPass=" << dimmingPass
+                  << ", floor6Trace=" << floor6TracePass << ")" << std::endl;
+    }
+
+    std::cout << "[TEST] True Line-of-Sight (LOS) PVS Occlusion (Z17/Z23/Z25 culled from Z2->Z9): "
+              << (losOcclusionTestPass ? "PASS" : "FAIL") << std::endl;
+
+    bool zoneBadgePriorityPass = false;
+    {
+        MapCanvas canvas;
+        canvas.setGeometry(0, 0, 1024, 768);
+        canvas.setMap(map, false);
+        canvas.setFloor(5);
+        canvas.setActiveVisZone(34); // Zone 35 (0-indexed: 34)
+        app.processEvents();
+
+        auto badges = canvas.getVisibleZoneBadges();
+        int activeBadgeIdx = -1;
+        for (size_t i = 0; i < badges.size(); ++i) {
+            if (badges[i].zoneId == 34) {
+                activeBadgeIdx = static_cast<int>(i);
+                break;
+            }
+        }
+
+        if (activeBadgeIdx >= 0) {
+            const auto& badge = badges[activeBadgeIdx];
+            QPoint clickPos = badge.rect.center().toPoint();
+
+            // Insert a fake entity right underneath the badge center
+            QPointF worldPos = (QPointF(clickPos) - canvas.panOffset()) / canvas.zoom();
+            PlacedEntity fakeEnt;
+            fakeEnt.floorLayer = 5;
+            fakeEnt.x = worldPos.x();
+            fakeEnt.z = -worldPos.y();
+            fakeEnt.instanceName = "Obstacle Entity Under Badge";
+            int newEntIdx = static_cast<int>(map->placedEntities.size());
+            map->placedEntities.push_back(fakeEnt);
+
+            // 1. Test Hover over badge sets PointingHandCursor and hoveredZoneBadgeId
+            QMouseEvent moveEv(QEvent::MouseMove, clickPos, Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+            app.sendEvent(&canvas, &moveEv);
+            app.processEvents();
+
+            bool hoverDetected = (canvas.hoveredZoneBadgeId() == 34);
+            bool handCursorSet = (canvas.cursor().shape() == Qt::PointingHandCursor);
+
+            // 2. Select the fake entity first to ensure clicking badge deselects entity
+            canvas.selectEntity(newEntIdx);
+            bool entityInitiallySelected = (canvas.selectedEntityIndex() == newEntIdx);
+
+            // 3. Switch active zone to Zone 31
+            canvas.setActiveVisZone(31);
+            app.processEvents();
+            badges = canvas.getVisibleZoneBadges();
+
+            activeBadgeIdx = -1;
+            for (size_t i = 0; i < badges.size(); ++i) {
+                if (badges[i].zoneId == 34) {
+                    activeBadgeIdx = static_cast<int>(i);
+                    break;
+                }
+            }
+
+            if (activeBadgeIdx >= 0) {
+                clickPos = badges[activeBadgeIdx].rect.center().toPoint();
+                // Click on Zone 35 badge (where fake entity is situated!)
+                QMouseEvent pressEv(QEvent::MouseButtonPress, clickPos, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+                app.sendEvent(&canvas, &pressEv);
+                app.processEvents();
+
+                // Entity MUST NOT be selected, Zone 35 MUST be selected!
+                bool zoneSelected = (canvas.activeVisZone() == 34);
+                bool entityNotSelected = (canvas.selectedEntityIndex() == -1);
+
+                zoneBadgePriorityPass = hoverDetected && handCursorSet && entityInitiallySelected && zoneSelected && entityNotSelected;
+                std::cout << "[TEST] VisZone Badge Click & Hover Priority over Entities: "
+                          << (zoneBadgePriorityPass ? "PASS" : "FAIL")
+                          << " (hover=" << hoverDetected << ", cursorHand=" << handCursorSet
+                          << ", initEntSel=" << entityInitiallySelected
+                          << ", zoneSelected=" << zoneSelected << ", entityNotSelected=" << entityNotSelected << ")" << std::endl;
+
+                // Save visual verification screenshot
+                canvas.grab().save("C:/Users/Wolf4/.gemini/antigravity/brain/df65d3f2-bf62-47d4-8a36-a7e363ffce03/verified_badge_on_top_of_entity.png");
+            }
+
+            // Remove fake entity
+            map->placedEntities.pop_back();
+        }
+    }
+
+    bool emptySpaceDeselectPass = false;
+    {
+        MapCanvas canvas;
+        canvas.setGeometry(0, 0, 1024, 768);
+        canvas.setMap(map, false);
+        canvas.setFloor(5);
+        canvas.setActiveVisZone(34); // Active zone 35
+        app.processEvents();
+
+        int emittedDeselectedZone = 999;
+        QObject::connect(&canvas, &MapCanvas::visZoneSelected, [&](int zid) {
+            emittedDeselectedZone = zid;
+        });
+
+        // Verify active zone is 34 and culling is true
+        bool initActive = (canvas.activeVisZone() == 34) && canvas.visZoneCulling();
+
+        // Screen pos for world (-200, -200) - completely empty void space outside the map
+        QPointF emptyWorld(-200.0f, -200.0f);
+        QPointF emptyScreen = canvas.panOffset() + emptyWorld * canvas.zoom();
+        QPoint clickPos(static_cast<int>(emptyScreen.x()), static_cast<int>(emptyScreen.y()));
+
+        QMouseEvent pressEv(QEvent::MouseButtonPress, clickPos, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+        app.sendEvent(&canvas, &pressEv);
+        app.processEvents();
+
+        bool zoneReset = (canvas.activeVisZone() == -1);
+        bool cullingReset = (!canvas.visZoneCulling());
+        bool signalFired = (emittedDeselectedZone == -1);
+
+        emptySpaceDeselectPass = initActive && zoneReset && cullingReset && signalFired;
+        std::cout << "[TEST] Empty Space Click Deselects VisZone: "
+                  << (emptySpaceDeselectPass ? "PASS" : "FAIL")
+                  << " (init=" << initActive << ", zoneReset=" << zoneReset
+                  << ", cullingReset=" << cullingReset << ", signalFired=" << signalFired << ")" << std::endl;
+    }
+
+    if (!found29_2 || !allWindowsDetected || !f7WindowsDetected || !fakeClassified || !realWinClassified || !map1ExtPortalPass || !atriumUnified || !z2Floor7Closed || !canvasHasWarnings || !canvasHighlightedRow2 || !f8AllLeaksAssigned || !dichotomyPass || !physicalAlonePass || !f8_y20_allLeaksPass || !staticAlonePass || !mergedPass || !noDuplicatesPass || !tableColCountPass || !descHasIcon || !descHasSizeTag || !suppressionPass || !multiSuppressPass || !visDialogPass || !visZoneDockFlowTestPass || !losOcclusionTestPass || !zone4PortalsPass || !zoneBadgePriorityPass || !emptySpaceDeselectPass) {
         std::cout << "FAIL DETAILS: found29_2=" << found29_2
                   << " allWin=" << allWindowsDetected
                   << " f7Win=" << f7WindowsDetected
@@ -832,7 +1517,11 @@ int main(int argc, char* argv[]) {
                   << " descIcon=" << descHasIcon
                   << " descSize=" << descHasSizeTag
                   << " supp=" << suppressionPass
-                  << " multiSupp=" << multiSuppressPass << std::endl;
+                  << " multiSupp=" << multiSuppressPass
+                  << " visDialog=" << visDialogPass
+                  << " visZoneDockFlow=" << visZoneDockFlowTestPass
+                  << " zoneBadgePriority=" << zoneBadgePriorityPass
+                  << " emptySpaceDeselect=" << emptySpaceDeselectPass << std::endl;
         return 1;
     }
     return 0;

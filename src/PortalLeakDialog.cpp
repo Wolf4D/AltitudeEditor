@@ -94,6 +94,22 @@ static QIcon makeSourceIcon(bool isPhysical, bool isStatic, bool isMerged) {
     return QIcon(pix);
 }
 
+static const QIcon& getSourceIcon(bool isPhysical, bool isStatic, bool isMerged) {
+    static QIcon iconBoth;
+    static QIcon iconPhys;
+    static QIcon iconStatic;
+    static bool initialized = false;
+    if (!initialized) {
+        iconBoth = makeSourceIcon(true, true, true);
+        iconPhys = makeSourceIcon(true, false, false);
+        iconStatic = makeSourceIcon(false, true, false);
+        initialized = true;
+    }
+    if (isMerged || (isPhysical && isStatic)) return iconBoth;
+    if (isPhysical) return iconPhys;
+    return iconStatic;
+}
+
 PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, std::shared_ptr<VisZoneManager> visZoneMgr, QWidget* parent)
     : QDialog(parent), m_map(map), m_visZoneManager(visZoneMgr)
 {
@@ -219,10 +235,10 @@ PortalLeakDialog::PortalLeakDialog(std::shared_ptr<FPSCMap> map, std::shared_ptr
         tr("Issue Description")
     });
     m_table->setIconSize(QSize(20, 20));
-    m_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    m_table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-    m_table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    m_table->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+    m_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
+    m_table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Interactive);
+    m_table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Interactive);
+    m_table->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Interactive);
     m_table->horizontalHeader()->setSectionResizeMode(4, QHeaderView::Stretch);
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->setSelectionMode(QAbstractItemView::ExtendedSelection);
@@ -428,6 +444,9 @@ void PortalLeakDialog::updateTableRows(int preferredSelectedRow) {
     int prevSelectedRow = (preferredSelectedRow >= 0) ? preferredSelectedRow : m_table->currentRow();
     m_visibleWarningIndices.clear();
 
+    m_table->setUpdatesEnabled(false);
+    m_table->blockSignals(true);
+
     int totalSuppressed = 0;
     for (const auto& w : m_currentWarnings) {
         if (w.isSuppressed) {
@@ -516,7 +535,7 @@ void PortalLeakDialog::updateTableRows(int preferredSelectedRow) {
         }
 
         QTableWidgetItem* descItem = new QTableWidgetItem(displayDesc);
-        descItem->setIcon(makeSourceIcon(w.isPhysicalBsp, w.isStaticMap, w.isMerged));
+        descItem->setIcon(getSourceIcon(w.isPhysicalBsp, w.isStaticMap, w.isMerged));
 
         QString sizeInfo;
         if (w.hasPhysicalSize) {
@@ -570,6 +589,14 @@ void PortalLeakDialog::updateTableRows(int preferredSelectedRow) {
         m_table->selectRow(newRow);
     }
 
+    m_table->resizeColumnToContents(0);
+    m_table->resizeColumnToContents(1);
+    m_table->resizeColumnToContents(2);
+    m_table->resizeColumnToContents(3);
+
+    m_table->blockSignals(false);
+    m_table->setUpdatesEnabled(true);
+
     QString filterNotice;
     if (m_selectedZoneFilterId != -1) {
         filterNotice = tr(" [Filtered by: %1]").arg(m_cmbZoneFilter->currentText());
@@ -619,7 +646,7 @@ QList<int> PortalLeakDialog::selectedVisibleRows() const {
             }
         }
     }
-    if (m_table) {
+    if (rowSet.isEmpty() && m_table) {
         for (auto* item : m_table->selectedItems()) {
             if (item && item->row() >= 0 && item->row() < static_cast<int>(m_visibleWarningIndices.size())) {
                 rowSet.insert(item->row());
@@ -644,8 +671,10 @@ void PortalLeakDialog::onTableSelectionChanged() {
         int origIdx = m_visibleWarningIndices[row];
         const auto& w = m_currentWarnings[origIdx];
         m_btnResolve->setEnabled(true);
-        if (w.isClash) {
+        if (w.isClash && !w.type.contains(QStringLiteral("Breach"), Qt::CaseInsensitive)) {
             m_btnResolve->setText(tr("⚡ Resolve Clash..."));
+        } else if (w.isClash) {
+            m_btnResolve->setText(tr("🧱 Inspect & Edit Wall..."));
         } else {
             m_btnResolve->setText(tr("🧱 Edit Segment..."));
         }
@@ -797,7 +826,11 @@ void PortalLeakDialog::onResolveClicked() {
         int origIdx = m_visibleWarningIndices[row];
         const auto& w = m_currentWarnings[origIdx];
         if (w.isClash && w.x2 >= 0 && w.y2 >= 0) {
-            emit resolveConflictRequested(w.layer, w.x, w.y, w.x2, w.y2);
+            if (w.type.contains(QStringLiteral("Breach"), Qt::CaseInsensitive)) {
+                emit editSegmentRequested(w.layer, w.x, w.y);
+            } else {
+                emit resolveConflictRequested(w.layer, w.x, w.y, w.x2, w.y2);
+            }
         } else {
             emit editSegmentRequested(w.layer, w.x, w.y);
         }
@@ -815,6 +848,8 @@ void PortalLeakDialog::updateDialogTitle() {
 void PortalLeakDialog::onSuppressClicked() {
     QList<int> selRows = selectedVisibleRows();
     if (selRows.isEmpty()) return;
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
 
     bool hasUnsuppressed = false;
     for (int r : selRows) {
@@ -860,6 +895,8 @@ void PortalLeakDialog::onSuppressClicked() {
     int preferredRow = selRows.first();
     populateZoneFilter();
     updateTableRows(preferredRow);
+
+    QApplication::restoreOverrideCursor();
 }
 
 void PortalLeakDialog::onSuppressZoneClicked() {
@@ -869,6 +906,8 @@ void PortalLeakDialog::onSuppressZoneClicked() {
     int zoneTotal = 0, zoneSuppressed = 0;
     getZoneWarningStats(targetZid, zoneTotal, zoneSuppressed);
     if (zoneTotal == 0) return;
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
 
     bool willSuppress = (zoneSuppressed < zoneTotal);
 
@@ -907,6 +946,8 @@ void PortalLeakDialog::onSuppressZoneClicked() {
 
     populateZoneFilter();
     updateTableRows();
+
+    QApplication::restoreOverrideCursor();
 }
 
 void PortalLeakDialog::onShowSuppressedToggled(bool checked) {
@@ -921,6 +962,7 @@ void PortalLeakDialog::onUnsuppressAllClicked() {
                                         tr("Restore all %1 suppressed warnings back to active state?").arg(count),
                                         QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
     if (reply == QMessageBox::Yes) {
+        QApplication::setOverrideCursor(Qt::WaitCursor);
         m_suppressionMgr.unsuppressAll();
         m_suppressionMgr.saveToMap(m_map, false);
         if (m_map) {
@@ -934,7 +976,9 @@ void PortalLeakDialog::onUnsuppressAllClicked() {
         }
         std::vector<PortalLeakWarning> activeWarnings = m_currentWarnings;
         emit warningsUpdated(activeWarnings);
+        populateZoneFilter();
         updateTableRows();
+        QApplication::restoreOverrideCursor();
     }
 }
 
@@ -1030,7 +1074,9 @@ void PortalLeakDialog::onTableContextMenu(const QPoint& pos) {
     QAction* actEditB = nullptr;
 
     if (w.isClash && w.x2 >= 0 && w.y2 >= 0) {
-        actResolve = menu.addAction(tr("⚡ Resolve Double-Wall Clash..."));
+        if (!w.type.contains(QStringLiteral("Breach"), Qt::CaseInsensitive)) {
+            actResolve = menu.addAction(tr("⚡ Resolve Double-Wall Clash..."));
+        }
         actEditA = menu.addAction(tr("🧱 Inspect Cell A (%1, %2)").arg(w.x).arg(w.y));
         actEditB = menu.addAction(tr("🧱 Inspect Cell B (%1, %2)").arg(w.x2).arg(w.y2));
     } else {

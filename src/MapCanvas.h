@@ -39,6 +39,8 @@ public:
     float zoom() const { return m_zoom; }
     QPointF panOffset() const { return m_panOffset; }
     void renderMap(QPainter& p);
+    bool isTileInActiveOrPath(int layer, int x, int y) const;
+    bool isEntityInActiveOrPath(int entityIndex) const;
 
     enum class GizmoHandle {
         None,
@@ -78,7 +80,7 @@ public slots:
 
     void setActiveVisZone(int zoneId);
     int activeVisZone() const { return m_activeVisZoneId; }
-    void setVisZoneCulling(bool enable, float dimOpacity = 0.0f);
+    void setVisZoneCulling(bool enable, float dimOpacity = 0.50f);
     bool visZoneCulling() const { return m_cullInactiveVisZones; }
     float visZoneDimOpacity() const { return m_visZoneDimOpacity; }
     void setColorAllVisZones(bool enable);
@@ -90,6 +92,28 @@ public slots:
     int highlightedY() const { return m_highlightedY; }
     const std::vector<PortalLeakWarning>& leakWarnings() const { return m_leakWarnings; }
 
+    void setTracePath(const std::vector<ZoneConnection>& path);
+    void clearTracePath();
+    const std::vector<ZoneConnection>& tracePath() const { return m_activeTracePath; }
+
+    void setHighlightedPortal(const HighlightedPortalInfo& info);
+    void clearHighlightedPortal();
+    const HighlightedPortalInfo& highlightedPortal() const { return m_highlightedPortal; }
+    int hoveredZoneBadgeId() const { return m_hoveredZoneBadgeId; }
+
+public:
+    struct VisZoneBadge {
+        int zoneId = -1;
+        QRectF rect;
+        QString text;
+        QColor borderColor;
+        QColor textColor;
+        QColor fillColor;
+        bool isActive = false;
+        bool isFocused = false;
+    };
+    std::vector<VisZoneBadge> getVisibleZoneBadges() const;
+
 signals:
     void floorChanged(int floor);
     void entitySelected(int index);
@@ -99,6 +123,7 @@ signals:
     void zoomChanged(float zoom);
     void visZoneSelected(int zoneId);
     void dichotomyDeleteZoneRequested(int zoneId);
+    void traceVisibilityRequested(int zoneId);
     void segmentInspectRequested(int layer, int x, int y);
 
 protected:
@@ -126,7 +151,9 @@ private:
     void drawCSGCutouts(QPainter& p);
     void drawPortals(QPainter& p);
     void drawLeakWarnings(QPainter& p);
+    void drawTracePath(QPainter& p);
     void drawGizmo(QPainter& p);
+    void drawZoneBadges(QPainter& p);
     void drawHUD(QPainter& p);
 
     GizmoHandle hitTestGizmo(const QPointF& screenPos) const;
@@ -142,6 +169,10 @@ private:
     int m_highlightedX = -1;
     int m_highlightedY = -1;
     std::vector<PortalLeakWarning> m_leakWarnings;
+    std::vector<ZoneConnection> m_activeTracePath;
+    HighlightedPortalInfo m_highlightedPortal;
+    int m_hoveredZoneBadgeId = -1;
+
 
     // Viewport logic
     GizmoHandle m_hoveredGizmo = GizmoHandle::None;
@@ -172,7 +203,7 @@ private:
     int m_activeVisZoneId = -1; // -1 = Show All (normal)
     bool m_colorAllVisZones = false;
     bool m_cullInactiveVisZones = false;
-    float m_visZoneDimOpacity = 0.0f; // 0.0f = completely hide, 0.15f = dimmed ghost
+    float m_visZoneDimOpacity = 0.50f; // 0.0f = completely hide, 0.50f = default dimmed gray
 
     QTimer m_animTimer;
     float m_animPhase = 0.0f;
