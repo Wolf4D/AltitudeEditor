@@ -65,6 +65,7 @@ public slots:
     void zoomOut();
     void zoomReset();
     void zoomFit();
+    void centerOnCell(int x, int y, float zoom = 1.0f);
 
     void setShowWallTextures(bool show);
     void setShowFloorTextures(bool show);

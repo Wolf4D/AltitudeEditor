@@ -323,6 +323,22 @@ int main(int argc, char* argv[]) {
                     canvas->zoomFit();
                 }
             }
+
+            if (auto* canvas = window.findChild<MapCanvas*>()) {
+                if (args.contains("--center-cell")) {
+                    int ccIdx = args.indexOf("--center-cell");
+                    if (args.size() > ccIdx + 2) {
+                        int cx = args.value(ccIdx + 1).toInt();
+                        int cy = args.value(ccIdx + 2).toInt();
+                        float zm = 1.0f;
+                        if (args.contains("--zoom")) {
+                            int zIdx = args.indexOf("--zoom");
+                            if (args.size() > zIdx + 1) zm = args.value(zIdx + 1).toFloat();
+                        }
+                        canvas->centerOnCell(cx, cy, zm);
+                    }
+                }
+            }
             if (args.contains("--wait-ms")) {
                 int wIdx = args.indexOf("--wait-ms");
                 if (args.size() > wIdx + 1) {

@@ -99,6 +99,7 @@ add_executable(test_standalone
     src/UniverseDBUParser.cpp
     src/VisZoneManager.cpp
     src/VisZoneDock.cpp
+    src/LanguageManager.cpp
 )
 target_link_libraries(test_standalone PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Concurrent)
 

@@ -1,6 +1,7 @@
 #include "MapCanvas.h"
 #include "AssetManager.h"
 #include "PortalLeakAnalyzer.h"
+#include "LanguageManager.h"
 #include <QPainter>
 #include <QPaintEvent>
 #include <QMouseEvent>
@@ -205,6 +206,16 @@ void MapCanvas::zoomFit() {
     m_panOffset.setX((width() - mapW * m_zoom) / 2.0f);
     m_panOffset.setY((height() - mapH * m_zoom) / 2.0f);
 
+    emit zoomChanged(m_zoom);
+    update();
+}
+
+void MapCanvas::centerOnCell(int x, int y, float zoom) {
+    m_zoom = qBound(0.1f, zoom, 10.0f);
+    float worldX = (x + 0.5f) * TILE_SIZE;
+    float worldY = (y + 0.5f) * TILE_SIZE;
+    QPointF centerScreen(width() / 2.0f, height() / 2.0f);
+    m_panOffset = centerScreen - QPointF(worldX, worldY) * m_zoom;
     emit zoomChanged(m_zoom);
     update();
 }
@@ -1153,13 +1164,18 @@ std::vector<MapCanvas::VisZoneBadge> MapCanvas::getVisibleZoneBadges() const {
                 bool isFocused = (vzId == m_highlightedPortal.focusedVisibleZone);
                 bool isBreach = m_highlightedPortal.isBreach;
 
+                bool isRu = (LanguageManager::instance().effectiveLanguage() == LanguageManager::Language::Russian);
                 QString text;
                 if (isBreach) {
-                    text = isFocused ? QString("Z%1 [🚨 УТЕЧКА - ВЫБРАНА]").arg(vz->id + 1)
-                                     : QString("Z%1 [🚨 Утечка]").arg(vz->id + 1);
+                    text = isFocused ? (isRu ? QString::fromUtf8("Z%1 [🚨 УТЕЧКА - ВЫБРАНА]").arg(vz->id + 1)
+                                             : QString("Z%1 [🚨 LEAK - SELECTED]").arg(vz->id + 1))
+                                     : (isRu ? QString::fromUtf8("Z%1 [🚨 Утечка]").arg(vz->id + 1)
+                                             : QString("Z%1 [🚨 Leak]").arg(vz->id + 1));
                 } else {
-                    text = isFocused ? QString("Z%1 [👁 ВЫБРАНА]").arg(vz->id + 1)
-                                     : QString("Z%1 [Видно]").arg(vz->id + 1);
+                    text = isFocused ? (isRu ? QString::fromUtf8("Z%1 [👁 ВЫБРАНА]").arg(vz->id + 1)
+                                             : QString("Z%1 [👁 SELECTED]").arg(vz->id + 1))
+                                     : (isRu ? QString::fromUtf8("Z%1 [Видно]").arg(vz->id + 1)
+                                             : QString("Z%1 [Visible]").arg(vz->id + 1));
                 }
 
                 QRectF rect = computeBadgeRect(vzTiles, text, false);
@@ -1183,7 +1199,8 @@ std::vector<MapCanvas::VisZoneBadge> MapCanvas::getVisibleZoneBadges() const {
         if (curZone && curZone->hasFloor(m_currentFloor)) {
             const auto& tiles = curZone->getTilesOnFloor(m_currentFloor);
             if (!tiles.empty()) {
-                QString text = QString("Z%1 [Активная]").arg(curZone->id + 1);
+                bool isRu = (LanguageManager::instance().effectiveLanguage() == LanguageManager::Language::Russian);
+                QString text = QString("Z%1 [%2]").arg(curZone->id + 1).arg(isRu ? QString::fromUtf8("Активная") : QStringLiteral("Active"));
                 QRectF rect = computeBadgeRect(tiles, text, true);
                 if (!rect.isEmpty()) {
                     VisZoneBadge b;
@@ -1960,13 +1977,18 @@ void MapCanvas::drawPortals(QPainter& p) {
                                      isFocused ? Qt::SolidLine : Qt::DashLine,
                                      Qt::SquareCap);
 
+                    bool isRu = (LanguageManager::instance().effectiveLanguage() == LanguageManager::Language::Russian);
                     QString badgeText;
                     if (isBreach) {
-                        badgeText = isFocused ? QString("Z%1 [🚨 УТЕЧКА - ВЫБРАНА]").arg(vz->id + 1)
-                                              : QString("Z%1 [🚨 Утечка]").arg(vz->id + 1);
+                        badgeText = isFocused ? (isRu ? QString::fromUtf8("Z%1 [🚨 УТЕЧКА - ВЫБРАНА]").arg(vz->id + 1)
+                                                      : QString("Z%1 [🚨 LEAK - SELECTED]").arg(vz->id + 1))
+                                              : (isRu ? QString::fromUtf8("Z%1 [🚨 Утечка]").arg(vz->id + 1)
+                                                      : QString("Z%1 [🚨 Leak]").arg(vz->id + 1));
                     } else {
-                        badgeText = isFocused ? QString("Z%1 [👁 ВЫБРАНА]").arg(vz->id + 1)
-                                              : QString("Z%1 [Видно]").arg(vz->id + 1);
+                        badgeText = isFocused ? (isRu ? QString::fromUtf8("Z%1 [👁 ВЫБРАНА]").arg(vz->id + 1)
+                                                      : QString("Z%1 [👁 SELECTED]").arg(vz->id + 1))
+                                              : (isRu ? QString::fromUtf8("Z%1 [Видно]").arg(vz->id + 1)
+                                                      : QString("Z%1 [Visible]").arg(vz->id + 1));
                     }
                     QColor badgeBorder = isBreach ? QColor(239, 68, 68) : QColor(56, 189, 248);
                     QColor badgeTextCol = isBreach ? QColor(254, 202, 202) : QColor(186, 230, 253);
@@ -1980,10 +2002,11 @@ void MapCanvas::drawPortals(QPainter& p) {
             if (curZone && curZone->hasFloor(m_currentFloor)) {
                 const auto& tiles = curZone->getTilesOnFloor(m_currentFloor);
                 if (!tiles.empty()) {
+                    bool isRu = (LanguageManager::instance().effectiveLanguage() == LanguageManager::Language::Russian);
                     QColor activeFill = curZone->color;
                     activeFill.setAlpha(85);
                     QPen activeContour(curZone->color, 3.5f, Qt::SolidLine, Qt::SquareCap);
-                    QString badgeText = QString("Z%1 [Активная]").arg(curZone->id + 1);
+                    QString badgeText = QString("Z%1 [%2]").arg(curZone->id + 1).arg(isRu ? QString::fromUtf8("Активная") : QStringLiteral("Active"));
                     drawZonePerimeter(tiles, activeFill, activeContour, badgeText, curZone->color, Qt::white);
                 }
             }
@@ -2188,15 +2211,20 @@ void MapCanvas::drawPortals(QPainter& p) {
 
             // Badge
             QPointF centerScreen = (p1 + p2) * 0.5f;
+            bool isRu = (LanguageManager::instance().effectiveLanguage() == LanguageManager::Language::Russian);
             QString pLabel;
             if (m_highlightedPortal.isBreach) {
-                pLabel = QString("🚨 ПРОБОИНА ➔ Z%1").arg(m_highlightedPortal.toZone + 1);
+                pLabel = isRu ? QString::fromUtf8("🚨 ПРОБОИНА ➔ Z%1").arg(m_highlightedPortal.toZone + 1)
+                              : QString("🚨 BREACH ➔ Z%1").arg(m_highlightedPortal.toZone + 1);
             } else if (m_highlightedPortal.isWindow) {
-                pLabel = QString("🪟 ОКНО ➔ Z%1").arg(m_highlightedPortal.toZone + 1);
+                pLabel = isRu ? QString::fromUtf8("🪟 ОКНО ➔ Z%1").arg(m_highlightedPortal.toZone + 1)
+                              : QString("🪟 WINDOW ➔ Z%1").arg(m_highlightedPortal.toZone + 1);
             } else if (m_highlightedPortal.isExterior) {
-                pLabel = QString("🚪 ВЫХОД ➔ Улица");
+                pLabel = isRu ? QString::fromUtf8("🚪 ВЫХОД ➔ Улица")
+                              : QStringLiteral("🚪 EXIT ➔ Outdoors");
             } else {
-                pLabel = QString("🚪 ПОРТАЛ ➔ Z%1").arg(m_highlightedPortal.toZone + 1);
+                pLabel = isRu ? QString::fromUtf8("🚪 ПОРТАЛ ➔ Z%1").arg(m_highlightedPortal.toZone + 1)
+                              : QString("🚪 PORTAL ➔ Z%1").arg(m_highlightedPortal.toZone + 1);
             }
 
             QFont pFont("Segoe UI", 9, QFont::Bold);

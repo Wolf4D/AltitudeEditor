@@ -1,4 +1,5 @@
 #include "VisZoneDock.h"
+#include "LanguageManager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGroupBox>
@@ -160,7 +161,10 @@ public:
         setCursor(Qt::PointingHandCursor);
         setFixedHeight(20);
         updateChipStyle(false);
-        setToolTip(tr("ЛКМ: подсветить на карте | Двойной клик: перейти в Зону %1").arg(zoneId + 1));
+        bool isRu = (LanguageManager::instance().effectiveLanguage() == LanguageManager::Language::Russian);
+        setToolTip(isRu
+            ? QString::fromUtf8("ЛКМ: подсветить на карте | Двойной клик: перейти в Зону %1").arg(zoneId + 1)
+            : QString("LMB: highlight on map | Double click: go to Zone %1").arg(zoneId + 1));
     }
 
     int zoneId() const { return m_zoneId; }
@@ -195,8 +199,10 @@ protected:
 
 private:
     void updateChipStyle(bool hl) {
+        bool isRu = (LanguageManager::instance().effectiveLanguage() == LanguageManager::Language::Russian);
+        QString zName = isRu ? QString::fromUtf8("Зона %1").arg(m_zoneId + 1) : QString("Zone %1").arg(m_zoneId + 1);
         if (hl) {
-            setText(QStringLiteral("● ") + tr("Зона %1").arg(m_zoneId + 1));
+            setText(QStringLiteral("● ") + zName);
             if (m_isBreach) {
                 setStyleSheet(QStringLiteral(
                     "QPushButton { background: #b91c1c; color: #ffffff; border: 2px solid #fecaca; border-radius: 3px; padding: 0px 5px; font-size: 10px; font-weight: bold; }"
@@ -209,7 +215,7 @@ private:
                 ));
             }
         } else {
-            setText(tr("Зона %1").arg(m_zoneId + 1));
+            setText(zName);
             if (m_isBreach) {
                 setStyleSheet(QStringLiteral(
                     "QPushButton { background: #7f1d1d; color: #fee2e2; border: 1px solid #ef4444; border-radius: 3px; padding: 1px 6px; font-size: 10px; font-weight: bold; }"
@@ -250,24 +256,38 @@ public:
         vLayout->setContentsMargins(6, 5, 6, 5);
         vLayout->setSpacing(4);
 
+        bool isRu = (LanguageManager::instance().effectiveLanguage() == LanguageManager::Language::Russian);
+
         // --- Row 1: Portal Title & Coordinates ---
         QString title;
         if (p.isBreach) {
             title = p.isHorizontal
-                ? tr("🚨 Пробоина перекрытия (Эт.%1: %2, %3) ➔ Зона %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1)
-                : tr("🚨 Пробоина в стене (Эт.%1: %2, %3) ➔ Зона %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1);
+                ? (isRu ? QString::fromUtf8("🚨 Пробоина перекрытия (Эт.%1: %2, %3) ➔ Зона %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1)
+                        : QString("🚨 Floor Breach (Floor %1: %2, %3) ➔ Zone %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1))
+                : (isRu ? QString::fromUtf8("🚨 Пробоина в стене (Эт.%1: %2, %3) ➔ Зона %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1)
+                        : QString("🚨 Wall Breach (Floor %1: %2, %3) ➔ Zone %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1));
         } else if (p.isCrack) {
-            title = tr("⚠️ Микрощель (Эт.%1: %2, %3) ➔ Зона %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1);
+            title = isRu
+                ? QString::fromUtf8("⚠️ Микрощель (Эт.%1: %2, %3) ➔ Зона %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1)
+                : QString("⚠️ Micro-crack (Floor %1: %2, %3) ➔ Zone %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1);
         } else if (p.isExterior) {
-            title = tr("🚪 Выход наружу (Эт.%1: %2, %3) ➔ Улица").arg(p.layer).arg(p.x1).arg(p.y1);
+            title = isRu
+                ? QString::fromUtf8("🚪 Выход наружу (Эт.%1: %2, %3) ➔ Улица").arg(p.layer).arg(p.x1).arg(p.y1)
+                : QString("🚪 Exit to Outdoors (Floor %1: %2, %3) ➔ Outdoors").arg(p.layer).arg(p.x1).arg(p.y1);
         } else if (p.isWindow) {
             title = p.isHorizontal
-                ? tr("🪟 Потолочное окно (Эт.%1: %2, %3) ➔ Зона %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1)
-                : tr("🪟 Окно (Эт.%1: %2, %3) ➔ Зона %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1);
+                ? (isRu ? QString::fromUtf8("🪟 Потолочное окно (Эт.%1: %2, %3) ➔ Зона %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1)
+                        : QString("🪟 Ceiling Window (Floor %1: %2, %3) ➔ Zone %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1))
+                : (isRu ? QString::fromUtf8("🪟 Окно (Эт.%1: %2, %3) ➔ Зона %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1)
+                        : QString("🪟 Window (Floor %1: %2, %3) ➔ Zone %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1));
         } else if (p.isHorizontal) {
-            title = tr("⬆ Проем перекрытия (Эт.%1: %2, %3) ➔ Зона %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1);
+            title = isRu
+                ? QString::fromUtf8("⬆ Проем перекрытия (Эт.%1: %2, %3) ➔ Зона %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1)
+                : QString("⬆ Floor Opening (Floor %1: %2, %3) ➔ Zone %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1);
         } else {
-            title = tr("🚪 Дверной проем (Эт.%1: %2, %3) ➔ Зона %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1);
+            title = isRu
+                ? QString::fromUtf8("🚪 Дверной проем (Эт.%1: %2, %3) ➔ Зона %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1)
+                : QString("🚪 Doorway (Floor %1: %2, %3) ➔ Zone %4").arg(p.layer).arg(p.x1).arg(p.y1).arg(p.toZone + 1);
         }
 
         m_lblTitle = new QLabel(title, this);
@@ -292,20 +312,20 @@ public:
         lblPrefix->setFixedHeight(20);
         lblPrefix->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
         if (p.isBreach) {
-            lblPrefix->setText(tr("↳ ⚠️ УТЕЧКА:"));
+            lblPrefix->setText(isRu ? QString::fromUtf8("↳ ⚠️ УТЕЧКА:") : QStringLiteral("↳ ⚠️ LEAK:"));
             lblPrefix->setStyleSheet(QStringLiteral("color: #fca5a5; font-size: 10px; font-weight: bold;"));
         } else if (p.isExterior) {
-            lblPrefix->setText(tr("↳ 🌲 Улица (Outdoors)"));
+            lblPrefix->setText(isRu ? QString::fromUtf8("↳ 🌲 Улица") : QStringLiteral("↳ 🌲 Outdoors"));
             lblPrefix->setStyleSheet(QStringLiteral("color: #86efac; font-size: 10px;"));
         } else {
-            lblPrefix->setText(tr("↳ Видно:"));
+            lblPrefix->setText(isRu ? QString::fromUtf8("↳ Видно:") : QStringLiteral("↳ Visible:"));
             lblPrefix->setStyleSheet(QStringLiteral("color: #94a3b8; font-size: 10px;"));
         }
         m_flowLayout->addWidget(lblPrefix);
 
         if (!p.isExterior) {
             if (p.visibleZoneIds.empty()) {
-                QLabel* lblNone = new QLabel(tr("нет"), m_flowContainer);
+                QLabel* lblNone = new QLabel(isRu ? QString::fromUtf8("нет") : QStringLiteral("none"), m_flowContainer);
                 lblNone->setFixedHeight(20);
                 lblNone->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
                 lblNone->setStyleSheet(QStringLiteral("color: #64748b; font-size: 10px; font-style: italic;"));
@@ -631,6 +651,8 @@ void VisZoneDock::setupUi() {
             }
         }
     });
+
+    retranslateUi();
 }
 
 void VisZoneDock::setVisZoneManager(std::shared_ptr<VisZoneManager> mgr) {
@@ -663,7 +685,8 @@ void VisZoneDock::populateZoneCombo() {
     m_zoneCombo->blockSignals(true);
     m_zoneCombo->clear();
 
-    m_zoneCombo->addItem(tr("All Zones (Normal View)"), -1);
+    bool isRu = (LanguageManager::instance().effectiveLanguage() == LanguageManager::Language::Russian);
+    m_zoneCombo->addItem(isRu ? QString::fromUtf8("Все зоны (Обычный вид)") : QStringLiteral("All Zones (Normal View)"), -1);
 
     if (!m_mgr) {
         m_zoneCombo->blockSignals(false);
@@ -680,9 +703,11 @@ void VisZoneDock::populateZoneCombo() {
         if (floorOnly && !z.hasFloor(m_currentFloor)) continue;
 
         QString floorStr = (z.minFloor == z.maxFloor)
-                           ? tr("Floor %1").arg(z.floor)
-                           : tr("Floors %1..%2").arg(z.minFloor).arg(z.maxFloor);
-        QString label = tr("Zone %1 (%2: %3 tiles)").arg(z.id + 1).arg(floorStr).arg(z.tiles.size());
+                           ? (isRu ? QString::fromUtf8("Этаж %1").arg(z.floor) : QString("Floor %1").arg(z.floor))
+                           : (isRu ? QString::fromUtf8("Этажи %1..%2").arg(z.minFloor).arg(z.maxFloor) : QString("Floors %1..%2").arg(z.minFloor).arg(z.maxFloor));
+        QString label = isRu
+            ? QString::fromUtf8("Зона %1 (%2: %3 ячеек)").arg(z.id + 1).arg(floorStr).arg(z.tiles.size())
+            : QString("Zone %1 (%2: %3 tiles)").arg(z.id + 1).arg(floorStr).arg(z.tiles.size());
 
         m_zoneCombo->addItem(label, z.id);
         if (z.id == m_activeZoneId) {
@@ -792,8 +817,9 @@ void VisZoneDock::onIsolationOptionChanged() {
     if (m_lblDim) m_lblDim->setEnabled(isolate);
     if (m_sliderDim) m_sliderDim->setEnabled(isolate);
 
+    bool isRu = (LanguageManager::instance().effectiveLanguage() == LanguageManager::Language::Russian);
     int val = m_sliderDim ? m_sliderDim->value() : 50;
-    if (m_lblDim) m_lblDim->setText(tr("Яркость: %1%").arg(val));
+    if (m_lblDim) m_lblDim->setText(isRu ? QString::fromUtf8("Яркость: %1%").arg(val) : QString("Brightness: %1%").arg(val));
 
     float dimOpacity = isolate ? (val / 100.0f) : 1.0f;
     emit isolationChanged(isolate, dimOpacity);
@@ -820,15 +846,20 @@ void VisZoneDock::updateActiveZoneDetails() {
     emit portalHighlightCleared();
     emit tracePathSelected({});
 
+    bool isRu = (LanguageManager::instance().effectiveLanguage() == LanguageManager::Language::Russian);
     if (m_activeZoneId < 0 || !m_mgr) {
-        m_lblKpi->setText(tr("Режим показа всех зон. Выберите зону выше для анализа порталов и PVS-видимости."));
+        m_lblKpi->setText(isRu
+            ? QString::fromUtf8("Режим показа всех зон. Выберите зону выше для анализа порталов и PVS-видимости.")
+            : QStringLiteral("Showing all zones. Select a zone above to inspect portals and PVS visibility."));
         m_lblKpi->setStyleSheet(QStringLiteral("background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 4px; padding: 5px 8px; font-weight: bold; font-size: 11px;"));
         return;
     }
 
     const VisZone* zone = m_mgr->getZone(m_activeZoneId);
     if (!zone) {
-        m_lblKpi->setText(tr("Выбранная зона не найдена."));
+        m_lblKpi->setText(isRu
+            ? QString::fromUtf8("Выбранная зона не найдена.")
+            : QStringLiteral("Selected zone not found."));
         return;
     }
 
@@ -1005,19 +1036,23 @@ void VisZoneDock::updateActiveZoneDetails() {
     }
 
     if (m_currentPortals.empty()) {
-        QListWidgetItem* item = new QListWidgetItem(tr("В этой зоне нет обнаруженных порталов."), m_listPortals);
+        QListWidgetItem* item = new QListWidgetItem(
+            isRu ? QString::fromUtf8("В этой зоне нет обнаруженных порталов.") : QStringLiteral("No portals detected in this zone."),
+            m_listPortals);
         item->setData(Qt::UserRole, -1);
         item->setForeground(QColor(148, 163, 184));
     }
 
     // Update KPI label
     if (leakCount > 0) {
-        m_lblKpi->setText(tr("🚪 Порталов в зоне: %1  •  🚨 Утечек видимости: %2")
-                          .arg(m_currentPortals.size()).arg(leakCount));
+        m_lblKpi->setText(isRu
+            ? QString::fromUtf8("🚪 Порталов в зоне: %1  •  🚨 Утечек видимости: %2").arg(m_currentPortals.size()).arg(leakCount)
+            : QString("🚪 Portals in zone: %1  •  🚨 Visibility leaks: %2").arg(m_currentPortals.size()).arg(leakCount));
         m_lblKpi->setStyleSheet(QStringLiteral("background: #2f1717; color: #f87171; border: 1px solid #ef4444; border-radius: 4px; padding: 5px 8px; font-weight: bold; font-size: 11px;"));
     } else {
-        m_lblKpi->setText(tr("🚪 Порталов в зоне: %1  •  ✓ Утечек нет")
-                          .arg(m_currentPortals.size()));
+        m_lblKpi->setText(isRu
+            ? QString::fromUtf8("🚪 Порталов в зоне: %1  •  ✓ Утечек нет").arg(m_currentPortals.size())
+            : QString("🚪 Portals in zone: %1  •  ✓ No leaks").arg(m_currentPortals.size()));
         m_lblKpi->setStyleSheet(QStringLiteral("background: #162a1c; color: #4ade80; border: 1px solid #22c55e; border-radius: 4px; padding: 5px 8px; font-weight: bold; font-size: 11px;"));
     }
 }
@@ -1219,23 +1254,29 @@ void VisZoneDock::keyPressEvent(QKeyEvent* event) {
 }
 
 void VisZoneDock::retranslateUi() {
-    setWindowTitle(tr("Visibility Zones & Portals (PVS)"));
-    if (m_btnPrev) m_btnPrev->setToolTip(tr("Предыдущая зона"));
-    if (m_btnNext) m_btnNext->setToolTip(tr("Следующая зона"));
-    if (m_btnFocus) m_btnFocus->setToolTip(tr("Центрировать камеру на зоне"));
-    if (m_btnResetZone) m_btnResetZone->setToolTip(tr("Сбросить выбор зоны / Показать все"));
-    if (m_btnRefresh) m_btnRefresh->setToolTip(tr("Пересчитать зоны и PVS-граф"));
-    if (m_btnReset) m_btnReset->setText(tr("✕ Сброс зоны"));
-    if (m_chkCurrentFloorOnly) m_chkCurrentFloorOnly->setText(tr("Только текущий этаж"));
+    bool isRu = (LanguageManager::instance().effectiveLanguage() == LanguageManager::Language::Russian);
+    setWindowTitle(isRu ? QString::fromUtf8("Зоны видимости и порталы (PVS)") : QStringLiteral("Visibility Zones & Portals (PVS)"));
+    if (m_btnPrev) m_btnPrev->setToolTip(isRu ? QString::fromUtf8("Предыдущая зона") : QStringLiteral("Previous zone"));
+    if (m_btnNext) m_btnNext->setToolTip(isRu ? QString::fromUtf8("Следующая зона") : QStringLiteral("Next zone"));
+    if (m_btnFocus) m_btnFocus->setToolTip(isRu ? QString::fromUtf8("Центрировать камеру на зоне") : QStringLiteral("Center camera on zone"));
+    if (m_btnResetZone) m_btnResetZone->setToolTip(isRu ? QString::fromUtf8("Сбросить выбор зоны / Показать все") : QStringLiteral("Reset zone selection / Show all"));
+    if (m_btnRefresh) m_btnRefresh->setToolTip(isRu ? QString::fromUtf8("Пересчитать зоны и PVS-граф") : QStringLiteral("Recompute zones & PVS graph"));
+    if (m_btnReset) {
+        m_btnReset->setText(isRu ? QString::fromUtf8("✕ Сброс зоны") : QStringLiteral("✕ Reset Zone"));
+        m_btnReset->setToolTip(isRu ? QString::fromUtf8("Сбросить выбор зоны / Показать все зоны") : QStringLiteral("Reset zone selection / Show all zones"));
+    }
+    if (m_chkCurrentFloorOnly) m_chkCurrentFloorOnly->setText(isRu ? QString::fromUtf8("Только текущий этаж") : QStringLiteral("Current floor only"));
 
-    if (m_btnShowOnMap) m_btnShowOnMap->setText(tr("🔍 Показать на карте"));
-    if (m_btnEditWall) m_btnEditWall->setText(tr("🧱 Редактировать стену..."));
+    if (m_btnShowOnMap) m_btnShowOnMap->setText(isRu ? QString::fromUtf8("🔍 Показать на карте") : QStringLiteral("🔍 Show on map"));
+    if (m_btnEditWall) m_btnEditWall->setText(isRu ? QString::fromUtf8("🧱 Редактировать стену...") : QStringLiteral("🧱 Edit Wall..."));
 
-    if (m_grpIsolation) m_grpIsolation->setTitle(tr("Изоляция и цвета"));
-    if (m_chkIsolate) m_chkIsolate->setText(tr("Затемнять невидимые"));
-    if (m_lblDim && m_sliderDim) m_lblDim->setText(tr("Яркость: %1%").arg(m_sliderDim->value()));
-    if (m_chkColorAll) m_chkColorAll->setText(tr("🎨 Раскрасить все"));
-    if (m_btnRecolor) m_btnRecolor->setText(tr("🎲 Палитра"));
+    if (m_grpIsolation) m_grpIsolation->setTitle(isRu ? QString::fromUtf8("Изоляция и цвета") : QStringLiteral("Isolation && Colors"));
+    if (m_chkIsolate) m_chkIsolate->setText(isRu ? QString::fromUtf8("Затемнять невидимые") : QStringLiteral("Dim invisible"));
+    if (m_lblDim && m_sliderDim) m_lblDim->setText(isRu ? QString::fromUtf8("Яркость: %1%").arg(m_sliderDim->value()) : QString("Brightness: %1%").arg(m_sliderDim->value()));
+    if (m_sliderDim) m_sliderDim->setToolTip(isRu ? QString::fromUtf8("Яркость неактивных зон (0% = скрыть, 50% = полупрозрачно, 100% = полная яркость)") : QStringLiteral("Brightness of inactive zones (0% = hide, 50% = translucent, 100% = full brightness)"));
+    if (m_chkColorAll) m_chkColorAll->setText(isRu ? QString::fromUtf8("🎨 Раскрасить все") : QStringLiteral("🎨 Color All"));
+    if (m_btnRecolor) m_btnRecolor->setText(isRu ? QString::fromUtf8("🎲 Палитра") : QStringLiteral("🎲 Palette"));
 
+    populateZoneCombo();
     updateActiveZoneDetails();
 }

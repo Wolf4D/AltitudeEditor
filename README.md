@@ -80,13 +80,20 @@ Visualizes visibility sectors, generated portals, and doorways, letting you see 
 * **PVS Decomposition & Isolation**: Replicates the engine's portal-cutting algorithm to give practical visibility boundaries without 3D compile delays. Isolate active rooms, adjust dimming/opacity for foreign zones, and reveal potential PVS leak paths.
 * **Interactive Room Badges (`Z#`)**: Crisp zone labels rendered with drop shadows and dark backdrops on top of all entities, gizmos, and CSG cutouts. High-priority click hit-testing allows selecting rooms directly even when dense entities or lights are clustered in the room center.
 * **Straight-Line Optical Raycasting (LOS)**: Accurate line-of-sight rays trace direct visibility through doorways and window portals between adjacent rooms. Ray paths are geometrically clipped strictly to the inner surfaces of rooms (`clipRayToZone`), eliminating misleading zigzags or rays penetrating solid exterior walls.
-* **Portal Inspector & Multi-Row Visibility Chips**: Dedicated dock panel listing all door and window portals for the active room with leak indicators (`🚨 Утечка` / `👁 Видно`). Interactive FlowLayout chips wrap cleanly into multiple rows, allowing 1-click inspection, LOS tracing, and jumping directly into visible target zones.
+* **Portal Inspector & Multi-Row Visibility Chips**: Dedicated dock panel listing all door and window portals for the active room with leak indicators (`🚨 Leak` / `👁 Visible`). Interactive FlowLayout chips wrap cleanly into multiple rows, allowing 1-click inspection, LOS tracing, and jumping directly into visible target zones.
 * **PVS Reachability & Culprit Analysis (`ZoneVisibilityDialog`)**: Identify distant rooms rendered through portal cascades and jump directly to the culprit doorway causing unwanted through-wall visibility.
 * **Empty Space Deselection**: Left-clicking anywhere in empty space outside of all zones immediately resets zone selection, unhides all rooms, and clears active trace rays.
 * **Dichotomy Room Deletion (`Shift+Del`)**: Quickly excise an entire room and re-evaluate surrounding portal topology with a single keystroke.
 
 <p align="center">
   <img src="docs/1.jpg" alt="2D Level Navigation and Visibility Zone Manager" width="850" />
+</p>
+
+#### 🎯 Optical LOS Raycasting & Portal Inspector (Close-Up View)
+Selecting any doorway or visible zone chip triggers real-time direct line-of-sight raycasting. The ray originates from the active room (`Z35 [Active]`), cleanly penetrates through the doorway aperture, and terminates squarely inside the visible target room (`Z37 [👁 SELECTED]`) without piercing solid walls:
+
+<p align="center">
+  <img src="docs/4.jpg" alt="Optical LOS Raycasting and Multi-Row Portal Inspector Close-Up" width="850" />
 </p>
 
 ---

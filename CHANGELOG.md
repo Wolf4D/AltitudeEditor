@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.2] - 2026-09-11
+
+### Added
+- **Straight Optical Line-of-Sight (LOS) Raycasting**:
+  - Direct optical line-of-sight ray traces visibility through doorway and window portals between adjacent rooms.
+  - Geometry-clipped strictly to inner room boundaries (`clipRayToZone`), eliminating misleading zigzags and wall-piercing rays.
+- **Enhanced VisZone Badges & Click Priority**:
+  - VisZone labels (`Z#`) rendered with crisp drop shadows and dark backdrops on top of entities, gizmos, and CSG cutouts.
+  - High-priority click hit-testing allows selecting rooms directly even when dense entities or light sources are clustered in the room center.
+- **Empty Space Deselection**:
+  - Left-clicking anywhere in empty space outside of all visibility zones resets active zone selection, unhides all rooms, and clears active trace rays.
+- **PVS Reachability & Culprit Analysis (`ZoneVisibilityDialog`)**:
+  - Identify distant rooms rendered through portal cascades and jump directly to the culprit doorway causing unwanted through-wall visibility.
+- **Portal Inspector & Multi-Row Visibility Chips (`VisZoneDock`)**:
+  - Redesigned dock with clickable portal list, leak indicators (`🚨 Leak` / `👁 Visible`), and multi-row FlowLayout chips.
+  - Full bilingual localization (English / Russian) across `VisZoneDock` and `MapCanvas`.
+- **Documentation & Close-Up Views**:
+  - Added dedicated optical LOS raycasting & portal inspector close-up screenshot (`docs/4.jpg`) and updated `README.md`.
+
+### Changed
+- Incremented application version to **0.9.2**.
+
+---
+
 ## [0.9.1] - 2026-09-07
 
 ### Added
