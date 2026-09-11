@@ -280,6 +280,27 @@ int main(int argc, char* argv[]) {
                     if (auto* dock = window.findChild<VisZoneDock*>()) {
                         dock->show();
                         dock->onExternalZoneSelected(zid);
+
+                        if (args.contains("--portal-row")) {
+                            int prIdx = args.indexOf("--portal-row");
+                            if (args.size() > prIdx + 1) {
+                                int row = args.value(prIdx + 1).toInt();
+                                if (auto* list = dock->findChild<QListWidget*>("listPortals")) {
+                                    if (row >= 0 && row < list->count()) {
+                                        list->setCurrentRow(row);
+                                        QMetaObject::invokeMethod(dock, "onPortalClicked", Q_ARG(QListWidgetItem*, list->item(row)));
+                                        QMetaObject::invokeMethod(dock, "onShowOnMapClicked");
+                                    }
+                                }
+                                if (args.contains("--focus-chip")) {
+                                    int fcIdx = args.indexOf("--focus-chip");
+                                    if (args.size() > fcIdx + 1) {
+                                        int targetZ = args.value(fcIdx + 1).toInt();
+                                        QMetaObject::invokeMethod(dock, "onVisibleZoneChipClicked", Q_ARG(int, row), Q_ARG(int, targetZ));
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

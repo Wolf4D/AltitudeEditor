@@ -74,11 +74,16 @@ Due to the 32-bit architecture and DirectX 9 memory management of the classic FP
 
 ---
 
-### 4. 👁️ Visibility Zone Manager (PVS)
+### 4. 👁️ Visibility Zone Manager (PVS) & Optical LOS Tracer
 Visualizes visibility sectors, generated portals, and doorways, letting you see exactly how the engine divides your map into distinct rooms.
 
-* Replicates the engine's portal-cutting algorithm (modeled loosely after the classic BSP/PVS compiler to give practical visibility boundaries without 3D compile delays).
-* Allows isolating active rooms, dimming outside sectors (Ghost mode), and previewing line-of-sight paths between adjacent zones.
+* **PVS Decomposition & Isolation**: Replicates the engine's portal-cutting algorithm to give practical visibility boundaries without 3D compile delays. Isolate active rooms, adjust dimming/opacity for foreign zones, and reveal potential PVS leak paths.
+* **Interactive Room Badges (`Z#`)**: Crisp zone labels rendered with drop shadows and dark backdrops on top of all entities, gizmos, and CSG cutouts. High-priority click hit-testing allows selecting rooms directly even when dense entities or lights are clustered in the room center.
+* **Straight-Line Optical Raycasting (LOS)**: Accurate line-of-sight rays trace direct visibility through doorways and window portals between adjacent rooms. Ray paths are geometrically clipped strictly to the inner surfaces of rooms (`clipRayToZone`), eliminating misleading zigzags or rays penetrating solid exterior walls.
+* **Portal Inspector & Multi-Row Visibility Chips**: Dedicated dock panel listing all door and window portals for the active room with leak indicators (`🚨 Утечка` / `👁 Видно`). Interactive FlowLayout chips wrap cleanly into multiple rows, allowing 1-click inspection, LOS tracing, and jumping directly into visible target zones.
+* **PVS Reachability & Culprit Analysis (`ZoneVisibilityDialog`)**: Identify distant rooms rendered through portal cascades and jump directly to the culprit doorway causing unwanted through-wall visibility.
+* **Empty Space Deselection**: Left-clicking anywhere in empty space outside of all zones immediately resets zone selection, unhides all rooms, and clears active trace rays.
+* **Dichotomy Room Deletion (`Shift+Del`)**: Quickly excise an entire room and re-evaluate surrounding portal topology with a single keystroke.
 
 <p align="center">
   <img src="docs/1.jpg" alt="2D Level Navigation and Visibility Zone Manager" width="850" />
@@ -141,8 +146,8 @@ The distribution includes two standalone executables:
 ```text
   --export-png <map.fpm> <out.png> [floor] [--color-zones]
                                       Render specified map floor to a high-resolution PNG image
-  --snapshot-window <map.fpm> <out.png> [entity_idx] [--size W H] [--color-zones] [--floor N]
-                                      Render offscreen editor window snapshot
+  --snapshot-window <map.fpm> <out.png> [entity_idx] [--size W H] [--color-zones] [--floor N] [--zone Z] [--portal-row R] [--focus-chip C]
+                                      Render offscreen editor window snapshot with optional active zone, portal, and chip selection
   --snapshot-memory <map.fpm> <out.png>
                                       Render offscreen memory analyzer dialog snapshot
 ```
@@ -171,6 +176,8 @@ AltitudeEditor-cli.exe --export-png "Files/mapbank/1.fpm" "minimap_floor0.png" 0
 | **`F5`** | **Smart Reload**: Reload active map from disk |
 | **`Ctrl + S`** | **Save Map**: Write changes back to `.fpm` with backup creation |
 | **`Ctrl + E`** | **Segment Inspector**: Open Segment Inspector & Conflict Resolver |
+| **`Ctrl + T`** | **Trace Visibility**: Trace optical line-of-sight PVS ray from active zone |
+| **`Shift + Del`** | **Dichotomy Tool**: Delete selected room/zone and recompute portals |
 | **`+`** / **`=`** | Move one floor up (`Floor Up`) |
 | **`-`** / **`_`** | Move one floor down (`Floor Down`) |
 | **`PageUp`** / **`PageDown`** | Navigate floors sequentially |
@@ -178,10 +185,12 @@ AltitudeEditor-cli.exe --export-png "Files/mapbank/1.fpm" "minimap_floor0.png" 0
 | **`[`** / **`]`** | Zoom out / Zoom in |
 | **`0`** | Reset zoom to 100% |
 | **`Home`** | Fit entire level in viewport (`Zoom Fit`) |
+| **Left-click on Zone Badge** | **Select Zone**: Highest priority hit-testing over underlying entities |
+| **Left-click in Empty Space** | **Deselect Zone**: Reset active zone and restore full-map normal view |
+| **Left-click on Entity** | Select entity / Drag with interactive translation gizmo |
 | **Right-click on tile** | Context menu: **Inspect & Edit Segment** (`🧱 Inspect & Edit Segment...`) |
 | **Right-click / Middle-click Drag** | Pan canvas |
-| **Left-click** | Select entity / Clear selection / Highlight tile |
-| **`Escape`** | Clear active tile selection and hazard reticles |
+| **`Escape`** | Clear active zone, tile selection, and hazard reticles |
 
 ---
 
