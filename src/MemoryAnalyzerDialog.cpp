@@ -136,6 +136,7 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
     m_entityTable->setColumnWidth(8, 90);
     m_entityTable->setColumnWidth(9, 220);
     m_entityTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_entityTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_entityTable->setAlternatingRowColors(true);
     m_entityTable->verticalHeader()->setVisible(false);
     m_entityTable->setIconSize(QSize(28, 28));
@@ -169,6 +170,7 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
     m_segmentTable->setColumnWidth(7, 95);
     m_segmentTable->setColumnWidth(8, 220);
     m_segmentTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_segmentTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_segmentTable->setAlternatingRowColors(true);
     m_segmentTable->verticalHeader()->setVisible(false);
     m_segmentTable->setIconSize(QSize(28, 28));
@@ -192,6 +194,7 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
     m_engineTable->setColumnWidth(2, 120);
     m_engineTable->setColumnWidth(3, 300);
     m_engineTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_engineTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_engineTable->setAlternatingRowColors(true);
     m_engineTable->verticalHeader()->setVisible(false);
     m_tabWidget->addTab(m_engineTable, tr("Universe & Engine Breakdown"));
@@ -229,7 +232,8 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
         if (row >= 0 && row < m_entityTable->rowCount()) {
             QTableWidgetItem* itm = m_entityTable->item(row, 1);
             if (itm) {
-                QString relPath = itm->toolTip().section('\n', 0, 0);
+                QString relPath = itm->data(Qt::UserRole).toString();
+                if (relPath.isEmpty()) relPath = itm->toolTip().section('\n', 0, 0);
                 AssetManager::showInExplorer(relPath);
             }
         }
@@ -241,7 +245,8 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
         if (row < 0 || row >= m_entityTable->rowCount()) return;
         QTableWidgetItem* itm = m_entityTable->item(row, 1);
         if (!itm) return;
-        QString relPath = itm->toolTip().section('\n', 0, 0);
+        QString relPath = itm->data(Qt::UserRole).toString();
+        if (relPath.isEmpty()) relPath = itm->toolTip().section('\n', 0, 0);
         QString fullPath = AssetManager::instance().resolvePath(relPath);
         if (fullPath.isEmpty() || !QFileInfo::exists(fullPath)) return;
 
@@ -256,7 +261,8 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
         if (row >= 0 && row < m_segmentTable->rowCount()) {
             QTableWidgetItem* itm = m_segmentTable->item(row, 1);
             if (itm) {
-                QString relPath = itm->toolTip().section('\n', 0, 0);
+                QString relPath = itm->data(Qt::UserRole).toString();
+                if (relPath.isEmpty()) relPath = itm->toolTip().section('\n', 0, 0);
                 AssetManager::showInExplorer(relPath);
             }
         }
@@ -268,7 +274,8 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
         if (row < 0 || row >= m_segmentTable->rowCount()) return;
         QTableWidgetItem* itm = m_segmentTable->item(row, 1);
         if (!itm) return;
-        QString relPath = itm->toolTip().section('\n', 0, 0);
+        QString relPath = itm->data(Qt::UserRole).toString();
+        if (relPath.isEmpty()) relPath = itm->toolTip().section('\n', 0, 0);
         QString fullPath = AssetManager::instance().resolvePath(relPath);
         if (fullPath.isEmpty() || !QFileInfo::exists(fullPath)) return;
 
@@ -505,6 +512,7 @@ void MemoryAnalyzerDialog::populateUI() {
 
         // Col 1: Name
         QTableWidgetItem* nameItm = new QTableWidgetItem(itm.name);
+        nameItm->setData(Qt::UserRole, itm.relPath);
         nameItm->setToolTip(itm.relPath + tr("\nDouble-click to reveal in Windows Explorer"));
         m_entityTable->setItem(row, 1, nameItm);
 
@@ -602,6 +610,7 @@ void MemoryAnalyzerDialog::populateUI() {
 
         // Col 1: Name
         QTableWidgetItem* nameItm = new QTableWidgetItem(itm.name);
+        nameItm->setData(Qt::UserRole, itm.relPath);
         nameItm->setToolTip(itm.relPath + tr("\nDouble-click to reveal in Windows Explorer"));
         m_segmentTable->setItem(row, 1, nameItm);
 

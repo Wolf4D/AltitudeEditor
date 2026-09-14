@@ -1638,11 +1638,28 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        explorerAssetPass = (resolvedCount > 0) && !sampleAsset.isEmpty() && QFileInfo::exists(sampleAsset) && memTooltipsOk;
+        QTableWidget* engTable = memDlg.findChild<QTableWidget*>("engineTable");
+        bool noEditTriggersPass = (entTable && entTable->editTriggers() == QAbstractItemView::NoEditTriggers &&
+                                   segTable && segTable->editTriggers() == QAbstractItemView::NoEditTriggers &&
+                                   engTable && engTable->editTriggers() == QAbstractItemView::NoEditTriggers);
+
+        bool coffincagePass = false;
+        if (entTable) {
+            for (int r = 0; r < entTable->rowCount(); ++r) {
+                auto* itm = entTable->item(r, 1);
+                if (itm && itm->text().contains("coffincage")) {
+                    QString relPath = itm->data(Qt::UserRole).toString();
+                    QString res = AssetManager::instance().resolvePath(relPath);
+                    if (!res.isEmpty() && QFileInfo::exists(res)) coffincagePass = true;
+                }
+            }
+        }
+        explorerAssetPass = (resolvedCount > 0) && !sampleAsset.isEmpty() && QFileInfo::exists(sampleAsset) && memTooltipsOk && noEditTriggersPass && coffincagePass;
         std::cout << "[TEST] Double-click Reveal Asset in Windows Explorer: "
                   << (explorerAssetPass ? "PASS" : "FAIL")
                   << " (resolvedWarnings=" << resolvedCount << ", sampleAsset=" << sampleAsset.toStdString()
-                  << ", memTooltipsOk=" << memTooltipsOk << ")" << std::endl;
+                  << ", memTooltipsOk=" << memTooltipsOk << ", noEditTriggers=" << noEditTriggersPass
+                  << ", coffincagePass=" << coffincagePass << ")" << std::endl;
     }
 
     if (!found29_2 || !allWindowsDetected || !f7WindowsDetected || !fakeClassified || !realWinClassified || !map1ExtPortalPass || !atriumUnified || !z2Floor7Closed || !canvasHasWarnings || !canvasHighlightedRow2 || !f8AllLeaksAssigned || !dichotomyPass || !physicalAlonePass || !f8_y20_allLeaksPass || !staticAlonePass || !mergedPass || !noDuplicatesPass || !tableColCountPass || !descHasIcon || !descHasSizeTag || !suppressionPass || !multiSuppressPass || !visDialogPass || !visZoneDockFlowTestPass || !losOcclusionTestPass || !zone4PortalsPass || !zoneBadgePriorityPass || !emptySpaceDeselectPass || !visZoneDeleteButtonPass || !memoryAnalyzerResizePass || !explorerAssetPass) {

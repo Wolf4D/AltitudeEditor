@@ -8,6 +8,10 @@
 #include <QDesktopServices>
 #include <QUrl>
 #include <cstring>
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <shlobj.h>
+#endif
 
 #pragma pack(push, 1)
 struct DDS_PIXELFORMAT {
@@ -699,7 +703,21 @@ void AssetManager::showInExplorer(const QString& filePath) {
 
     QString nativePath = QDir::toNativeSeparators(QFileInfo(resolved).absoluteFilePath());
 #ifdef Q_OS_WIN
-    QProcess::startDetached(QStringLiteral("explorer.exe"), QStringList() << (QStringLiteral("/select,") + nativePath));
+    bool opened = false;
+    CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    PIDLIST_ABSOLUTE pidl = ILCreateFromPathW(reinterpret_cast<const wchar_t*>(nativePath.utf16()));
+    if (pidl) {
+        if (SUCCEEDED(SHOpenFolderAndSelectItems(pidl, 0, nullptr, 0))) {
+            opened = true;
+        }
+        ILFree(pidl);
+    }
+    if (!opened) {
+        QProcess proc;
+        proc.setProgram(QStringLiteral("explorer.exe"));
+        proc.setNativeArguments(QStringLiteral("/select,\"") + nativePath + QStringLiteral("\""));
+        proc.startDetached();
+    }
 #else
     QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(resolved).absolutePath()));
 #endif
