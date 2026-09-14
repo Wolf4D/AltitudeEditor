@@ -97,10 +97,8 @@ private:
     QPushButton* m_btnNext = nullptr;
     QPushButton* m_btnFocus = nullptr;
     QPushButton* m_btnDeleteZone = nullptr;
-    QPushButton* m_btnResetZone = nullptr;
     QCheckBox* m_chkCurrentFloorOnly = nullptr;
     QPushButton* m_btnRefresh = nullptr;
-    QPushButton* m_btnReset = nullptr;
 
     // Portals & Visibility (Direct layout, no tab widget)
     QLabel* m_lblKpi = nullptr;

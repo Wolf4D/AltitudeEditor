@@ -1526,13 +1526,17 @@ int main(int argc, char* argv[]) {
         dock.resetToNormalView();
         app.processEvents();
         bool disabledAfterReset = (btnDel && !btnDel->isEnabled());
+        bool textIsCross = (btnDel && btnDel->text() == QStringLiteral("✕"));
+        bool resetBtnsRemoved = (dock.findChild<QPushButton*>("btnResetZone") == nullptr &&
+                                 dock.findChild<QPushButton*>("btnReset") == nullptr);
 
-        visZoneDeleteButtonPass = exists && disabledInitially && enabledAfterSelect && signalReceived && disabledAfterReset;
+        visZoneDeleteButtonPass = exists && disabledInitially && enabledAfterSelect && signalReceived && disabledAfterReset && textIsCross && resetBtnsRemoved;
         std::cout << "[TEST] VisZoneDock Delete Zone Button & Dichotomy Signal: "
                   << (visZoneDeleteButtonPass ? "PASS" : "FAIL")
                   << " (exists=" << exists << ", initDis=" << disabledInitially
                   << ", enSel=" << enabledAfterSelect << ", sigRec=" << signalReceived
-                  << ", disReset=" << disabledAfterReset << ")" << std::endl;
+                  << ", disReset=" << disabledAfterReset << ", cross=" << textIsCross
+                  << ", resetBtnsRemoved=" << resetBtnsRemoved << ")" << std::endl;
     }
 
     bool memoryAnalyzerResizePass = false;

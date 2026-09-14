@@ -519,7 +519,7 @@ void VisZoneDock::setupUi() {
     m_btnFocus->setEnabled(false);
     navRow->addWidget(m_btnFocus);
 
-    m_btnDeleteZone = new QPushButton(QStringLiteral("🗑️"), central);
+    m_btnDeleteZone = new QPushButton(QStringLiteral("✕"), central);
     m_btnDeleteZone->setObjectName("btnDeleteZone");
     m_btnDeleteZone->setToolTip(tr("Удалить выбранную зону и все её энтити (Дихотомия) [Delete / Shift+Del]"));
     m_btnDeleteZone->setFixedWidth(28);
@@ -531,21 +531,9 @@ void VisZoneDock::setupUi() {
     ));
     navRow->addWidget(m_btnDeleteZone);
 
-    m_btnResetZone = new QPushButton(QStringLiteral("✕"), central);
-    m_btnResetZone->setObjectName("btnResetZone");
-    m_btnResetZone->setToolTip(tr("Сбросить выбор зоны / Показать все"));
-    m_btnResetZone->setFixedWidth(28);
-    m_btnResetZone->setEnabled(false);
-    m_btnResetZone->setStyleSheet(QStringLiteral(
-        "QPushButton { color: #c4cede; font-weight: bold; } "
-        "QPushButton:hover { background: #303748; border-color: #4a5670; color: #ffffff; } "
-        "QPushButton:disabled { color: #555555; background: #1c202a; border-color: #2e3545; }"
-    ));
-    navRow->addWidget(m_btnResetZone);
-
     mainLayout->addLayout(navRow);
 
-    // Second Row: Floor Filter, Refresh, Show All
+    // Second Row: Floor Filter, Refresh
     QHBoxLayout* subRow = new QHBoxLayout();
     subRow->setSpacing(6);
 
@@ -557,11 +545,6 @@ void VisZoneDock::setupUi() {
     m_btnRefresh->setToolTip(tr("Пересчитать зоны и PVS-граф"));
     m_btnRefresh->setFixedWidth(28);
     subRow->addWidget(m_btnRefresh);
-
-    m_btnReset = new QPushButton(tr("✕ Сброс зоны"), central);
-    m_btnReset->setToolTip(tr("Сбросить выбор зоны / Показать все зоны"));
-    m_btnReset->setFixedHeight(24);
-    subRow->addWidget(m_btnReset);
 
     mainLayout->addLayout(subRow);
 
@@ -644,9 +627,7 @@ void VisZoneDock::setupUi() {
             emit dichotomyDeleteZoneRequested(m_activeZoneId);
         }
     });
-    connect(m_btnResetZone, &QPushButton::clicked, this, &VisZoneDock::resetToNormalView);
     connect(m_btnRefresh, &QPushButton::clicked, this, &VisZoneDock::refreshGraph);
-    connect(m_btnReset, &QPushButton::clicked, this, &VisZoneDock::resetToNormalView);
     connect(m_chkCurrentFloorOnly, &QCheckBox::toggled, this, &VisZoneDock::onFloorFilterToggled);
 
     connect(m_zoneCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &VisZoneDock::onZoneComboChanged);
@@ -873,8 +854,6 @@ void VisZoneDock::updateActiveZoneDetails() {
     if (m_activeZoneId < 0 || !m_mgr) {
         if (m_btnFocus) m_btnFocus->setEnabled(false);
         if (m_btnDeleteZone) m_btnDeleteZone->setEnabled(false);
-        if (m_btnResetZone) m_btnResetZone->setEnabled(false);
-        if (m_btnReset) m_btnReset->setEnabled(false);
 
         m_lblKpi->setText(isRu
             ? QString::fromUtf8("Режим показа всех зон. Выберите зону выше для анализа порталов и PVS-видимости.")
@@ -887,8 +866,6 @@ void VisZoneDock::updateActiveZoneDetails() {
     if (!zone) {
         if (m_btnFocus) m_btnFocus->setEnabled(false);
         if (m_btnDeleteZone) m_btnDeleteZone->setEnabled(false);
-        if (m_btnResetZone) m_btnResetZone->setEnabled(false);
-        if (m_btnReset) m_btnReset->setEnabled(false);
 
         m_lblKpi->setText(isRu
             ? QString::fromUtf8("Выбранная зона не найдена.")
@@ -903,8 +880,6 @@ void VisZoneDock::updateActiveZoneDetails() {
             ? QString::fromUtf8("Удалить Зону %1 и все её энтити (Дихотомия) [Delete / Shift+Del]").arg(zone->id + 1)
             : QString("Delete Zone %1 and all its entities (Dichotomy) [Delete / Shift+Del]").arg(zone->id + 1));
     }
-    if (m_btnResetZone) m_btnResetZone->setEnabled(true);
-    if (m_btnReset) m_btnReset->setEnabled(true);
 
     // 1. Collect portals from PVS Graph if available
     if (m_pvsGraph.contains(m_activeZoneId)) {
@@ -1303,12 +1278,7 @@ void VisZoneDock::retranslateUi() {
     if (m_btnNext) m_btnNext->setToolTip(isRu ? QString::fromUtf8("Следующая зона") : QStringLiteral("Next zone"));
     if (m_btnFocus) m_btnFocus->setToolTip(isRu ? QString::fromUtf8("Центрировать камеру на зоне") : QStringLiteral("Center camera on zone"));
     if (m_btnDeleteZone) m_btnDeleteZone->setToolTip(isRu ? QString::fromUtf8("Удалить выбранную зону и все её энтити (Дихотомия) [Delete / Shift+Del]") : QStringLiteral("Delete selected zone and all its entities (Dichotomy) [Delete / Shift+Del]"));
-    if (m_btnResetZone) m_btnResetZone->setToolTip(isRu ? QString::fromUtf8("Сбросить выбор зоны / Показать все") : QStringLiteral("Reset zone selection / Show all"));
     if (m_btnRefresh) m_btnRefresh->setToolTip(isRu ? QString::fromUtf8("Пересчитать зоны и PVS-граф") : QStringLiteral("Recompute zones & PVS graph"));
-    if (m_btnReset) {
-        m_btnReset->setText(isRu ? QString::fromUtf8("✕ Сброс зоны") : QStringLiteral("✕ Reset Zone"));
-        m_btnReset->setToolTip(isRu ? QString::fromUtf8("Сбросить выбор зоны / Показать все зоны") : QStringLiteral("Reset zone selection / Show all zones"));
-    }
     if (m_chkCurrentFloorOnly) m_chkCurrentFloorOnly->setText(isRu ? QString::fromUtf8("Только текущий этаж") : QStringLiteral("Current floor only"));
 
     if (m_btnShowOnMap) m_btnShowOnMap->setText(isRu ? QString::fromUtf8("🔍 Показать на карте") : QStringLiteral("🔍 Show on map"));
