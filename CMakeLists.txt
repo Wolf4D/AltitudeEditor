@@ -32,6 +32,7 @@ set(SOURCES
     src/VisZoneDock.cpp
     src/SegmentEditorDialog.cpp
     src/LanguageManager.cpp
+    src/TextureOptimizationDialog.cpp
     src/resources.qrc
 )
 
@@ -56,6 +57,7 @@ set(HEADERS
     src/ZoneVisibilityDialog.h
     src/LeakSuppressionManager.h
     src/SegmentEditorDialog.h
+    src/TextureOptimizationDialog.h
     src/UniverseDBUParser.h
     src/VisZoneManager.h
     src/VisZoneDock.h
@@ -100,6 +102,7 @@ add_executable(test_standalone
     src/VisZoneManager.cpp
     src/VisZoneDock.cpp
     src/LanguageManager.cpp
+    src/TextureOptimizationDialog.cpp
     src/MemoryAnalyzerDialog.cpp
 )
 target_link_libraries(test_standalone PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Concurrent)

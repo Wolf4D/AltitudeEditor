@@ -1,4 +1,5 @@
 #include "MemoryAnalyzerDialog.h"
+#include "TextureOptimizationDialog.h"
 #include "Version.h"
 #include "AssetManager.h"
 #include <QVBoxLayout>
@@ -1243,29 +1244,21 @@ void MemoryAnalyzerDialog::optimizeTargets(const QStringList& targetPaths, const
         }
     }
 
-    // 2. Confirmation prompt listing actual texture files
-    QString targetsListStr;
-    for (const QString& p : validPaths) {
-        targetsListStr += "• " + QDir::toNativeSeparators(p) + "\n";
+    // 2. Interactive Texture Optimization Settings Dialog
+    TextureOptimizationDialog optDlg(itemName, validPaths, this);
+    if (optDlg.exec() != QDialog::Accepted) {
+        return;
     }
 
-    QMessageBox::StandardButton confirm = QMessageBox::question(
-        this,
-        tr("Optimize Textures — %1").arg(itemName),
-        tr("Run FPSC Texture Optimizer on:\n%1\n"
-           "Actions performed:\n"
-           "• Automatic .bak backup copy creation before overwrite\n"
-           "• Opaque textures forced to DXT1 (50% VRAM savings)\n"
-           "• Mipmap pyramid generated down to 1x1\n"
-           "• Strict DirectX 9 legacy DDS compliance (no DX10 headers)\n\n"
-           "Proceed with optimization?").arg(targetsListStr.trimmed()),
-        QMessageBox::Yes | QMessageBox::Cancel
-    );
+    TextureOptimizationSettings optSettings = optDlg.getSettings();
+    if (optSettings.selectedFilePaths.isEmpty()) {
+        return;
+    }
 
-    if (confirm != QMessageBox::Yes) return;
+    const QStringList& targetsToProcess = optSettings.selectedFilePaths;
 
     // 3. Execution with modal progress dialog
-    QProgressDialog progress(tr("Optimizing textures with FPSC_TexOptimizer..."), QString(), 0, validPaths.size(), this);
+    QProgressDialog progress(tr("Optimizing textures with FPSC_TexOptimizer..."), QString(), 0, targetsToProcess.size(), this);
     progress.setWindowModality(Qt::WindowModal);
     progress.setCancelButton(nullptr);
     progress.setValue(0);
@@ -1281,10 +1274,10 @@ void MemoryAnalyzerDialog::optimizeTargets(const QStringList& targetPaths, const
     int totalFailed = 0;
     QString aggregatedOutput;
 
-    for (int i = 0; i < validPaths.size(); ++i) {
-        const QString& target = validPaths[i];
+    for (int i = 0; i < targetsToProcess.size(); ++i) {
+        const QString& target = targetsToProcess[i];
         progress.setLabelText(tr("Optimizing [%1/%2]: %3")
-            .arg(i + 1).arg(validPaths.size()).arg(QFileInfo(target).fileName()));
+            .arg(i + 1).arg(targetsToProcess.size()).arg(QFileInfo(target).fileName()));
         progress.setValue(i);
         QApplication::processEvents();
 
@@ -1293,7 +1286,15 @@ void MemoryAnalyzerDialog::optimizeTargets(const QStringList& targetPaths, const
         process.setProcessEnvironment(env);
 
         QStringList args;
-        args << "-i" << target << "-b" << "--max-size" << "2048" << "-V";
+        args << "-i" << target;
+        if (optSettings.createBackup) args << "-b";
+        if (optSettings.maxSize > 0) args << "--max-size" << QString::number(optSettings.maxSize);
+        if (!optSettings.generateMips) args << "--no-mips";
+        if (!optSettings.pureAlphaCheck) args << "--no-pure-alpha";
+        if (!optSettings.forcePot) args << "--no-pot";
+        if (optSettings.forceRecompress) args << "-f";
+        args << "-V";
+
         process.start(exePath, args);
         process.waitForFinished(60000); // 60s per texture
 
@@ -1312,7 +1313,7 @@ void MemoryAnalyzerDialog::optimizeTargets(const QStringList& targetPaths, const
         }
     }
 
-    progress.setValue(validPaths.size());
+    progress.setValue(targetsToProcess.size());
     progress.close();
 
     if (totalSuccess > 0) {
