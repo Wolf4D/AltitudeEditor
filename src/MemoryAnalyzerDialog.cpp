@@ -228,61 +228,183 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
     connect(m_exportBtn, &QPushButton::clicked, this, &MemoryAnalyzerDialog::onExportCSV);
     connect(m_closeBtn, &QPushButton::clicked, this, &QDialog::accept);
 
-    connect(m_entityTable, &QTableWidget::cellDoubleClicked, this, [this](int row, int /*col*/) {
+    connect(m_entityTable, &QTableWidget::cellDoubleClicked, this, [this](int row, int col) {
         if (row >= 0 && row < m_entityTable->rowCount()) {
-            QTableWidgetItem* itm = m_entityTable->item(row, 1);
-            if (itm) {
-                QString relPath = itm->data(Qt::UserRole).toString();
-                if (relPath.isEmpty()) relPath = itm->toolTip().section('\n', 0, 0);
-                AssetManager::showInExplorer(relPath);
-            }
+            QTableWidgetItem* nameItm = m_entityTable->item(row, 1);
+            QString contextPath = nameItm ? nameItm->data(Qt::UserRole).toString() : QString();
+
+            QTableWidgetItem* clickedItm = (col >= 0) ? m_entityTable->item(row, col) : nullptr;
+            QString targetPath = clickedItm ? clickedItm->data(Qt::UserRole).toString() : QString();
+            if (targetPath.isEmpty()) targetPath = contextPath;
+
+            AssetManager::showInExplorer(targetPath, contextPath);
         }
     });
 
     m_entityTable->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(m_entityTable, &QTableWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
         int row = m_entityTable->rowAt(pos.y());
+        int col = m_entityTable->columnAt(pos.x());
         if (row < 0 || row >= m_entityTable->rowCount()) return;
-        QTableWidgetItem* itm = m_entityTable->item(row, 1);
-        if (!itm) return;
-        QString relPath = itm->data(Qt::UserRole).toString();
-        if (relPath.isEmpty()) relPath = itm->toolTip().section('\n', 0, 0);
-        QString fullPath = AssetManager::instance().resolvePath(relPath);
-        if (fullPath.isEmpty() || !QFileInfo::exists(fullPath)) return;
+
+        QTableWidgetItem* nameItm = m_entityTable->item(row, 1);
+        if (!nameItm) return;
+        QString entPath = nameItm->data(Qt::UserRole).toString();
+        QString fullEntPath = AssetManager::instance().resolvePath(entPath);
+
+        QTableWidgetItem* clickedItm = (col >= 0) ? m_entityTable->item(row, col) : nullptr;
+        QString clickedPath = clickedItm ? clickedItm->data(Qt::UserRole).toString() : QString();
+        QString fullClickedPath = !clickedPath.isEmpty() ? AssetManager::instance().resolvePath(clickedPath, entPath) : QString();
+
+        QTableWidgetItem* meshItm = m_entityTable->item(row, 4);
+        QString modelPath = meshItm ? meshItm->data(Qt::UserRole).toString() : QString();
+        QString fullModelPath = !modelPath.isEmpty() ? AssetManager::instance().resolvePath(modelPath, entPath) : QString();
+
+        QTableWidgetItem* texItm = m_entityTable->item(row, 5);
+        QString texPath = texItm ? texItm->data(Qt::UserRole).toString() : QString();
+        QString fullTexPath = !texPath.isEmpty() ? AssetManager::instance().resolvePath(texPath, entPath) : QString();
+
+        QTableWidgetItem* audItm = m_entityTable->item(row, 6);
+        QString audPath = audItm ? audItm->data(Qt::UserRole).toString() : QString();
+        QString fullAudPath = !audPath.isEmpty() ? AssetManager::instance().resolvePath(audPath, entPath) : QString();
 
         QMenu menu(this);
-        QAction* actExp = menu.addAction(tr("📁 Show \"%1\" in Explorer...").arg(QFileInfo(fullPath).fileName()));
-        if (menu.exec(m_entityTable->viewport()->mapToGlobal(pos)) == actExp) {
-            AssetManager::showInExplorer(fullPath);
+
+        if (!fullClickedPath.isEmpty() && fullClickedPath != fullEntPath) {
+            QString cLabel = tr("📁 Show \"%1\" in Explorer...").arg(QFileInfo(fullClickedPath).fileName());
+            QAction* actClicked = menu.addAction(cLabel);
+            QFont f = actClicked->font();
+            f.setBold(true);
+            actClicked->setFont(f);
+            menu.addSeparator();
+        }
+
+        QAction* actEnt = nullptr;
+        if (!fullEntPath.isEmpty()) {
+            actEnt = menu.addAction(tr("📁 Show Entity Profile (\"%1\") in Explorer...").arg(QFileInfo(fullEntPath).fileName()));
+        }
+        QAction* actModel = nullptr;
+        if (!fullModelPath.isEmpty() && fullModelPath != fullEntPath && fullModelPath != fullClickedPath) {
+            actModel = menu.addAction(tr("📁 Show Model (\"%1\") in Explorer...").arg(QFileInfo(fullModelPath).fileName()));
+        }
+        QAction* actTex = nullptr;
+        if (!fullTexPath.isEmpty() && fullTexPath != fullEntPath && fullTexPath != fullClickedPath) {
+            actTex = menu.addAction(tr("📁 Show Texture (\"%1\") in Explorer...").arg(QFileInfo(fullTexPath).fileName()));
+        }
+        QAction* actAud = nullptr;
+        if (!fullAudPath.isEmpty() && fullAudPath != fullEntPath && fullAudPath != fullClickedPath) {
+            actAud = menu.addAction(tr("📁 Show Audio (\"%1\") in Explorer...").arg(QFileInfo(fullAudPath).fileName()));
+        }
+
+        QAction* chosen = menu.exec(m_entityTable->viewport()->mapToGlobal(pos));
+        if (!chosen) return;
+
+        if (chosen == actEnt) {
+            AssetManager::showInExplorer(fullEntPath, entPath);
+        } else if (chosen == actModel) {
+            AssetManager::showInExplorer(fullModelPath, entPath);
+        } else if (chosen == actTex) {
+            AssetManager::showInExplorer(fullTexPath, entPath);
+        } else if (chosen == actAud) {
+            AssetManager::showInExplorer(fullAudPath, entPath);
+        } else if (!fullClickedPath.isEmpty()) {
+            AssetManager::showInExplorer(fullClickedPath, entPath);
         }
     });
 
-    connect(m_segmentTable, &QTableWidget::cellDoubleClicked, this, [this](int row, int /*col*/) {
+    connect(m_segmentTable, &QTableWidget::cellDoubleClicked, this, [this](int row, int col) {
         if (row >= 0 && row < m_segmentTable->rowCount()) {
-            QTableWidgetItem* itm = m_segmentTable->item(row, 1);
-            if (itm) {
-                QString relPath = itm->data(Qt::UserRole).toString();
-                if (relPath.isEmpty()) relPath = itm->toolTip().section('\n', 0, 0);
-                AssetManager::showInExplorer(relPath);
-            }
+            QTableWidgetItem* nameItm = m_segmentTable->item(row, 1);
+            QString contextPath = nameItm ? nameItm->data(Qt::UserRole).toString() : QString();
+
+            QTableWidgetItem* clickedItm = (col >= 0) ? m_segmentTable->item(row, col) : nullptr;
+            QString targetPath = clickedItm ? clickedItm->data(Qt::UserRole).toString() : QString();
+            if (targetPath.isEmpty()) targetPath = contextPath;
+
+            AssetManager::showInExplorer(targetPath, contextPath);
         }
     });
 
     m_segmentTable->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(m_segmentTable, &QTableWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
         int row = m_segmentTable->rowAt(pos.y());
+        int col = m_segmentTable->columnAt(pos.x());
         if (row < 0 || row >= m_segmentTable->rowCount()) return;
-        QTableWidgetItem* itm = m_segmentTable->item(row, 1);
-        if (!itm) return;
-        QString relPath = itm->data(Qt::UserRole).toString();
-        if (relPath.isEmpty()) relPath = itm->toolTip().section('\n', 0, 0);
-        QString fullPath = AssetManager::instance().resolvePath(relPath);
-        if (fullPath.isEmpty() || !QFileInfo::exists(fullPath)) return;
+
+        QTableWidgetItem* nameItm = m_segmentTable->item(row, 1);
+        if (!nameItm) return;
+        QString segPath = nameItm->data(Qt::UserRole).toString();
+        QString fullSegPath = AssetManager::instance().resolvePath(segPath);
+
+        QTableWidgetItem* clickedItm = (col >= 0) ? m_segmentTable->item(row, col) : nullptr;
+        QString clickedPath = clickedItm ? clickedItm->data(Qt::UserRole).toString() : QString();
+        QString fullClickedPath = !clickedPath.isEmpty() ? AssetManager::instance().resolvePath(clickedPath, segPath) : QString();
+
+        QTableWidgetItem* meshItm = m_segmentTable->item(row, 4);
+        QString meshPath = meshItm ? meshItm->data(Qt::UserRole).toString() : QString();
+        QString fullMeshPath = !meshPath.isEmpty() ? AssetManager::instance().resolvePath(meshPath, segPath) : QString();
+
+        QTableWidgetItem* diffItm = m_segmentTable->item(row, 5);
+        QString diffPath = diffItm ? diffItm->data(Qt::UserRole).toString() : QString();
+        QString fullDiffPath = !diffPath.isEmpty() ? AssetManager::instance().resolvePath(diffPath, segPath) : QString();
+
+        QTableWidgetItem* nsItm = m_segmentTable->item(row, 6);
+        QString nsPath = nsItm ? nsItm->data(Qt::UserRole).toString() : QString();
+        QString fullNsPath = !nsPath.isEmpty() ? AssetManager::instance().resolvePath(nsPath, segPath) : QString();
 
         QMenu menu(this);
-        QAction* actExp = menu.addAction(tr("📁 Show \"%1\" in Explorer...").arg(QFileInfo(fullPath).fileName()));
-        if (menu.exec(m_segmentTable->viewport()->mapToGlobal(pos)) == actExp) {
-            AssetManager::showInExplorer(fullPath);
+
+        if (!fullClickedPath.isEmpty() && fullClickedPath != fullSegPath) {
+            QString cLabel = tr("📁 Show \"%1\" in Explorer...").arg(QFileInfo(fullClickedPath).fileName());
+            QAction* actClicked = menu.addAction(cLabel);
+            QFont f = actClicked->font();
+            f.setBold(true);
+            actClicked->setFont(f);
+            menu.addSeparator();
+        }
+
+        QAction* actSeg = nullptr;
+        if (!fullSegPath.isEmpty()) {
+            actSeg = menu.addAction(tr("📁 Show Segment Profile (\"%1\") in Explorer...").arg(QFileInfo(fullSegPath).fileName()));
+        }
+        QAction* actMesh = nullptr;
+        if (!fullMeshPath.isEmpty() && fullMeshPath != fullSegPath && fullMeshPath != fullClickedPath) {
+            actMesh = menu.addAction(tr("📁 Show Mesh (\"%1\") in Explorer...").arg(QFileInfo(fullMeshPath).fileName()));
+        }
+        QAction* actDiff = nullptr;
+        if (!fullDiffPath.isEmpty() && fullDiffPath != fullSegPath && fullDiffPath != fullClickedPath) {
+            actDiff = menu.addAction(tr("📁 Show Diffuse Texture (\"%1\") in Explorer...").arg(QFileInfo(fullDiffPath).fileName()));
+        }
+        QAction* actNs = nullptr;
+        if (!fullNsPath.isEmpty() && fullNsPath != fullSegPath && fullNsPath != fullClickedPath && fullNsPath != fullDiffPath) {
+            actNs = menu.addAction(tr("📁 Show Normal/Spec Texture (\"%1\") in Explorer...").arg(QFileInfo(fullNsPath).fileName()));
+        }
+
+        QAction* chosen = menu.exec(m_segmentTable->viewport()->mapToGlobal(pos));
+        if (!chosen) return;
+
+        if (chosen == actSeg) {
+            AssetManager::showInExplorer(fullSegPath, segPath);
+        } else if (chosen == actMesh) {
+            AssetManager::showInExplorer(fullMeshPath, segPath);
+        } else if (chosen == actDiff) {
+            AssetManager::showInExplorer(fullDiffPath, segPath);
+        } else if (chosen == actNs) {
+            AssetManager::showInExplorer(fullNsPath, segPath);
+        } else if (!fullClickedPath.isEmpty()) {
+            AssetManager::showInExplorer(fullClickedPath, segPath);
+        }
+    });
+
+    connect(m_engineTable, &QTableWidget::cellDoubleClicked, this, [this](int row, int /*col*/) {
+        if (row >= 0 && row < m_engineTable->rowCount()) {
+            QTableWidgetItem* itm = m_engineTable->item(row, 0);
+            if (itm) {
+                QString path = itm->data(Qt::UserRole).toString();
+                if (!path.isEmpty()) {
+                    AssetManager::showInExplorer(path);
+                }
+            }
         }
     });
 
@@ -508,6 +630,7 @@ void MemoryAnalyzerDialog::populateUI() {
         if (!itm.iconBmpPath.isEmpty()) iconPx = AssetManager::instance().loadIcon(itm.iconBmpPath);
         QTableWidgetItem* iconItm = new QTableWidgetItem();
         if (!iconPx.isNull()) iconItm->setIcon(QIcon(iconPx));
+        iconItm->setData(Qt::UserRole, itm.relPath);
         m_entityTable->setItem(row, 0, iconItm);
 
         // Col 1: Name
@@ -518,11 +641,13 @@ void MemoryAnalyzerDialog::populateUI() {
 
         // Col 2: Category
         QTableWidgetItem* catItm = new QTableWidgetItem(entityCategoryToString(itm.category));
+        catItm->setData(Qt::UserRole, itm.relPath);
         m_entityTable->setItem(row, 2, catItm);
 
         // Col 3: Instances
         QTableWidgetItem* cntItm = new NumericTableWidgetItem(QString::number(itm.instanceCount), itm.instanceCount);
         cntItm->setTextAlignment(Qt::AlignCenter);
+        cntItm->setData(Qt::UserRole, itm.relPath);
         m_entityTable->setItem(row, 3, cntItm);
 
         // Col 4: Mesh Size
@@ -531,6 +656,9 @@ void MemoryAnalyzerDialog::populateUI() {
             itm.meshSizeBytes
         );
         meshItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        meshItm->setData(Qt::UserRole, itm.modelPath.isEmpty() ? itm.relPath : itm.modelPath);
+        meshItm->setToolTip(QString("Model: %1\nDouble-click to reveal in Windows Explorer")
+            .arg(itm.modelPath.isEmpty() ? tr("(None)") : itm.modelPath));
         m_entityTable->setItem(row, 4, meshItm);
 
         // Col 5: Texture RAM Size
@@ -539,10 +667,14 @@ void MemoryAnalyzerDialog::populateUI() {
             QString("%1 MB").arg(texTotal / (1024.0f * 1024.0f), 0, 'f', 2),
             texTotal
         );
-        texItm->setToolTip(QString("Diffuse: %1 MB\nNormals: %2 MB\nSpecular: %3 MB\nRes: %4x%5")
+        texItm->setData(Qt::UserRole, itm.texturePath.isEmpty() ? itm.relPath : itm.texturePath);
+        texItm->setToolTip(QString("Diffuse: %1 MB (%2)\nNormals: %3 MB (%4)\nSpecular: %5 MB (%6)\nRes: %7x%8\nDouble-click to reveal in Windows Explorer")
             .arg(itm.textureRamBytes / (1024.0 * 1024.0), 0, 'f', 2)
+            .arg(itm.texturePath.isEmpty() ? tr("None") : itm.texturePath)
             .arg(itm.normalRamBytes / (1024.0 * 1024.0), 0, 'f', 2)
+            .arg(itm.normalPath.isEmpty() ? tr("None") : itm.normalPath)
             .arg(itm.specularRamBytes / (1024.0 * 1024.0), 0, 'f', 2)
+            .arg(itm.specularPath.isEmpty() ? tr("None") : itm.specularPath)
             .arg(itm.texWidth).arg(itm.texHeight));
         texItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         m_entityTable->setItem(row, 5, texItm);
@@ -553,6 +685,10 @@ void MemoryAnalyzerDialog::populateUI() {
             itm.audioSizeBytes
         );
         audItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        audItm->setData(Qt::UserRole, itm.audioPath.isEmpty() ? itm.relPath : itm.audioPath);
+        if (!itm.audioPath.isEmpty()) {
+            audItm->setToolTip(QString("Audio: %1\nDouble-click to reveal in Windows Explorer").arg(itm.audioPath));
+        }
         m_entityTable->setItem(row, 6, audItm);
 
         // Col 7: RAM / Inst
@@ -561,6 +697,7 @@ void MemoryAnalyzerDialog::populateUI() {
             itm.ramPerInstanceBytes
         );
         rpiItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        rpiItm->setData(Qt::UserRole, itm.relPath);
         m_entityTable->setItem(row, 7, rpiItm);
 
         // Col 8: Total RAM
@@ -569,6 +706,7 @@ void MemoryAnalyzerDialog::populateUI() {
             itm.totalTypeRamBytes
         );
         totItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        totItm->setData(Qt::UserRole, itm.relPath);
         if (itm.totalTypeRamBytes >= 15LL * 1024LL * 1024LL) {
             totItm->setForeground(QColor(235, 77, 75));
         } else if (itm.totalTypeRamBytes >= 5LL * 1024LL * 1024LL) {
@@ -578,6 +716,7 @@ void MemoryAnalyzerDialog::populateUI() {
 
         // Col 9: Alerts
         QTableWidgetItem* alrItm = new QTableWidgetItem(itm.warnings.join(", "));
+        alrItm->setData(Qt::UserRole, itm.relPath);
         if (!itm.warnings.isEmpty()) {
             alrItm->setForeground(QColor(243, 156, 18));
         }
@@ -606,6 +745,7 @@ void MemoryAnalyzerDialog::populateUI() {
         if (!itm.iconBmpPath.isEmpty()) iconPx = AssetManager::instance().loadIcon(itm.iconBmpPath);
         QTableWidgetItem* iconItm = new QTableWidgetItem();
         if (!iconPx.isNull()) iconItm->setIcon(QIcon(iconPx));
+        iconItm->setData(Qt::UserRole, itm.relPath);
         m_segmentTable->setItem(row, 0, iconItm);
 
         // Col 1: Name
@@ -617,11 +757,13 @@ void MemoryAnalyzerDialog::populateUI() {
         // Col 2: Parts
         QTableWidgetItem* partsItm = new NumericTableWidgetItem(QString::number(itm.partCount), itm.partCount);
         partsItm->setTextAlignment(Qt::AlignCenter);
+        partsItm->setData(Qt::UserRole, itm.relPath);
         m_segmentTable->setItem(row, 2, partsItm);
 
         // Col 3: Placed Blocks
         QTableWidgetItem* placedItm = new NumericTableWidgetItem(QString::number(itm.placedCount), itm.placedCount);
         placedItm->setTextAlignment(Qt::AlignCenter);
+        placedItm->setData(Qt::UserRole, itm.relPath);
         m_segmentTable->setItem(row, 3, placedItm);
 
         // Col 4: Mesh RAM
@@ -630,6 +772,10 @@ void MemoryAnalyzerDialog::populateUI() {
             itm.meshSizeBytes
         );
         meshItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        meshItm->setData(Qt::UserRole, itm.meshPath.isEmpty() ? itm.relPath : itm.meshPath);
+        meshItm->setToolTip(QString("Mesh: %1 (%2 parts)\nDouble-click to reveal in Windows Explorer")
+            .arg(itm.meshPath.isEmpty() ? tr("(Built-in)") : itm.meshPath)
+            .arg(itm.uniqueMeshCount));
         m_segmentTable->setItem(row, 4, meshItm);
 
         // Col 5: Diffuse RAM
@@ -638,6 +784,9 @@ void MemoryAnalyzerDialog::populateUI() {
             itm.diffuseRamBytes
         );
         diffItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        diffItm->setData(Qt::UserRole, itm.diffusePath.isEmpty() ? itm.relPath : itm.diffusePath);
+        diffItm->setToolTip(QString("Diffuse Texture: %1\nDouble-click to reveal in Windows Explorer")
+            .arg(itm.diffusePath.isEmpty() ? tr("(None)") : itm.diffusePath));
         m_segmentTable->setItem(row, 5, diffItm);
 
         // Col 6: Normal/Spec RAM
@@ -647,6 +796,11 @@ void MemoryAnalyzerDialog::populateUI() {
             normSpec
         );
         nsItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        QString nsPath = !itm.normalPath.isEmpty() ? itm.normalPath : itm.specularPath;
+        nsItm->setData(Qt::UserRole, nsPath.isEmpty() ? (itm.diffusePath.isEmpty() ? itm.relPath : itm.diffusePath) : nsPath);
+        nsItm->setToolTip(QString("Normal Map: %1\nSpecular Map: %2\nDouble-click to reveal in Windows Explorer")
+            .arg(itm.normalPath.isEmpty() ? tr("None") : itm.normalPath)
+            .arg(itm.specularPath.isEmpty() ? tr("None") : itm.specularPath));
         m_segmentTable->setItem(row, 6, nsItm);
 
         // Col 7: Total RAM
@@ -655,6 +809,7 @@ void MemoryAnalyzerDialog::populateUI() {
             itm.totalTypeRamBytes
         );
         totItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        totItm->setData(Qt::UserRole, itm.relPath);
         if (itm.totalTypeRamBytes >= 15LL * 1024LL * 1024LL) {
             totItm->setForeground(QColor(235, 77, 75));
         } else if (itm.totalTypeRamBytes >= 5LL * 1024LL * 1024LL) {
@@ -664,6 +819,7 @@ void MemoryAnalyzerDialog::populateUI() {
 
         // Col 8: Alerts
         QTableWidgetItem* alrItm = new QTableWidgetItem(itm.warnings.join(", "));
+        alrItm->setData(Qt::UserRole, itm.relPath);
         if (!itm.warnings.isEmpty()) {
             alrItm->setForeground(QColor(243, 156, 18));
         }
@@ -674,10 +830,15 @@ void MemoryAnalyzerDialog::populateUI() {
     // 3. Populate Universe & Engine Breakdown Table
     m_engineTable->setSortingEnabled(false);
     m_engineTable->setRowCount(0);
-    auto addEngineRow = [&](const QString& comp, const QString& type, float mb, const QString& desc) {
+    auto addEngineRow = [&](const QString& comp, const QString& type, float mb, const QString& desc, const QString& fileTarget = QString()) {
         int r = m_engineTable->rowCount();
         m_engineTable->insertRow(r);
-        m_engineTable->setItem(r, 0, new QTableWidgetItem(comp));
+        QTableWidgetItem* compItm = new QTableWidgetItem(comp);
+        if (!fileTarget.isEmpty()) {
+            compItm->setData(Qt::UserRole, fileTarget);
+            compItm->setToolTip(fileTarget + tr("\nDouble-click to reveal in Windows Explorer"));
+        }
+        m_engineTable->setItem(r, 0, compItm);
         m_engineTable->setItem(r, 1, new QTableWidgetItem(type));
         QTableWidgetItem* ramItm = new NumericTableWidgetItem(QString("%1 MB").arg(mb, 0, 'f', 1), static_cast<double>(mb));
         ramItm->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
@@ -685,9 +846,13 @@ void MemoryAnalyzerDialog::populateUI() {
         m_engineTable->setItem(r, 3, new QTableWidgetItem(desc));
     };
 
+    QString universeDbo = AssetManager::instance().resolvePath(QStringLiteral("universe.dbo"));
+    if (universeDbo.isEmpty()) universeDbo = AssetManager::instance().resolvePath(QStringLiteral("universe.dbu"));
+
     addEngineRow(QStringLiteral("Universe CSG Geometry"), QStringLiteral("universe.dbo"),
                  m_report.universeCsgRamBytes / (1024.0f * 1024.0f),
-                 QStringLiteral("Compiled CSG BSP tree, portal connectivity graphs, and static world trimeshes"));
+                 QStringLiteral("Compiled CSG BSP tree, portal connectivity graphs, and static world trimeshes"),
+                 universeDbo);
 
     addEngineRow(QStringLiteral("Level Lightmaps"), QStringLiteral("D3D Surfaces"),
                  m_report.lightmapsRamBytes / (1024.0f * 1024.0f),

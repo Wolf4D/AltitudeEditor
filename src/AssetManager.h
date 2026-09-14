@@ -25,7 +25,7 @@ public:
     void setEngineRoot(const QString& path);
     QString engineRoot() const;
 
-    QString resolvePath(const QString& relPath) const;
+    QString resolvePath(const QString& relPath, const QString& contextFile = QString()) const;
     
     QPixmap loadTexture(const QString& relPath);
     QPixmap loadIcon(const QString& relPath);
@@ -40,7 +40,7 @@ public:
     static QImage decodeDDSMemory(const uint8_t* data, size_t size);
 
     // Shell integration
-    static void showInExplorer(const QString& filePath);
+    static void showInExplorer(const QString& filePath, const QString& contextFile = QString());
 
     void clearCache();
 

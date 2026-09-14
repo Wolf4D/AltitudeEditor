@@ -1644,6 +1644,8 @@ int main(int argc, char* argv[]) {
                                    engTable && engTable->editTriggers() == QAbstractItemView::NoEditTriggers);
 
         bool coffincagePass = false;
+        bool coffincageModelPass = false;
+        bool coffincageTexPass = false;
         if (entTable) {
             for (int r = 0; r < entTable->rowCount(); ++r) {
                 auto* itm = entTable->item(r, 1);
@@ -1651,15 +1653,57 @@ int main(int argc, char* argv[]) {
                     QString relPath = itm->data(Qt::UserRole).toString();
                     QString res = AssetManager::instance().resolvePath(relPath);
                     if (!res.isEmpty() && QFileInfo::exists(res)) coffincagePass = true;
+
+                    auto* mItm = entTable->item(r, 4);
+                    if (mItm) {
+                        QString mPath = mItm->data(Qt::UserRole).toString();
+                        QString mRes = AssetManager::instance().resolvePath(mPath, relPath);
+                        if (!mRes.isEmpty() && QFileInfo::exists(mRes) && mRes.endsWith(".x", Qt::CaseInsensitive)) {
+                            coffincageModelPass = true;
+                        }
+                    }
+
+                    auto* tItm = entTable->item(r, 5);
+                    if (tItm) {
+                        QString tPath = tItm->data(Qt::UserRole).toString();
+                        QString tRes = AssetManager::instance().resolvePath(tPath, relPath);
+                        if (!tRes.isEmpty() && QFileInfo::exists(tRes) && (tRes.endsWith(".dds", Qt::CaseInsensitive) || tRes.endsWith(".bmp", Qt::CaseInsensitive) || tRes.endsWith(".tga", Qt::CaseInsensitive))) {
+                            coffincageTexPass = true;
+                        }
+                    }
                 }
             }
         }
-        explorerAssetPass = (resolvedCount > 0) && !sampleAsset.isEmpty() && QFileInfo::exists(sampleAsset) && memTooltipsOk && noEditTriggersPass && coffincagePass;
+
+        bool segmentModelTexPass = false;
+        if (segTable && segTable->rowCount() > 0) {
+            for (int r = 0; r < segTable->rowCount(); ++r) {
+                auto* sNameItm = segTable->item(r, 1);
+                QString sRel = sNameItm ? sNameItm->data(Qt::UserRole).toString() : QString();
+                auto* sMeshItm = segTable->item(r, 4);
+                auto* sDiffItm = segTable->item(r, 5);
+                if (sMeshItm && sDiffItm) {
+                    QString mPath = sMeshItm->data(Qt::UserRole).toString();
+                    QString dPath = sDiffItm->data(Qt::UserRole).toString();
+                    QString mRes = AssetManager::instance().resolvePath(mPath, sRel);
+                    QString dRes = AssetManager::instance().resolvePath(dPath, sRel);
+                    if ((!mRes.isEmpty() && QFileInfo::exists(mRes)) || (!dRes.isEmpty() && QFileInfo::exists(dRes))) {
+                        segmentModelTexPass = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        explorerAssetPass = (resolvedCount > 0) && !sampleAsset.isEmpty() && QFileInfo::exists(sampleAsset) && memTooltipsOk && noEditTriggersPass && coffincagePass && coffincageModelPass && coffincageTexPass && segmentModelTexPass;
         std::cout << "[TEST] Double-click Reveal Asset in Windows Explorer: "
                   << (explorerAssetPass ? "PASS" : "FAIL")
                   << " (resolvedWarnings=" << resolvedCount << ", sampleAsset=" << sampleAsset.toStdString()
                   << ", memTooltipsOk=" << memTooltipsOk << ", noEditTriggers=" << noEditTriggersPass
-                  << ", coffincagePass=" << coffincagePass << ")" << std::endl;
+                  << ", coffincagePass=" << coffincagePass
+                  << ", coffincageModelPass=" << coffincageModelPass
+                  << ", coffincageTexPass=" << coffincageTexPass
+                  << ", segmentModelTexPass=" << segmentModelTexPass << ")" << std::endl;
     }
 
     if (!found29_2 || !allWindowsDetected || !f7WindowsDetected || !fakeClassified || !realWinClassified || !map1ExtPortalPass || !atriumUnified || !z2Floor7Closed || !canvasHasWarnings || !canvasHighlightedRow2 || !f8AllLeaksAssigned || !dichotomyPass || !physicalAlonePass || !f8_y20_allLeaksPass || !staticAlonePass || !mergedPass || !noDuplicatesPass || !tableColCountPass || !descHasIcon || !descHasSizeTag || !suppressionPass || !multiSuppressPass || !visDialogPass || !visZoneDockFlowTestPass || !losOcclusionTestPass || !zone4PortalsPass || !zoneBadgePriorityPass || !emptySpaceDeselectPass || !visZoneDeleteButtonPass || !memoryAnalyzerResizePass || !explorerAssetPass) {

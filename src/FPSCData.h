@@ -60,6 +60,8 @@ struct SegmentPart {
     float rotX = 0, rotY = 0, rotZ = 0;
     QString texture;
     QString textured;
+    QString textureN;
+    QString textureS;
     int transparency = 0;
     int colMode = 0;
     

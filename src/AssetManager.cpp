@@ -75,12 +75,44 @@ void AssetManager::clearCache() {
     m_textureMetricsCache.clear();
 }
 
-QString AssetManager::resolvePath(const QString& relPath) const {
+QString AssetManager::resolvePath(const QString& relPath, const QString& contextFile) const {
     if (relPath.trimmed().isEmpty()) return QString();
     
     QString clean = relPath;
     clean.replace('\\', '/');
     while (clean.startsWith('/')) clean.remove(0, 1);
+
+    // If contextFile provided, check relative to contextFile directory first
+    if (!contextFile.isEmpty()) {
+        QString ctxResolved = resolvePath(contextFile);
+        if (!ctxResolved.isEmpty()) {
+            QDir ctxDir = QFileInfo(ctxResolved).dir();
+            QString localCandidate = ctxDir.filePath(clean);
+            if (QFileInfo::exists(localCandidate)) {
+                return localCandidate;
+            }
+            int dotIdx = clean.lastIndexOf('.');
+            QString baseWithoutExt = (dotIdx > 0) ? clean.left(dotIdx) : clean;
+            QString fileName = QFileInfo(clean).fileName();
+            QString fileBase = QFileInfo(clean).completeBaseName();
+            QStringList exts = {
+                QStringLiteral(".x"), QStringLiteral(".X"),
+                QStringLiteral(".dds"), QStringLiteral(".bmp"), QStringLiteral(".png"),
+                QStringLiteral(".tga"), QStringLiteral(".jpg"),
+                QStringLiteral(".wav"), QStringLiteral(".WAV"),
+                QStringLiteral(".mp3"), QStringLiteral(".ogg")
+            };
+            for (const auto& ext : exts) {
+                QString c = ctxDir.filePath(baseWithoutExt + ext);
+                if (QFileInfo::exists(c)) return c;
+                c = ctxDir.filePath(fileBase + ext);
+                if (QFileInfo::exists(c)) return c;
+            }
+            if (QFileInfo::exists(ctxDir.filePath(fileName))) {
+                return ctxDir.filePath(fileName);
+            }
+        }
+    }
 
     QMutexLocker locker(&m_mutex);
 
@@ -100,6 +132,13 @@ QString AssetManager::resolvePath(const QString& relPath) const {
     if (dotIdx > 0) candidateExts << clean.mid(dotIdx);
     candidateExts << QStringLiteral(".dds") << QStringLiteral(".bmp") << QStringLiteral(".png")
                   << QStringLiteral(".tga") << QStringLiteral(".jpg")
+                  << QStringLiteral(".x") << QStringLiteral(".X")
+                  << QStringLiteral(".dbo") << QStringLiteral(".DBO")
+                  << QStringLiteral(".wav") << QStringLiteral(".WAV")
+                  << QStringLiteral(".mp3") << QStringLiteral(".MP3")
+                  << QStringLiteral(".ogg") << QStringLiteral(".OGG")
+                  << QStringLiteral(".fpe") << QStringLiteral(".FPE")
+                  << QStringLiteral(".fps") << QStringLiteral(".FPS")
                   << QStringLiteral(".DDS") << QStringLiteral(".BMP") << QStringLiteral(".PNG")
                   << QStringLiteral(".TGA") << QStringLiteral(".JPG");
 
@@ -693,11 +732,15 @@ QImage AssetManager::loadTGA(const QString& fullPath) {
     return QImage();
 }
 
-void AssetManager::showInExplorer(const QString& filePath) {
-    if (filePath.trimmed().isEmpty()) return;
-    QString resolved = filePath;
+void AssetManager::showInExplorer(const QString& filePath, const QString& contextFile) {
+    if (filePath.trimmed().isEmpty() && contextFile.trimmed().isEmpty()) return;
+    QString target = filePath.trimmed().isEmpty() ? contextFile : filePath;
+    QString resolved = target;
     if (!QFileInfo::exists(resolved)) {
-        resolved = instance().resolvePath(filePath);
+        resolved = instance().resolvePath(target, contextFile);
+    }
+    if ((resolved.isEmpty() || !QFileInfo::exists(resolved)) && !contextFile.isEmpty()) {
+        resolved = instance().resolvePath(contextFile);
     }
     if (resolved.isEmpty() || !QFileInfo::exists(resolved)) return;
 

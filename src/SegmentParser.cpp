@@ -81,6 +81,8 @@ std::shared_ptr<FPSCSegment> SegmentParser::parse(const QString& relPath, int se
         part.texture = kv.value("texture" + sIdx);
         part.textured = kv.value("textured" + sIdx);
         if (part.texture.isEmpty() && !part.textured.isEmpty()) part.texture = part.textured;
+        part.textureN = kv.value("texturen" + sIdx);
+        part.textureS = kv.value("textures" + sIdx);
         part.transparency = kv.value("transparency" + sIdx, "0").toInt();
         part.colMode = kv.value("colmode" + sIdx, "0").toInt();
 

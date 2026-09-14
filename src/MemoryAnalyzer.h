@@ -22,6 +22,8 @@ struct EntityMemoryItem {
     qint64 normalRamBytes = 0;
     qint64 specularRamBytes = 0;
     qint64 textureDiskBytes = 0;
+    QString normalPath;
+    QString specularPath;
 
     QString audioPath;
     qint64 audioSizeBytes = 0;
@@ -42,12 +44,16 @@ struct SegmentMemoryItem {
 
     int uniqueMeshCount = 0;
     qint64 meshSizeBytes = 0;
+    QString meshPath;
 
     int uniqueTexCount = 0;
     qint64 diffuseRamBytes = 0;
     qint64 normalRamBytes = 0;
     qint64 specularRamBytes = 0;
     qint64 totalTextureRamBytes = 0;
+    QString diffusePath;
+    QString normalPath;
+    QString specularPath;
 
     qint64 totalTypeRamBytes = 0;
     QString iconBmpPath;

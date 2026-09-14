@@ -13,10 +13,15 @@ struct TextureMapInfo {
     qint64 spec = 0;
     int w = 0;
     int h = 0;
+    QString normPath;
+    QString specPath;
 };
 
-static void inspectTextureWithMaps(const QString& texPath, qint64& outDiff, qint64& outNorm, qint64& outSpec, int& outW, int& outH, QMap<QString, TextureMapInfo>& cache) {
+static void inspectTextureWithMaps(const QString& texPath, qint64& outDiff, qint64& outNorm, qint64& outSpec, int& outW, int& outH,
+                                   QMap<QString, TextureMapInfo>& cache, QString* outNormPath = nullptr, QString* outSpecPath = nullptr) {
     outDiff = 0; outNorm = 0; outSpec = 0; outW = 0; outH = 0;
+    if (outNormPath) outNormPath->clear();
+    if (outSpecPath) outSpecPath->clear();
     if (texPath.isEmpty()) return;
     QString clean = QString(texPath).replace('\\', '/').toLower();
 
@@ -27,6 +32,8 @@ static void inspectTextureWithMaps(const QString& texPath, qint64& outDiff, qint
         outSpec = c.spec;
         outW = c.w;
         outH = c.h;
+        if (outNormPath) *outNormPath = c.normPath;
+        if (outSpecPath) *outSpecPath = c.specPath;
         return;
     }
 
@@ -36,6 +43,9 @@ static void inspectTextureWithMaps(const QString& texPath, qint64& outDiff, qint
         outW = w;
         outH = h;
     }
+
+    QString foundNormPath;
+    QString foundSpecPath;
 
     int dot = clean.lastIndexOf('.');
     if (dot > 0) {
@@ -55,6 +65,7 @@ static void inspectTextureWithMaps(const QString& texPath, qint64& outDiff, qint
                 int nw = 0, nh = 0; qint64 nr = 0, nd = 0;
                 AssetManager::instance().getTextureMetrics(nc, nw, nh, nr, nd);
                 outNorm = nr;
+                foundNormPath = nc;
                 break;
             }
         }
@@ -73,10 +84,14 @@ static void inspectTextureWithMaps(const QString& texPath, qint64& outDiff, qint
                 int sw = 0, sh = 0; qint64 sr = 0, sd = 0;
                 AssetManager::instance().getTextureMetrics(sc, sw, sh, sr, sd);
                 outSpec = sr;
+                foundSpecPath = sc;
                 break;
             }
         }
     }
+
+    if (outNormPath) *outNormPath = foundNormPath;
+    if (outSpecPath) *outSpecPath = foundSpecPath;
 
     TextureMapInfo info;
     info.diff = outDiff;
@@ -84,6 +99,8 @@ static void inspectTextureWithMaps(const QString& texPath, qint64& outDiff, qint
     info.spec = outSpec;
     info.w = outW;
     info.h = outH;
+    info.normPath = foundNormPath;
+    info.specPath = foundSpecPath;
     cache[clean] = info;
 }
 
@@ -142,6 +159,7 @@ MemoryReport MemoryAnalyzer::analyze(std::shared_ptr<FPSCMap> map) {
 
         for (const auto& p : seg->parts) {
             if (!p.meshName.isEmpty()) {
+                if (item.meshPath.isEmpty()) item.meshPath = p.meshName;
                 QString m = QString(p.meshName).replace('\\', '/').toLower();
                 if (!itemMeshes.contains(m)) {
                     itemMeshes.insert(m);
@@ -155,12 +173,18 @@ MemoryReport MemoryAnalyzer::analyze(std::shared_ptr<FPSCMap> map) {
             }
 
             if (!p.texture.isEmpty()) {
+                if (item.diffusePath.isEmpty()) item.diffusePath = p.texture;
                 QString t = QString(p.texture).replace('\\', '/').toLower();
                 if (!itemTextures.contains(t)) {
                     itemTextures.insert(t);
                     qint64 diff = 0, norm = 0, spec = 0;
                     int tw = 0, th = 0;
-                    inspectTextureWithMaps(t, diff, norm, spec, tw, th, texMapCache);
+                    QString nPath, sPath;
+                    inspectTextureWithMaps(t, diff, norm, spec, tw, th, texMapCache, &nPath, &sPath);
+                    if (!p.textureN.isEmpty()) nPath = p.textureN;
+                    if (!p.textureS.isEmpty()) sPath = p.textureS;
+                    if (item.normalPath.isEmpty() && !nPath.isEmpty()) item.normalPath = nPath;
+                    if (item.specularPath.isEmpty() && !sPath.isEmpty()) item.specularPath = sPath;
 
                     item.diffuseRamBytes += diff;
                     item.normalRamBytes += norm;
@@ -176,6 +200,12 @@ MemoryReport MemoryAnalyzer::analyze(std::shared_ptr<FPSCMap> map) {
                     }
                 }
             }
+        }
+
+        if (item.diffusePath.isEmpty()) {
+            if (!seg->floorTexture.isEmpty()) item.diffusePath = seg->floorTexture;
+            else if (!seg->wallTextures[0].isEmpty()) item.diffusePath = seg->wallTextures[0];
+            else if (!seg->roofTexture.isEmpty()) item.diffusePath = seg->roofTexture;
         }
 
         item.uniqueMeshCount = itemMeshes.size();
@@ -244,12 +274,16 @@ MemoryReport MemoryAnalyzer::analyze(std::shared_ptr<FPSCMap> map) {
 
         // Textures (Diffuse + Normal + Specular)
         item.texturePath = prof->texturePath;
+        if (item.texturePath.isEmpty()) item.texturePath = prof->altTexturePath;
         auto inspectEntTex = [&](const QString& tPath) {
             if (tPath.isEmpty()) return;
             QString t = QString(tPath).replace('\\', '/').toLower();
             qint64 diff = 0, norm = 0, spec = 0;
             int tw = 0, th = 0;
-            inspectTextureWithMaps(t, diff, norm, spec, tw, th, texMapCache);
+            QString nPath, sPath;
+            inspectTextureWithMaps(t, diff, norm, spec, tw, th, texMapCache, &nPath, &sPath);
+            if (item.normalPath.isEmpty() && !nPath.isEmpty()) item.normalPath = nPath;
+            if (item.specularPath.isEmpty() && !sPath.isEmpty()) item.specularPath = sPath;
 
             item.texWidth = tw;
             item.texHeight = th;
