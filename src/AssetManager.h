@@ -39,6 +39,9 @@ public:
     static QImage loadTGA(const QString& fullPath);
     static QImage decodeDDSMemory(const uint8_t* data, size_t size);
 
+    // Shell integration
+    static void showInExplorer(const QString& filePath);
+
     void clearCache();
 
 private:

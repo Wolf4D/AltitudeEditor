@@ -4,6 +4,9 @@
 #include <QDebug>
 #include <QImageReader>
 #include <QMutexLocker>
+#include <QProcess>
+#include <QDesktopServices>
+#include <QUrl>
 #include <cstring>
 
 #pragma pack(push, 1)
@@ -684,4 +687,20 @@ QImage AssetManager::loadTGA(const QString& fullPath) {
     }
 
     return QImage();
+}
+
+void AssetManager::showInExplorer(const QString& filePath) {
+    if (filePath.trimmed().isEmpty()) return;
+    QString resolved = filePath;
+    if (!QFileInfo::exists(resolved)) {
+        resolved = instance().resolvePath(filePath);
+    }
+    if (resolved.isEmpty() || !QFileInfo::exists(resolved)) return;
+
+    QString nativePath = QDir::toNativeSeparators(QFileInfo(resolved).absoluteFilePath());
+#ifdef Q_OS_WIN
+    QProcess::startDetached(QStringLiteral("explorer.exe"), QStringList() << (QStringLiteral("/select,") + nativePath));
+#else
+    QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(resolved).absolutePath()));
+#endif
 }

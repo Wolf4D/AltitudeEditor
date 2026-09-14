@@ -11,6 +11,7 @@
 #include <QFile>
 #include <QAbstractItemView>
 #include <QPainter>
+#include <QRegularExpression>
 
 static QIcon makeSourceIcon(bool isPhysical, bool isStatic, bool isMerged) {
     const int S = 20;
@@ -559,6 +560,11 @@ void PortalLeakDialog::updateTableRows(int preferredSelectedRow) {
         } else {
             sourceTooltip += tr("[Source: Logical Grid (.FPM)]\n%1").arg(w.description);
         }
+
+        QString assetFile = resolveAssetFileForWarning(w);
+        if (!assetFile.isEmpty()) {
+            sourceTooltip += tr("\n\n📁 Double-click row to reveal \"%1\" in Windows Explorer").arg(QFileInfo(assetFile).fileName());
+        }
         descItem->setToolTip(sourceTooltip);
 
         if (w.isSuppressed) {
@@ -608,7 +614,7 @@ void PortalLeakDialog::updateTableRows(int preferredSelectedRow) {
     }
 
     if (mergedCount > 0) {
-        m_lblStats->setText(tr("Showing issues: <b>%1</b> of %2%3%4 (Both: %5, Physical: %6, Logical: %7). Double-click jumps camera to tile.")
+        m_lblStats->setText(tr("Showing issues: <b>%1</b> of %2%3%4 (Both: %5, Physical: %6, Logical: %7). Double-click reveals asset in Explorer / jumps camera.")
                             .arg(m_visibleWarningIndices.size())
                             .arg(m_currentWarnings.size())
                             .arg(filterNotice)
@@ -617,7 +623,7 @@ void PortalLeakDialog::updateTableRows(int preferredSelectedRow) {
                             .arg(bspCount)
                             .arg(staticCount));
     } else {
-        m_lblStats->setText(tr("Showing issues: <b>%1</b> of %2%3%4 (Physical: %5, Logical: %6). Double-click jumps camera to tile.")
+        m_lblStats->setText(tr("Showing issues: <b>%1</b> of %2%3%4 (Physical: %5, Logical: %6). Double-click reveals asset in Explorer / jumps camera.")
                             .arg(m_visibleWarningIndices.size())
                             .arg(m_currentWarnings.size())
                             .arg(filterNotice)
@@ -634,6 +640,11 @@ void PortalLeakDialog::onCellDoubleClicked(int row, int /*column*/) {
         int origIdx = m_visibleWarningIndices[row];
         const auto& w = m_currentWarnings[origIdx];
         emit cellSelected(w.layer, w.x, w.y);
+
+        QString assetFile = resolveAssetFileForWarning(w);
+        if (!assetFile.isEmpty()) {
+            AssetManager::showInExplorer(assetFile);
+        }
     }
 }
 
@@ -1083,6 +1094,15 @@ void PortalLeakDialog::onTableContextMenu(const QPoint& pos) {
         actEditA = menu.addAction(tr("🧱 Inspect & Edit Segment (%1, %2)").arg(w.x).arg(w.y));
     }
 
+    // 4. Show Asset in Explorer
+    QString assetFile = resolveAssetFileForWarning(w);
+    QAction* actShowExplorer = nullptr;
+    if (!assetFile.isEmpty()) {
+        menu.addSeparator();
+        QString fileName = QFileInfo(assetFile).fileName();
+        actShowExplorer = menu.addAction(tr("📁 Show \"%1\" in Explorer...").arg(fileName));
+    }
+
     QAction* chosen = menu.exec(m_table->viewport()->mapToGlobal(pos));
     if (chosen == actToggleSuppress) {
         onSuppressClicked();
@@ -1098,6 +1118,8 @@ void PortalLeakDialog::onTableContextMenu(const QPoint& pos) {
         emit editSegmentRequested(w.layer, w.x, w.y);
     } else if (chosen == actEditB) {
         emit editSegmentRequested(w.layer, w.x2, w.y2);
+    } else if (chosen == actShowExplorer && !assetFile.isEmpty()) {
+        AssetManager::showInExplorer(assetFile);
     }
 }
 
@@ -1130,4 +1152,159 @@ void PortalLeakDialog::setVisZoneManager(std::shared_ptr<VisZoneManager> mgr) {
         runAnalysis();
     }
 }
+
+QString PortalLeakDialog::resolveAssetFileForWarning(const PortalLeakWarning& w) const {
+    if (!m_map) return QString();
+
+    // 1. Check description for quoted segment or entity names: 'name' or "name"
+    static const QRegularExpression quoteRegex(QStringLiteral(R"(['"]([^'"]+)['"])"));
+    QRegularExpressionMatchIterator it = quoteRegex.globalMatch(w.description);
+    while (it.hasNext()) {
+        QRegularExpressionMatch match = it.next();
+        QString token = match.captured(1).trimmed();
+        if (token.isEmpty()) continue;
+
+        // Check segments in map
+        for (const auto& s : m_map->segments) {
+            if (s && (s->name.compare(token, Qt::CaseInsensitive) == 0 ||
+                      QFileInfo(s->relPath).completeBaseName().compare(token, Qt::CaseInsensitive) == 0 ||
+                      s->relPath.compare(token, Qt::CaseInsensitive) == 0)) {
+                QString resolved = AssetManager::instance().resolvePath(s->relPath);
+                if (!resolved.isEmpty() && QFileInfo::exists(resolved)) {
+                    return resolved;
+                }
+            }
+        }
+
+        // Check entity profiles in map
+        for (const auto& ep : m_map->entityProfiles) {
+            if (ep && (ep->name.compare(token, Qt::CaseInsensitive) == 0 ||
+                       QFileInfo(ep->relPath).completeBaseName().compare(token, Qt::CaseInsensitive) == 0 ||
+                       ep->relPath.compare(token, Qt::CaseInsensitive) == 0)) {
+                QString resolved = AssetManager::instance().resolvePath(ep->relPath);
+                if (!resolved.isEmpty() && QFileInfo::exists(resolved)) {
+                    return resolved;
+                }
+            }
+        }
+
+        // Check segmentsBank
+        for (const auto& b : m_map->segmentsBank) {
+            if (!b.isEmpty() && (b.contains(token, Qt::CaseInsensitive) || QFileInfo(b).completeBaseName().compare(token, Qt::CaseInsensitive) == 0)) {
+                QString resolved = AssetManager::instance().resolvePath(b);
+                if (!resolved.isEmpty() && QFileInfo::exists(resolved)) {
+                    return resolved;
+                }
+            }
+        }
+
+        // Check entitiesBank
+        for (const auto& b : m_map->entitiesBank) {
+            if (!b.isEmpty() && (b.contains(token, Qt::CaseInsensitive) || QFileInfo(b).completeBaseName().compare(token, Qt::CaseInsensitive) == 0)) {
+                QString resolved = AssetManager::instance().resolvePath(b);
+                if (!resolved.isEmpty() && QFileInfo::exists(resolved)) {
+                    return resolved;
+                }
+            }
+        }
+    }
+
+    // 2. Check placed entities at (w.layer, w.x, w.y) or (w.layer - 1, w.x, w.y)
+    for (const auto& ent : m_map->placedEntities) {
+        if (ent.floorLayer == w.layer || ent.floorLayer == w.layer - 1) {
+            int ex = static_cast<int>(std::floor(ent.x / 100.0f));
+            int ey = static_cast<int>(std::floor(std::abs(ent.z) / 100.0f));
+            if (ex == w.x && ey == w.y) {
+                auto prof = m_map->entityProfiles.value(ent.bankIndex);
+                if (prof && !prof->relPath.isEmpty()) {
+                    QString resolved = AssetManager::instance().resolvePath(prof->relPath);
+                    if (!resolved.isEmpty() && QFileInfo::exists(resolved)) return resolved;
+                }
+            }
+        }
+    }
+
+    // 3. Check overlays at (w.layer, w.x, w.y)
+    if (w.layer >= 0 && w.layer < m_map->gridOverlays.size() &&
+        w.y >= 0 && w.y < m_map->gridOverlays[w.layer].size() &&
+        w.x >= 0 && w.x < m_map->gridOverlays[w.layer][w.y].size()) {
+        int o = m_map->gridOverlays[w.layer][w.y][w.x];
+        if (o > 0 && m_map->segments.contains(o)) {
+            auto seg = m_map->segments.value(o);
+            if (seg && !seg->relPath.isEmpty()) {
+                QString resolved = AssetManager::instance().resolvePath(seg->relPath);
+                if (!resolved.isEmpty() && QFileInfo::exists(resolved)) return resolved;
+            }
+        }
+    }
+
+    // 4. Check base blocks at (w.layer, w.x, w.y)
+    if (w.layer >= 0 && w.layer < m_map->gridBlocks.size() &&
+        w.y >= 0 && w.y < m_map->gridBlocks[w.layer].size() &&
+        w.x >= 0 && w.x < m_map->gridBlocks[w.layer][w.y].size()) {
+        int b = m_map->gridBlocks[w.layer][w.y][w.x];
+        if (b > 0 && m_map->segments.contains(b)) {
+            auto seg = m_map->segments.value(b);
+            if (seg && !seg->relPath.isEmpty()) {
+                QString resolved = AssetManager::instance().resolvePath(seg->relPath);
+                if (!resolved.isEmpty() && QFileInfo::exists(resolved)) return resolved;
+            }
+        }
+    }
+
+    // 5. Check ground at (w.layer, w.x, w.y)
+    if (w.layer >= 0 && w.layer < m_map->gridGround.size() &&
+        w.y >= 0 && w.y < m_map->gridGround[w.layer].size() &&
+        w.x >= 0 && w.x < m_map->gridGround[w.layer][w.y].size()) {
+        int g = m_map->gridGround[w.layer][w.y][w.x];
+        if (g > 0 && m_map->segments.contains(g)) {
+            auto seg = m_map->segments.value(g);
+            if (seg && !seg->relPath.isEmpty()) {
+                QString resolved = AssetManager::instance().resolvePath(seg->relPath);
+                if (!resolved.isEmpty() && QFileInfo::exists(resolved)) return resolved;
+            }
+        }
+    }
+
+    // 6. Check clash cell B
+    if (w.isClash && w.layer >= 0 && w.layer < m_map->gridBlocks.size() &&
+        w.y2 >= 0 && w.y2 < m_map->gridBlocks[w.layer].size() &&
+        w.x2 >= 0 && w.x2 < m_map->gridBlocks[w.layer][w.y2].size()) {
+        int b2 = m_map->gridBlocks[w.layer][w.y2][w.x2];
+        if (b2 > 0 && m_map->segments.contains(b2)) {
+            auto seg = m_map->segments.value(b2);
+            if (seg && !seg->relPath.isEmpty()) {
+                QString resolved = AssetManager::instance().resolvePath(seg->relPath);
+                if (!resolved.isEmpty() && QFileInfo::exists(resolved)) return resolved;
+            }
+        }
+    }
+
+    // 7. Check floor below (w.layer - 1, w.x, w.y)
+    int below = w.layer - 1;
+    if (below >= 0 && below < m_map->gridBlocks.size() &&
+        w.y >= 0 && w.y < m_map->gridBlocks[below].size() &&
+        w.x >= 0 && w.x < m_map->gridBlocks[below][w.y].size()) {
+        int o = (below < m_map->gridOverlays.size() && w.y < m_map->gridOverlays[below].size() && w.x < m_map->gridOverlays[below][w.y].size())
+                ? m_map->gridOverlays[below][w.y][w.x] : 0;
+        if (o > 0 && m_map->segments.contains(o)) {
+            auto seg = m_map->segments.value(o);
+            if (seg && !seg->relPath.isEmpty()) {
+                QString resolved = AssetManager::instance().resolvePath(seg->relPath);
+                if (!resolved.isEmpty() && QFileInfo::exists(resolved)) return resolved;
+            }
+        }
+        int b = m_map->gridBlocks[below][w.y][w.x];
+        if (b > 0 && m_map->segments.contains(b)) {
+            auto seg = m_map->segments.value(b);
+            if (seg && !seg->relPath.isEmpty()) {
+                QString resolved = AssetManager::instance().resolvePath(seg->relPath);
+                if (!resolved.isEmpty() && QFileInfo::exists(resolved)) return resolved;
+            }
+        }
+    }
+
+    return QString();
+}
+
 

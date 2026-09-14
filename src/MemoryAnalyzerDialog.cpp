@@ -11,6 +11,7 @@
 #include <QMessageBox>
 #include <QTextStream>
 #include <QFile>
+#include <QMenu>
 
 class NumericTableWidgetItem : public QTableWidgetItem {
 public:
@@ -223,6 +224,60 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
     connect(m_copyBtn, &QPushButton::clicked, this, &MemoryAnalyzerDialog::onCopyReport);
     connect(m_exportBtn, &QPushButton::clicked, this, &MemoryAnalyzerDialog::onExportCSV);
     connect(m_closeBtn, &QPushButton::clicked, this, &QDialog::accept);
+
+    connect(m_entityTable, &QTableWidget::cellDoubleClicked, this, [this](int row, int /*col*/) {
+        if (row >= 0 && row < m_entityTable->rowCount()) {
+            QTableWidgetItem* itm = m_entityTable->item(row, 1);
+            if (itm) {
+                QString relPath = itm->toolTip().section('\n', 0, 0);
+                AssetManager::showInExplorer(relPath);
+            }
+        }
+    });
+
+    m_entityTable->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_entityTable, &QTableWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
+        int row = m_entityTable->rowAt(pos.y());
+        if (row < 0 || row >= m_entityTable->rowCount()) return;
+        QTableWidgetItem* itm = m_entityTable->item(row, 1);
+        if (!itm) return;
+        QString relPath = itm->toolTip().section('\n', 0, 0);
+        QString fullPath = AssetManager::instance().resolvePath(relPath);
+        if (fullPath.isEmpty() || !QFileInfo::exists(fullPath)) return;
+
+        QMenu menu(this);
+        QAction* actExp = menu.addAction(tr("📁 Show \"%1\" in Explorer...").arg(QFileInfo(fullPath).fileName()));
+        if (menu.exec(m_entityTable->viewport()->mapToGlobal(pos)) == actExp) {
+            AssetManager::showInExplorer(fullPath);
+        }
+    });
+
+    connect(m_segmentTable, &QTableWidget::cellDoubleClicked, this, [this](int row, int /*col*/) {
+        if (row >= 0 && row < m_segmentTable->rowCount()) {
+            QTableWidgetItem* itm = m_segmentTable->item(row, 1);
+            if (itm) {
+                QString relPath = itm->toolTip().section('\n', 0, 0);
+                AssetManager::showInExplorer(relPath);
+            }
+        }
+    });
+
+    m_segmentTable->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_segmentTable, &QTableWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
+        int row = m_segmentTable->rowAt(pos.y());
+        if (row < 0 || row >= m_segmentTable->rowCount()) return;
+        QTableWidgetItem* itm = m_segmentTable->item(row, 1);
+        if (!itm) return;
+        QString relPath = itm->toolTip().section('\n', 0, 0);
+        QString fullPath = AssetManager::instance().resolvePath(relPath);
+        if (fullPath.isEmpty() || !QFileInfo::exists(fullPath)) return;
+
+        QMenu menu(this);
+        QAction* actExp = menu.addAction(tr("📁 Show \"%1\" in Explorer...").arg(QFileInfo(fullPath).fileName()));
+        if (menu.exec(m_segmentTable->viewport()->mapToGlobal(pos)) == actExp) {
+            AssetManager::showInExplorer(fullPath);
+        }
+    });
 
     populateUI();
 }
@@ -450,7 +505,7 @@ void MemoryAnalyzerDialog::populateUI() {
 
         // Col 1: Name
         QTableWidgetItem* nameItm = new QTableWidgetItem(itm.name);
-        nameItm->setToolTip(itm.relPath);
+        nameItm->setToolTip(itm.relPath + tr("\nDouble-click to reveal in Windows Explorer"));
         m_entityTable->setItem(row, 1, nameItm);
 
         // Col 2: Category
@@ -547,7 +602,7 @@ void MemoryAnalyzerDialog::populateUI() {
 
         // Col 1: Name
         QTableWidgetItem* nameItm = new QTableWidgetItem(itm.name);
-        nameItm->setToolTip(itm.relPath);
+        nameItm->setToolTip(itm.relPath + tr("\nDouble-click to reveal in Windows Explorer"));
         m_segmentTable->setItem(row, 1, nameItm);
 
         // Col 2: Parts

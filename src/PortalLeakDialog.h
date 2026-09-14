@@ -27,6 +27,7 @@ public:
 
     LeakSuppressionManager& suppressionManager() { return m_suppressionMgr; }
     const LeakSuppressionManager& suppressionManager() const { return m_suppressionMgr; }
+    QString resolveAssetFileForWarning(const PortalLeakWarning& w) const;
 
 protected:
     void changeEvent(QEvent* event) override;
