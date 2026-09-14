@@ -7,9 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.9.2] - 2026-09-11
+## [0.9.2] - 2026-09-14
 
 ### Added
+- **Direct Asset Revelation in Windows Explorer (`MemoryAnalyzerDialog` & `PortalLeakDialog`)**:
+  - Double-clicking any asset or leak warning opens Windows Explorer with the specific file selected and highlighted.
+  - **Column-Specific Targeting in Memory Footprint Analyzer**:
+    - Double-clicking the **Model/Mesh** column (`Mesh Size` / `Mesh RAM`) reveals the 3D model geometry file (`.x`).
+    - Double-clicking the **Texture** column (`Texture RAM Size` / `Diffuse RAM` / `Normal/Spec RAM`) reveals the specific texture file (`.dds`, `.bmp`, `.tga`).
+    - Double-clicking the **Audio** column reveals the sound effect (`.wav`, `.mp3`).
+    - Double-clicking the **Name** column (or general columns) reveals the entity profile (`.fpe`) or segment blueprint (`.fps`).
+    - Double-clicking **Universe CSG Geometry** in the Engine breakdown reveals `universe.dbo` or `universe.dbu`.
+  - **Comprehensive Multi-Asset Context Menu**: Right-click on any row or cell to directly open any associated resource (profile file, 3D model, diffuse texture, normal map, specular map, audio).
+  - **Context-Aware Path Resolution**: Automatic fallback from individual assets to parent definitions and resolution of paths relative to the asset's folder as well as engine roots (`Files/meshbank`, `Files/texturebank`).
+  - **Native Windows Shell API**: Integrated `SHOpenFolderAndSelectItems` with `ILCreateFromPathW` (and robust fallback) to reliably open Windows Explorer with target items selected even with spaces in paths.
 - **Straight Optical Line-of-Sight (LOS) Raycasting**:
   - Direct optical line-of-sight ray traces visibility through doorway and window portals between adjacent rooms.
   - Geometry-clipped strictly to inner room boundaries (`clipRayToZone`), eliminating misleading zigzags and wall-piercing rays.
@@ -28,6 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Incremented application version to **0.9.2**.
+- Disabled in-place table cell editing (`NoEditTriggers`) across all tables in Memory Footprint Analyzer to prevent accidental text editing on double-click.
+- Upgraded VisZone deletion button with modern cross icon (`✕`) and removed redundant reset button from `VisZoneDock`.
+- Made table columns in Memory Footprint Analyzer interactively resizable with a low minimum section width.
 
 ---
 

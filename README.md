@@ -43,6 +43,7 @@ Level geometry issues can easily disrupt the **PVS portal generation** performed
 * **Interactive Zone Filtering**: Isolate warnings by specific Vis Zones (`Filter by Vis Zone`) with dynamic per-room issue counters (`Zone X — N issues`).
 * **Live On-Canvas Hazard Markers**: Real-time animated hazard frames directly on the 2D grid for the active floor (red dashed `⚠️` for leaks/errors, amber `⚡` for clashes and warnings).
 * **Instant Reticle Navigation**: Selecting any error in the list instantly centers the camera on the fault tile with precision corner reticles (`[ ]`).
+* **Asset Revelation in Explorer**: Double-click any warning in the table or right-click to open Windows Explorer with the offending segment (`.fps`) or entity (`.fpe`) highlighted.
 
 <p align="center">
   <img src="docs/3.jpg" alt="Portal & CSG Leak Detector" width="850" />
@@ -66,6 +67,8 @@ Due to the 32-bit architecture and DirectX 9 memory management of the classic FP
 * **Precise Footprint Breakdown**: Asynchronously calculates memory allocations across mesh geometries (`.x`), textures (`.dds`, `.tga`, `.bmp`), sound effects (`.wav`, `.mp3`), segments, and universe data.
 * **"Bigger Elephant in the Room"**: Automatically sorts entities and assets by memory consumption, giving you instant clues about which heavy textures or high-poly models you should downscale or optimize first.
 * **Engine Limit Gauge**: Visual danger gauge (Safe / Caution / Critical / Over Budget) alerting you before you even launch a build.
+* **Direct Asset Revelation in Explorer**: Double-click any row to instantly reveal the asset file in Windows Explorer. Fully column-sensitive: double-clicking the **Model / Mesh** column highlights the 3D model (`.x`), **Texture RAM** highlights the texture (`.dds`), **Audio Size** highlights the sound (`.wav`), and the **Name** column highlights the definition file (`.fpe` or `.fps`).
+* **Multi-Asset Context Menu**: Right-click any row or cell to reveal all associated assets (profile, 3D model, diffuse texture, normal/specular maps, and audio) with native Windows Shell API integration.
 * **Exportable Reports**: Generate detailed CSV tables or copy summary diagnostics directly to the clipboard.
 
 <p align="center">
