@@ -21,6 +21,9 @@ public:
     void setReport(const MemoryReport& report);
     void showLoadingState();
 
+signals:
+    void requestReanalysis();
+
 protected:
     void changeEvent(QEvent* event) override;
 
@@ -28,10 +31,12 @@ private slots:
     void onSearchChanged(const QString& text);
     void onCopyReport();
     void onExportCSV();
+    void onOptimizeSelected();
 
 private:
     void retranslateUi();
     void populateUI();
+    void optimizeTarget(const QString& targetPath, const QString& itemName);
     QWidget* createCard(const QString& title, QLabel*& outValueLabel, QLabel*& outTitleLabel, const QString& color);
 
     std::shared_ptr<FPSCMap> m_map;
@@ -65,6 +70,7 @@ private:
 
     QPushButton* m_copyBtn = nullptr;
     QPushButton* m_exportBtn = nullptr;
+    QPushButton* m_optBtn = nullptr;
     QPushButton* m_closeBtn = nullptr;
 };
 

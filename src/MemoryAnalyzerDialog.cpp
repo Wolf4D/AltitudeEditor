@@ -9,9 +9,13 @@
 #include <QClipboard>
 #include <QFileDialog>
 #include <QMessageBox>
-#include <QTextStream>
 #include <QFile>
+#include <QTextStream>
 #include <QMenu>
+#include <QProcess>
+#include <QProgressDialog>
+#include <QStandardPaths>
+#include <QSettings>
 
 class NumericTableWidgetItem : public QTableWidgetItem {
 public:
@@ -214,11 +218,15 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
     QHBoxLayout* btnLayout = new QHBoxLayout();
     m_copyBtn = new QPushButton(tr("Copy Full Report to Clipboard"), this);
     m_exportBtn = new QPushButton(tr("Export CSV Report..."), this);
+    m_optBtn = new QPushButton(tr("⚡ Optimize Selected Textures..."), this);
+    m_optBtn->setStyleSheet("QPushButton { background-color: #0f766e; color: #ccfbf1; font-weight: bold; } QPushButton:hover { background-color: #115e59; color: #ffffff; }");
+    m_optBtn->setToolTip(tr("Run FPSC Texture Optimizer on the selected entity or segment textures"));
     m_closeBtn = new QPushButton(tr("Close"), this);
     m_closeBtn->setDefault(true);
 
     btnLayout->addWidget(m_copyBtn);
     btnLayout->addWidget(m_exportBtn);
+    btnLayout->addWidget(m_optBtn);
     btnLayout->addStretch();
     btnLayout->addWidget(m_closeBtn);
     mainLayout->addLayout(btnLayout);
@@ -226,6 +234,7 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
     connect(m_searchEdit, &QLineEdit::textChanged, this, &MemoryAnalyzerDialog::onSearchChanged);
     connect(m_copyBtn, &QPushButton::clicked, this, &MemoryAnalyzerDialog::onCopyReport);
     connect(m_exportBtn, &QPushButton::clicked, this, &MemoryAnalyzerDialog::onExportCSV);
+    connect(m_optBtn, &QPushButton::clicked, this, &MemoryAnalyzerDialog::onOptimizeSelected);
     connect(m_closeBtn, &QPushButton::clicked, this, &QDialog::accept);
 
     connect(m_entityTable, &QTableWidget::cellDoubleClicked, this, [this](int row, int col) {
@@ -296,10 +305,25 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
             actAud = menu.addAction(tr("📁 Show Audio (\"%1\") in Explorer...").arg(QFileInfo(fullAudPath).fileName()));
         }
 
+        menu.addSeparator();
+        QString entDir = QFileInfo(fullEntPath).absolutePath();
+        QAction* actOptTex = nullptr;
+        if (!fullTexPath.isEmpty()) {
+            actOptTex = menu.addAction(tr("⚡ Optimize Texture (\"%1\") [DXT/Mips]...").arg(QFileInfo(fullTexPath).fileName()));
+        }
+        QAction* actOptDir = nullptr;
+        if (!entDir.isEmpty() && QDir(entDir).exists()) {
+            actOptDir = menu.addAction(tr("⚡ Optimize All Textures in Entity Folder..."));
+        }
+
         QAction* chosen = menu.exec(m_entityTable->viewport()->mapToGlobal(pos));
         if (!chosen) return;
 
-        if (chosen == actEnt) {
+        if (chosen == actOptTex && !fullTexPath.isEmpty()) {
+            optimizeTarget(fullTexPath, QFileInfo(fullTexPath).fileName());
+        } else if (chosen == actOptDir && !entDir.isEmpty()) {
+            optimizeTarget(entDir, QFileInfo(entDir).fileName() + " (Folder)");
+        } else if (chosen == actEnt) {
             AssetManager::showInExplorer(fullEntPath, entPath);
         } else if (chosen == actModel) {
             AssetManager::showInExplorer(fullModelPath, entPath);
@@ -380,10 +404,31 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
             actNs = menu.addAction(tr("📁 Show Normal/Spec Texture (\"%1\") in Explorer...").arg(QFileInfo(fullNsPath).fileName()));
         }
 
+        menu.addSeparator();
+        QString segDir = QFileInfo(fullSegPath).absolutePath();
+        QAction* actOptDiff = nullptr;
+        if (!fullDiffPath.isEmpty()) {
+            actOptDiff = menu.addAction(tr("⚡ Optimize Diffuse Texture (\"%1\") [DXT/Mips]...").arg(QFileInfo(fullDiffPath).fileName()));
+        }
+        QAction* actOptNs = nullptr;
+        if (!fullNsPath.isEmpty()) {
+            actOptNs = menu.addAction(tr("⚡ Optimize Normal/Spec Texture (\"%1\") [DXT/Mips]...").arg(QFileInfo(fullNsPath).fileName()));
+        }
+        QAction* actOptSegDir = nullptr;
+        if (!segDir.isEmpty() && QDir(segDir).exists()) {
+            actOptSegDir = menu.addAction(tr("⚡ Optimize All Textures in Segment Folder..."));
+        }
+
         QAction* chosen = menu.exec(m_segmentTable->viewport()->mapToGlobal(pos));
         if (!chosen) return;
 
-        if (chosen == actSeg) {
+        if (chosen == actOptDiff && !fullDiffPath.isEmpty()) {
+            optimizeTarget(fullDiffPath, QFileInfo(fullDiffPath).fileName());
+        } else if (chosen == actOptNs && !fullNsPath.isEmpty()) {
+            optimizeTarget(fullNsPath, QFileInfo(fullNsPath).fileName());
+        } else if (chosen == actOptSegDir && !segDir.isEmpty()) {
+            optimizeTarget(segDir, QFileInfo(segDir).fileName() + " (Folder)");
+        } else if (chosen == actSeg) {
             AssetManager::showInExplorer(fullSegPath, segPath);
         } else if (chosen == actMesh) {
             AssetManager::showInExplorer(fullMeshPath, segPath);
@@ -472,6 +517,7 @@ void MemoryAnalyzerDialog::retranslateUi() {
 
     if (m_copyBtn) m_copyBtn->setText(tr("Copy Full Report to Clipboard"));
     if (m_exportBtn) m_exportBtn->setText(tr("Export CSV Report..."));
+    if (m_optBtn) m_optBtn->setText(tr("⚡ Optimize Selected Textures..."));
     if (m_closeBtn) m_closeBtn->setText(tr("Close"));
 
     if (m_isCalculating) {
@@ -970,4 +1016,143 @@ void MemoryAnalyzerDialog::onExportCSV() {
 
     f.close();
     QMessageBox::information(this, QStringLiteral("Export Complete"), QStringLiteral("Memory report saved successfully."));
+}
+
+void MemoryAnalyzerDialog::onOptimizeSelected() {
+    int currentTab = m_tabWidget ? m_tabWidget->currentIndex() : 0;
+    if (currentTab == 0 && m_entityTable) { // Entities
+        int row = m_entityTable->currentRow();
+        if (row < 0 || row >= m_entityTable->rowCount()) {
+            QMessageBox::information(this, tr("No Selection"), tr("Please select an entity row from the table first."));
+            return;
+        }
+        QTableWidgetItem* nameItm = m_entityTable->item(row, 1);
+        if (!nameItm) return;
+        QString entPath = nameItm->data(Qt::UserRole).toString();
+        QString fullEntPath = AssetManager::instance().resolvePath(entPath);
+        QString entDir = QFileInfo(fullEntPath).absolutePath();
+        if (!entDir.isEmpty() && QDir(entDir).exists()) {
+            optimizeTarget(entDir, nameItm->text());
+        }
+    } else if (currentTab == 1 && m_segmentTable) { // Segments
+        int row = m_segmentTable->currentRow();
+        if (row < 0 || row >= m_segmentTable->rowCount()) {
+            QMessageBox::information(this, tr("No Selection"), tr("Please select a segment row from the table first."));
+            return;
+        }
+        QTableWidgetItem* nameItm = m_segmentTable->item(row, 1);
+        if (!nameItm) return;
+        QString segPath = nameItm->data(Qt::UserRole).toString();
+        QString fullSegPath = AssetManager::instance().resolvePath(segPath);
+        QString segDir = QFileInfo(fullSegPath).absolutePath();
+        if (!segDir.isEmpty() && QDir(segDir).exists()) {
+            optimizeTarget(segDir, nameItm->text());
+        }
+    } else {
+        QMessageBox::information(this, tr("No Selection"), tr("Please select an entity or segment row to optimize."));
+    }
+}
+
+void MemoryAnalyzerDialog::optimizeTarget(const QString& targetPath, const QString& itemName) {
+    if (targetPath.isEmpty()) return;
+
+    // 1. Locate optimizer executable
+    QString exePath;
+    QString appDir = QCoreApplication::applicationDirPath();
+    QStringList candidates = {
+        appDir + "/fpsc_texopt.exe",
+        appDir + "/texopt.exe",
+        "C:/FPSC_TexOptimizer/build/fpsc_texopt.exe",
+        "C:/FPSC_TexOptimizer/build/texopt.exe",
+        QStandardPaths::findExecutable("fpsc_texopt.exe"),
+        QStandardPaths::findExecutable("texopt.exe")
+    };
+
+    QSettings settings("AltitudeEditor", "FPSCMapEditor");
+    QString savedExe = settings.value("Paths/TexOptimizer").toString();
+    if (!savedExe.isEmpty() && QFile::exists(savedExe)) {
+        candidates.prepend(savedExe);
+    }
+
+    for (const auto& cand : candidates) {
+        if (!cand.isEmpty() && QFile::exists(cand)) {
+            exePath = cand;
+            break;
+        }
+    }
+
+    if (exePath.isEmpty()) {
+        QMessageBox::StandardButton btn = QMessageBox::question(
+            this,
+            tr("FPSC Texture Optimizer Not Found"),
+            tr("The texture optimizer utility (fpsc_texopt.exe) was not found in the application directory.\n\n"
+               "Would you like to locate it manually?"),
+            QMessageBox::Yes | QMessageBox::No
+        );
+        if (btn == QMessageBox::Yes) {
+            exePath = QFileDialog::getOpenFileName(this, tr("Locate fpsc_texopt.exe"), QString(), "Executables (*.exe)");
+            if (!exePath.isEmpty() && QFile::exists(exePath)) {
+                settings.setValue("Paths/TexOptimizer", exePath);
+            } else {
+                return;
+            }
+        } else {
+            return;
+        }
+    }
+
+    // 2. Confirmation prompt
+    QMessageBox::StandardButton confirm = QMessageBox::question(
+        this,
+        tr("Optimize Textures — %1").arg(itemName),
+        tr("Run FPSC Texture Optimizer on:\n%1\n\n"
+           "Actions performed:\n"
+           "• Automatic .bak backup copy creation before overwrite\n"
+           "• Opaque textures forced to DXT1 (50% VRAM savings)\n"
+           "• Mipmap pyramid generated down to 1x1\n"
+           "• Strict DirectX 9 legacy DDS compliance (no DX10 headers)\n\n"
+           "Proceed with optimization?").arg(targetPath),
+        QMessageBox::Yes | QMessageBox::Cancel
+    );
+
+    if (confirm != QMessageBox::Yes) return;
+
+    // 3. Execution with modal progress dialog
+    QProgressDialog progress(tr("Optimizing textures with FPSC_TexOptimizer..."), QString(), 0, 0, this);
+    progress.setWindowModality(Qt::WindowModal);
+    progress.setCancelButton(nullptr);
+    progress.show();
+    QApplication::processEvents();
+
+    QProcess process;
+    QStringList args;
+    args << "-i" << targetPath << "-b" << "--max-size" << "2048" << "-V";
+    process.start(exePath, args);
+    process.waitForFinished(60000); // 60s timeout
+
+    progress.close();
+
+    int exitCode = process.exitCode();
+    QString stdoutStr = QString::fromLocal8Bit(process.readAllStandardOutput());
+    QString stderrStr = QString::fromLocal8Bit(process.readAllStandardError());
+
+    if (exitCode == 0) {
+        // Clear asset caches so updated textures and metrics reload freshly
+        AssetManager::instance().clearCache();
+        showLoadingState();
+        emit requestReanalysis();
+
+        QMessageBox::information(
+            this,
+            tr("Optimization Complete"),
+            tr("Texture optimization finished successfully!\n\n%1").arg(stdoutStr.trimmed())
+        );
+    } else {
+        QMessageBox::warning(
+            this,
+            tr("Optimization Failed"),
+            tr("Texture optimizer exited with error code %1:\n\n%2\n%3")
+                .arg(exitCode).arg(stdoutStr).arg(stderrStr)
+        );
+    }
 }

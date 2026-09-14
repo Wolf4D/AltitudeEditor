@@ -1253,6 +1253,11 @@ void MainWindow::onOpenMemoryAnalyzer() {
             this
         );
         m_memoryAnalyzerDialog->setAttribute(Qt::WA_DeleteOnClose);
+        connect(m_memoryAnalyzerDialog, &MemoryAnalyzerDialog::requestReanalysis, this, [this]() {
+            if (m_currentMap) {
+                startAsyncMemoryAnalysis(m_currentMap);
+            }
+        });
         m_memoryAnalyzerDialog->show();
     } else {
         if (m_memoryReportValid) {
