@@ -263,22 +263,22 @@ void TextureOptimizationDialog::setupUI() {
 
         if (curW > 0 && curH > 0) {
             // Option 0: 100% Original
-            resCombo->addItem(QString("%1 × %2 (100% — Original)").arg(curW).arg(curH), std::max(curW, curH));
+            resCombo->addItem(QString("%1 × %2 (100%)").arg(curW).arg(curH), std::max(curW, curH));
 
             // Option 1: 50% Half
             if (curW / 2 >= 32 && curH / 2 >= 32) {
-                resCombo->addItem(QString("%1 × %2 (50% — Half)").arg(curW / 2).arg(curH / 2), std::max(curW / 2, curH / 2));
+                resCombo->addItem(QString("%1 × %2 (50%)").arg(curW / 2).arg(curH / 2), std::max(curW / 2, curH / 2));
             }
             // Option 2: 25% Quarter
             if (curW / 4 >= 32 && curH / 4 >= 32) {
-                resCombo->addItem(QString("%1 × %2 (25% — Quarter)").arg(curW / 4).arg(curH / 4), std::max(curW / 4, curH / 4));
+                resCombo->addItem(QString("%1 × %2 (25%)").arg(curW / 4).arg(curH / 4), std::max(curW / 4, curH / 4));
             }
             // Option 3: 12.5% Eighth
             if (curW / 8 >= 32 && curH / 8 >= 32) {
-                resCombo->addItem(QString("%1 × %2 (12.5% — 1/8)").arg(curW / 8).arg(curH / 8), std::max(curW / 8, curH / 8));
+                resCombo->addItem(QString("%1 × %2 (12.5%)").arg(curW / 8).arg(curH / 8), std::max(curW / 8, curH / 8));
             }
         } else {
-            resCombo->addItem(tr("Original (Keep)"), 0);
+            resCombo->addItem(tr("Original"), 0);
         }
 
         connect(resCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, r](int index) {
@@ -333,12 +333,18 @@ void TextureOptimizationDialog::setupUI() {
     // Global Scale Combo
     paramsLayout->addWidget(new QLabel(tr("Resolution Preset / Clamp:"), this), 0, 0);
     m_globalScaleCombo = new QComboBox(this);
-    m_globalScaleCombo->addItem(tr("⚖️ Clamp to max 1024×1024 (Balanced — Downscales >1024px, keeps smaller textures)"), 1024);
-    m_globalScaleCombo->addItem(tr("💎 100% Original Resolution (Keep original dimensions for all textures)"), 0);
-    m_globalScaleCombo->addItem(tr("⚡ Downscale All by 50% (Half resolution for all textures)"), -2);
-    m_globalScaleCombo->addItem(tr("🚀 Downscale All by 75% (Quarter resolution for all textures)"), -4);
-    m_globalScaleCombo->addItem(tr("📦 Clamp to max 512×512 (Memory Saver — Ideal for props and clutter)"), 512);
-    m_globalScaleCombo->addItem(tr("🛠️ Custom (Individual settings per file)"), -1);
+    m_globalScaleCombo->addItem(tr("⚖️ Clamp to 1024×1024 (Recommended)"), 1024);
+    m_globalScaleCombo->setItemData(0, tr("Balanced: Downscales textures >1024px, keeps smaller textures unchanged"), Qt::ToolTipRole);
+    m_globalScaleCombo->addItem(tr("💎 100% (Original)"), 0);
+    m_globalScaleCombo->setItemData(1, tr("Keep original dimensions for all textures"), Qt::ToolTipRole);
+    m_globalScaleCombo->addItem(tr("⚡ 50% (Half size)"), -2);
+    m_globalScaleCombo->setItemData(2, tr("Downscale all textures by 50% (half width and height)"), Qt::ToolTipRole);
+    m_globalScaleCombo->addItem(tr("🚀 25% (Quarter size)"), -4);
+    m_globalScaleCombo->setItemData(3, tr("Downscale all textures to 25% (quarter width and height)"), Qt::ToolTipRole);
+    m_globalScaleCombo->addItem(tr("📦 Clamp to 512×512"), 512);
+    m_globalScaleCombo->setItemData(4, tr("Memory Saver: Downscales textures >512px, ideal for props and clutter"), Qt::ToolTipRole);
+    m_globalScaleCombo->addItem(tr("🛠️ Custom"), -1);
+    m_globalScaleCombo->setItemData(5, tr("Custom target resolution selected individually per file in the table"), Qt::ToolTipRole);
     paramsLayout->addWidget(m_globalScaleCombo, 0, 1);
 
     // Checkboxes
