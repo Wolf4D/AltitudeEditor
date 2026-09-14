@@ -1251,14 +1251,14 @@ void MemoryAnalyzerDialog::optimizeTargets(const QStringList& targetPaths, const
     }
 
     TextureOptimizationSettings optSettings = optDlg.getSettings();
-    if (optSettings.selectedFilePaths.isEmpty()) {
+    if (optSettings.tasks.isEmpty()) {
         return;
     }
 
-    const QStringList& targetsToProcess = optSettings.selectedFilePaths;
+    const auto& tasksToProcess = optSettings.tasks;
 
     // 3. Execution with modal progress dialog
-    QProgressDialog progress(tr("Optimizing textures with FPSC_TexOptimizer..."), QString(), 0, targetsToProcess.size(), this);
+    QProgressDialog progress(tr("Optimizing textures with FPSC_TexOptimizer..."), QString(), 0, tasksToProcess.size(), this);
     progress.setWindowModality(Qt::WindowModal);
     progress.setCancelButton(nullptr);
     progress.setValue(0);
@@ -1274,10 +1274,10 @@ void MemoryAnalyzerDialog::optimizeTargets(const QStringList& targetPaths, const
     int totalFailed = 0;
     QString aggregatedOutput;
 
-    for (int i = 0; i < targetsToProcess.size(); ++i) {
-        const QString& target = targetsToProcess[i];
+    for (int i = 0; i < tasksToProcess.size(); ++i) {
+        const auto& task = tasksToProcess[i];
         progress.setLabelText(tr("Optimizing [%1/%2]: %3")
-            .arg(i + 1).arg(targetsToProcess.size()).arg(QFileInfo(target).fileName()));
+            .arg(i + 1).arg(tasksToProcess.size()).arg(QFileInfo(task.filePath).fileName()));
         progress.setValue(i);
         QApplication::processEvents();
 
@@ -1286,9 +1286,9 @@ void MemoryAnalyzerDialog::optimizeTargets(const QStringList& targetPaths, const
         process.setProcessEnvironment(env);
 
         QStringList args;
-        args << "-i" << target;
+        args << "-i" << task.filePath;
         if (optSettings.createBackup) args << "-b";
-        if (optSettings.maxSize > 0) args << "--max-size" << QString::number(optSettings.maxSize);
+        if (task.targetMaxSize > 0) args << "--max-size" << QString::number(task.targetMaxSize);
         if (!optSettings.generateMips) args << "--no-mips";
         if (!optSettings.pureAlphaCheck) args << "--no-pure-alpha";
         if (!optSettings.forcePot) args << "--no-pot";
@@ -1309,11 +1309,11 @@ void MemoryAnalyzerDialog::optimizeTargets(const QStringList& targetPaths, const
             }
         } else {
             totalFailed++;
-            aggregatedOutput += QString("[Error on %1]: %2\n").arg(QFileInfo(target).fileName(), stderrStr.isEmpty() ? stdoutStr : stderrStr);
+            aggregatedOutput += QString("[Error on %1]: %2\n").arg(QFileInfo(task.filePath).fileName(), stderrStr.isEmpty() ? stdoutStr : stderrStr);
         }
     }
 
-    progress.setValue(targetsToProcess.size());
+    progress.setValue(tasksToProcess.size());
     progress.close();
 
     if (totalSuccess > 0) {
