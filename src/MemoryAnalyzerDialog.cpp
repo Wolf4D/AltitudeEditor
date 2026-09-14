@@ -46,8 +46,8 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
 {
     QString mapName = m_map ? m_map->mapName : tr("No Map");
     setWindowTitle(tr("%1 Memory Footprint Analyzer — %2").arg(VersionInfo::shortTitle(), mapName));
-    resize(1060, 720);
-    setMinimumSize(850, 520);
+    resize(1160, 740);
+    setMinimumSize(880, 540);
 
     if (cachedReport) {
         m_report = *cachedReport;
@@ -107,6 +107,7 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
 
     // Tab 1: Entities Table
     m_entityTable = new QTableWidget(this);
+    m_entityTable->setObjectName("entityTable");
     m_entityTable->setColumnCount(10);
     m_entityTable->setHorizontalHeaderLabels({
         tr("Icon"),
@@ -120,16 +121,19 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
         tr("Total RAM"),
         tr("Alerts / Advice")
     });
-    m_entityTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    m_entityTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-    m_entityTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    m_entityTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
-    m_entityTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
-    m_entityTable->horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
-    m_entityTable->horizontalHeader()->setSectionResizeMode(6, QHeaderView::ResizeToContents);
-    m_entityTable->horizontalHeader()->setSectionResizeMode(7, QHeaderView::ResizeToContents);
-    m_entityTable->horizontalHeader()->setSectionResizeMode(8, QHeaderView::ResizeToContents);
-    m_entityTable->horizontalHeader()->setSectionResizeMode(9, QHeaderView::ResizeToContents);
+    m_entityTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    m_entityTable->horizontalHeader()->setMinimumSectionSize(30);
+    m_entityTable->horizontalHeader()->setStretchLastSection(true);
+    m_entityTable->setColumnWidth(0, 46);
+    m_entityTable->setColumnWidth(1, 220);
+    m_entityTable->setColumnWidth(2, 115);
+    m_entityTable->setColumnWidth(3, 65);
+    m_entityTable->setColumnWidth(4, 90);
+    m_entityTable->setColumnWidth(5, 95);
+    m_entityTable->setColumnWidth(6, 75);
+    m_entityTable->setColumnWidth(7, 85);
+    m_entityTable->setColumnWidth(8, 90);
+    m_entityTable->setColumnWidth(9, 220);
     m_entityTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_entityTable->setAlternatingRowColors(true);
     m_entityTable->verticalHeader()->setVisible(false);
@@ -138,6 +142,7 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
 
     // Tab 2: Segments Table
     m_segmentTable = new QTableWidget(this);
+    m_segmentTable->setObjectName("segmentTable");
     m_segmentTable->setColumnCount(9);
     m_segmentTable->setHorizontalHeaderLabels({
         tr("Icon"),
@@ -150,15 +155,18 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
         tr("Total RAM"),
         tr("Alerts")
     });
-    m_segmentTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    m_segmentTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-    m_segmentTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    m_segmentTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
-    m_segmentTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
-    m_segmentTable->horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
-    m_segmentTable->horizontalHeader()->setSectionResizeMode(6, QHeaderView::ResizeToContents);
-    m_segmentTable->horizontalHeader()->setSectionResizeMode(7, QHeaderView::ResizeToContents);
-    m_segmentTable->horizontalHeader()->setSectionResizeMode(8, QHeaderView::ResizeToContents);
+    m_segmentTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    m_segmentTable->horizontalHeader()->setMinimumSectionSize(30);
+    m_segmentTable->horizontalHeader()->setStretchLastSection(true);
+    m_segmentTable->setColumnWidth(0, 46);
+    m_segmentTable->setColumnWidth(1, 230);
+    m_segmentTable->setColumnWidth(2, 60);
+    m_segmentTable->setColumnWidth(3, 95);
+    m_segmentTable->setColumnWidth(4, 90);
+    m_segmentTable->setColumnWidth(5, 95);
+    m_segmentTable->setColumnWidth(6, 120);
+    m_segmentTable->setColumnWidth(7, 95);
+    m_segmentTable->setColumnWidth(8, 220);
     m_segmentTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_segmentTable->setAlternatingRowColors(true);
     m_segmentTable->verticalHeader()->setVisible(false);
@@ -167,6 +175,7 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
 
     // Tab 3: Universe & Engine Breakdown Table
     m_engineTable = new QTableWidget(this);
+    m_engineTable->setObjectName("engineTable");
     m_engineTable->setColumnCount(4);
     m_engineTable->setHorizontalHeaderLabels({
         tr("Component"),
@@ -174,10 +183,13 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
         tr("Estimated RAM"),
         tr("Description")
     });
-    m_engineTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    m_engineTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-    m_engineTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    m_engineTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
+    m_engineTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    m_engineTable->horizontalHeader()->setMinimumSectionSize(30);
+    m_engineTable->horizontalHeader()->setStretchLastSection(true);
+    m_engineTable->setColumnWidth(0, 240);
+    m_engineTable->setColumnWidth(1, 140);
+    m_engineTable->setColumnWidth(2, 120);
+    m_engineTable->setColumnWidth(3, 300);
     m_engineTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_engineTable->setAlternatingRowColors(true);
     m_engineTable->verticalHeader()->setVisible(false);

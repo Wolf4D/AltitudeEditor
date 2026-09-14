@@ -516,13 +516,31 @@ void VisZoneDock::setupUi() {
     m_btnFocus->setObjectName("btnFocusZone");
     m_btnFocus->setToolTip(tr("Центрировать камеру на зоне"));
     m_btnFocus->setFixedWidth(28);
+    m_btnFocus->setEnabled(false);
     navRow->addWidget(m_btnFocus);
+
+    m_btnDeleteZone = new QPushButton(QStringLiteral("🗑️"), central);
+    m_btnDeleteZone->setObjectName("btnDeleteZone");
+    m_btnDeleteZone->setToolTip(tr("Удалить выбранную зону и все её энтити (Дихотомия) [Delete / Shift+Del]"));
+    m_btnDeleteZone->setFixedWidth(28);
+    m_btnDeleteZone->setEnabled(false);
+    m_btnDeleteZone->setStyleSheet(QStringLiteral(
+        "QPushButton { color: #f87171; font-weight: bold; } "
+        "QPushButton:hover { background: #451a1a; border-color: #ef4444; color: #ffffff; } "
+        "QPushButton:disabled { color: #555555; background: #1c202a; border-color: #2e3545; }"
+    ));
+    navRow->addWidget(m_btnDeleteZone);
 
     m_btnResetZone = new QPushButton(QStringLiteral("✕"), central);
     m_btnResetZone->setObjectName("btnResetZone");
     m_btnResetZone->setToolTip(tr("Сбросить выбор зоны / Показать все"));
     m_btnResetZone->setFixedWidth(28);
-    m_btnResetZone->setStyleSheet(QStringLiteral("QPushButton { color: #f87171; font-weight: bold; } QPushButton:hover { background: #451a1a; border-color: #ef4444; color: #ffffff; }"));
+    m_btnResetZone->setEnabled(false);
+    m_btnResetZone->setStyleSheet(QStringLiteral(
+        "QPushButton { color: #c4cede; font-weight: bold; } "
+        "QPushButton:hover { background: #303748; border-color: #4a5670; color: #ffffff; } "
+        "QPushButton:disabled { color: #555555; background: #1c202a; border-color: #2e3545; }"
+    ));
     navRow->addWidget(m_btnResetZone);
 
     mainLayout->addLayout(navRow);
@@ -621,6 +639,11 @@ void VisZoneDock::setupUi() {
     connect(m_btnPrev, &QPushButton::clicked, this, &VisZoneDock::onPrevZone);
     connect(m_btnNext, &QPushButton::clicked, this, &VisZoneDock::onNextZone);
     connect(m_btnFocus, &QPushButton::clicked, this, &VisZoneDock::onFocusZoneClicked);
+    connect(m_btnDeleteZone, &QPushButton::clicked, this, [this]() {
+        if (m_activeZoneId >= 0) {
+            emit dichotomyDeleteZoneRequested(m_activeZoneId);
+        }
+    });
     connect(m_btnResetZone, &QPushButton::clicked, this, &VisZoneDock::resetToNormalView);
     connect(m_btnRefresh, &QPushButton::clicked, this, &VisZoneDock::refreshGraph);
     connect(m_btnReset, &QPushButton::clicked, this, &VisZoneDock::resetToNormalView);
@@ -848,6 +871,11 @@ void VisZoneDock::updateActiveZoneDetails() {
 
     bool isRu = (LanguageManager::instance().effectiveLanguage() == LanguageManager::Language::Russian);
     if (m_activeZoneId < 0 || !m_mgr) {
+        if (m_btnFocus) m_btnFocus->setEnabled(false);
+        if (m_btnDeleteZone) m_btnDeleteZone->setEnabled(false);
+        if (m_btnResetZone) m_btnResetZone->setEnabled(false);
+        if (m_btnReset) m_btnReset->setEnabled(false);
+
         m_lblKpi->setText(isRu
             ? QString::fromUtf8("Режим показа всех зон. Выберите зону выше для анализа порталов и PVS-видимости.")
             : QStringLiteral("Showing all zones. Select a zone above to inspect portals and PVS visibility."));
@@ -857,11 +885,26 @@ void VisZoneDock::updateActiveZoneDetails() {
 
     const VisZone* zone = m_mgr->getZone(m_activeZoneId);
     if (!zone) {
+        if (m_btnFocus) m_btnFocus->setEnabled(false);
+        if (m_btnDeleteZone) m_btnDeleteZone->setEnabled(false);
+        if (m_btnResetZone) m_btnResetZone->setEnabled(false);
+        if (m_btnReset) m_btnReset->setEnabled(false);
+
         m_lblKpi->setText(isRu
             ? QString::fromUtf8("Выбранная зона не найдена.")
             : QStringLiteral("Selected zone not found."));
         return;
     }
+
+    if (m_btnFocus) m_btnFocus->setEnabled(true);
+    if (m_btnDeleteZone) {
+        m_btnDeleteZone->setEnabled(true);
+        m_btnDeleteZone->setToolTip(isRu
+            ? QString::fromUtf8("Удалить Зону %1 и все её энтити (Дихотомия) [Delete / Shift+Del]").arg(zone->id + 1)
+            : QString("Delete Zone %1 and all its entities (Dichotomy) [Delete / Shift+Del]").arg(zone->id + 1));
+    }
+    if (m_btnResetZone) m_btnResetZone->setEnabled(true);
+    if (m_btnReset) m_btnReset->setEnabled(true);
 
     // 1. Collect portals from PVS Graph if available
     if (m_pvsGraph.contains(m_activeZoneId)) {
@@ -1259,6 +1302,7 @@ void VisZoneDock::retranslateUi() {
     if (m_btnPrev) m_btnPrev->setToolTip(isRu ? QString::fromUtf8("Предыдущая зона") : QStringLiteral("Previous zone"));
     if (m_btnNext) m_btnNext->setToolTip(isRu ? QString::fromUtf8("Следующая зона") : QStringLiteral("Next zone"));
     if (m_btnFocus) m_btnFocus->setToolTip(isRu ? QString::fromUtf8("Центрировать камеру на зоне") : QStringLiteral("Center camera on zone"));
+    if (m_btnDeleteZone) m_btnDeleteZone->setToolTip(isRu ? QString::fromUtf8("Удалить выбранную зону и все её энтити (Дихотомия) [Delete / Shift+Del]") : QStringLiteral("Delete selected zone and all its entities (Dichotomy) [Delete / Shift+Del]"));
     if (m_btnResetZone) m_btnResetZone->setToolTip(isRu ? QString::fromUtf8("Сбросить выбор зоны / Показать все") : QStringLiteral("Reset zone selection / Show all"));
     if (m_btnRefresh) m_btnRefresh->setToolTip(isRu ? QString::fromUtf8("Пересчитать зоны и PVS-граф") : QStringLiteral("Recompute zones & PVS graph"));
     if (m_btnReset) {

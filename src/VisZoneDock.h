@@ -96,6 +96,7 @@ private:
     QComboBox* m_zoneCombo = nullptr;
     QPushButton* m_btnNext = nullptr;
     QPushButton* m_btnFocus = nullptr;
+    QPushButton* m_btnDeleteZone = nullptr;
     QPushButton* m_btnResetZone = nullptr;
     QCheckBox* m_chkCurrentFloorOnly = nullptr;
     QPushButton* m_btnRefresh = nullptr;

@@ -18,7 +18,9 @@
 #include <QTranslator>
 #include <QPushButton>
 #include <QListWidget>
+#include <QHeaderView>
 #include "VisZoneDock.h"
+#include "MemoryAnalyzerDialog.h"
 #include <set>
 #include <tuple>
 
@@ -1495,7 +1497,93 @@ int main(int argc, char* argv[]) {
                   << ", cullingReset=" << cullingReset << ", signalFired=" << signalFired << ")" << std::endl;
     }
 
-    if (!found29_2 || !allWindowsDetected || !f7WindowsDetected || !fakeClassified || !realWinClassified || !map1ExtPortalPass || !atriumUnified || !z2Floor7Closed || !canvasHasWarnings || !canvasHighlightedRow2 || !f8AllLeaksAssigned || !dichotomyPass || !physicalAlonePass || !f8_y20_allLeaksPass || !staticAlonePass || !mergedPass || !noDuplicatesPass || !tableColCountPass || !descHasIcon || !descHasSizeTag || !suppressionPass || !multiSuppressPass || !visDialogPass || !visZoneDockFlowTestPass || !losOcclusionTestPass || !zone4PortalsPass || !zoneBadgePriorityPass || !emptySpaceDeselectPass) {
+    bool visZoneDeleteButtonPass = false;
+    {
+        VisZoneDock dock;
+        dock.resize(340, 600);
+        dock.setMap(map);
+        dock.setVisZoneManager(zm);
+
+        QPushButton* btnDel = dock.findChild<QPushButton*>("btnDeleteZone");
+        bool exists = (btnDel != nullptr);
+        bool disabledInitially = (btnDel && !btnDel->isEnabled());
+
+        int delSignalZone = -1;
+        QObject::connect(&dock, &VisZoneDock::dichotomyDeleteZoneRequested, [&](int zid) {
+            delSignalZone = zid;
+        });
+
+        dock.onExternalZoneSelected(1); // Zone 2
+        app.processEvents();
+
+        bool enabledAfterSelect = (btnDel && btnDel->isEnabled());
+        if (btnDel) {
+            btnDel->click();
+            app.processEvents();
+        }
+        bool signalReceived = (delSignalZone == 1);
+
+        dock.resetToNormalView();
+        app.processEvents();
+        bool disabledAfterReset = (btnDel && !btnDel->isEnabled());
+
+        visZoneDeleteButtonPass = exists && disabledInitially && enabledAfterSelect && signalReceived && disabledAfterReset;
+        std::cout << "[TEST] VisZoneDock Delete Zone Button & Dichotomy Signal: "
+                  << (visZoneDeleteButtonPass ? "PASS" : "FAIL")
+                  << " (exists=" << exists << ", initDis=" << disabledInitially
+                  << ", enSel=" << enabledAfterSelect << ", sigRec=" << signalReceived
+                  << ", disReset=" << disabledAfterReset << ")" << std::endl;
+    }
+
+    bool memoryAnalyzerResizePass = false;
+    {
+        MemoryReport report = MemoryAnalyzer::analyze(map);
+        MemoryAnalyzerDialog dlg(map, &report);
+        dlg.resize(1160, 740);
+
+        QTableWidget* entTable = dlg.findChild<QTableWidget*>("entityTable");
+        QTableWidget* segTable = dlg.findChild<QTableWidget*>("segmentTable");
+        QTableWidget* engTable = dlg.findChild<QTableWidget*>("engineTable");
+
+        bool tablesFound = (entTable && segTable && engTable);
+        bool entOk = false, segOk = false, engOk = false;
+
+        if (entTable) {
+            auto* hdr = entTable->horizontalHeader();
+            entOk = (hdr->sectionResizeMode(1) == QHeaderView::Interactive &&
+                     hdr->sectionResizeMode(9) == QHeaderView::Interactive &&
+                     hdr->minimumSectionSize() <= 30 &&
+                     hdr->stretchLastSection() &&
+                     entTable->columnWidth(1) >= 200);
+        }
+
+        if (segTable) {
+            auto* hdr = segTable->horizontalHeader();
+            segOk = (hdr->sectionResizeMode(1) == QHeaderView::Interactive &&
+                     hdr->sectionResizeMode(8) == QHeaderView::Interactive &&
+                     hdr->minimumSectionSize() <= 30 &&
+                     hdr->stretchLastSection() &&
+                     segTable->columnWidth(1) >= 200);
+        }
+
+        if (engTable) {
+            auto* hdr = engTable->horizontalHeader();
+            engOk = (hdr->sectionResizeMode(0) == QHeaderView::Interactive &&
+                     hdr->sectionResizeMode(3) == QHeaderView::Interactive &&
+                     hdr->minimumSectionSize() <= 30 &&
+                     hdr->stretchLastSection() &&
+                     engTable->columnWidth(0) >= 200);
+        }
+
+        memoryAnalyzerResizePass = tablesFound && entOk && segOk && engOk;
+        std::cout << "[TEST] MemoryAnalyzerDialog Interactive Column Resizing: "
+                  << (memoryAnalyzerResizePass ? "PASS" : "FAIL")
+                  << " (tablesFound=" << tablesFound << ", entOk=" << entOk
+                  << ", segOk=" << segOk << ", engOk=" << engOk
+                  << ", entCol1Width=" << (entTable ? entTable->columnWidth(1) : 0) << ")" << std::endl;
+    }
+
+    if (!found29_2 || !allWindowsDetected || !f7WindowsDetected || !fakeClassified || !realWinClassified || !map1ExtPortalPass || !atriumUnified || !z2Floor7Closed || !canvasHasWarnings || !canvasHighlightedRow2 || !f8AllLeaksAssigned || !dichotomyPass || !physicalAlonePass || !f8_y20_allLeaksPass || !staticAlonePass || !mergedPass || !noDuplicatesPass || !tableColCountPass || !descHasIcon || !descHasSizeTag || !suppressionPass || !multiSuppressPass || !visDialogPass || !visZoneDockFlowTestPass || !losOcclusionTestPass || !zone4PortalsPass || !zoneBadgePriorityPass || !emptySpaceDeselectPass || !visZoneDeleteButtonPass || !memoryAnalyzerResizePass) {
         std::cout << "FAIL DETAILS: found29_2=" << found29_2
                   << " allWin=" << allWindowsDetected
                   << " f7Win=" << f7WindowsDetected
