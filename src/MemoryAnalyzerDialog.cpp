@@ -1180,8 +1180,11 @@ void MemoryAnalyzerDialog::optimizeTargets(const QStringList& targetPaths, const
     for (const QString& p : targetPaths) {
         if (p.isEmpty()) continue;
         QString norm = QDir::fromNativeSeparators(p).toLower();
-        // Guard against any entitybank directory or icon path
-        if (norm.contains("/entitybank/")) {
+        // Guard against profile definitions or directories
+        if (norm.endsWith(".fpe") || norm.endsWith(".fps")) {
+            continue;
+        }
+        if (QFileInfo(p).isDir()) {
             continue;
         }
         if (QFile::exists(p) && !validPaths.contains(p)) {
