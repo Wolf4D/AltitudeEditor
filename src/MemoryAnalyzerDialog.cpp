@@ -267,15 +267,18 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
 
         QTableWidgetItem* meshItm = m_entityTable->item(row, 4);
         QString modelPath = meshItm ? meshItm->data(Qt::UserRole).toString() : QString();
-        QString fullModelPath = !modelPath.isEmpty() ? AssetManager::instance().resolvePath(modelPath, entPath) : QString();
+        QString fullModelPath = (!modelPath.isEmpty() && !modelPath.endsWith(".fpe", Qt::CaseInsensitive))
+            ? AssetManager::instance().resolvePath(modelPath, entPath) : QString();
 
         QTableWidgetItem* texItm = m_entityTable->item(row, 5);
         QString texPath = texItm ? texItm->data(Qt::UserRole).toString() : QString();
-        QString fullTexPath = !texPath.isEmpty() ? AssetManager::instance().resolvePath(texPath, entPath) : QString();
+        QString fullTexPath = (!texPath.isEmpty() && !texPath.endsWith(".fpe", Qt::CaseInsensitive))
+            ? AssetManager::instance().resolvePath(texPath, entPath) : QString();
 
         QTableWidgetItem* audItm = m_entityTable->item(row, 6);
         QString audPath = audItm ? audItm->data(Qt::UserRole).toString() : QString();
-        QString fullAudPath = !audPath.isEmpty() ? AssetManager::instance().resolvePath(audPath, entPath) : QString();
+        QString fullAudPath = (!audPath.isEmpty() && !audPath.endsWith(".fpe", Qt::CaseInsensitive))
+            ? AssetManager::instance().resolvePath(audPath, entPath) : QString();
 
         QMenu menu(this);
 
@@ -305,15 +308,33 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
             actAud = menu.addAction(tr("📁 Show Audio (\"%1\") in Explorer...").arg(QFileInfo(fullAudPath).fileName()));
         }
 
+        // Collect all textures associated with this entity
+        QStringList entTexPaths;
+        if (!fullTexPath.isEmpty() && QFile::exists(fullTexPath)) {
+            entTexPaths << fullTexPath;
+        }
+        for (const auto& item : m_report.entityItems) {
+            if (item.relPath.compare(entPath, Qt::CaseInsensitive) == 0) {
+                if (!item.normalPath.isEmpty()) {
+                    QString np = AssetManager::instance().resolvePath(item.normalPath, entPath);
+                    if (!np.isEmpty() && QFile::exists(np) && !entTexPaths.contains(np)) entTexPaths << np;
+                }
+                if (!item.specularPath.isEmpty()) {
+                    QString sp = AssetManager::instance().resolvePath(item.specularPath, entPath);
+                    if (!sp.isEmpty() && QFile::exists(sp) && !entTexPaths.contains(sp)) entTexPaths << sp;
+                }
+                break;
+            }
+        }
+
         menu.addSeparator();
-        QString entDir = QFileInfo(fullEntPath).absolutePath();
         QAction* actOptTex = nullptr;
-        if (!fullTexPath.isEmpty()) {
+        if (!fullTexPath.isEmpty() && QFile::exists(fullTexPath)) {
             actOptTex = menu.addAction(tr("⚡ Optimize Texture (\"%1\") [DXT/Mips]...").arg(QFileInfo(fullTexPath).fileName()));
         }
-        QAction* actOptDir = nullptr;
-        if (!entDir.isEmpty() && QDir(entDir).exists()) {
-            actOptDir = menu.addAction(tr("⚡ Optimize All Textures in Entity Folder..."));
+        QAction* actOptAllTex = nullptr;
+        if (entTexPaths.size() > 1) {
+            actOptAllTex = menu.addAction(tr("⚡ Optimize All Textures of This Entity (%1 files)...").arg(entTexPaths.size()));
         }
 
         QAction* chosen = menu.exec(m_entityTable->viewport()->mapToGlobal(pos));
@@ -321,8 +342,8 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
 
         if (chosen == actOptTex && !fullTexPath.isEmpty()) {
             optimizeTarget(fullTexPath, QFileInfo(fullTexPath).fileName());
-        } else if (chosen == actOptDir && !entDir.isEmpty()) {
-            optimizeTarget(entDir, QFileInfo(entDir).fileName() + " (Folder)");
+        } else if (chosen == actOptAllTex && !entTexPaths.isEmpty()) {
+            optimizeTargets(entTexPaths, nameItm->text());
         } else if (chosen == actEnt) {
             AssetManager::showInExplorer(fullEntPath, entPath);
         } else if (chosen == actModel) {
@@ -366,15 +387,18 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
 
         QTableWidgetItem* meshItm = m_segmentTable->item(row, 4);
         QString meshPath = meshItm ? meshItm->data(Qt::UserRole).toString() : QString();
-        QString fullMeshPath = !meshPath.isEmpty() ? AssetManager::instance().resolvePath(meshPath, segPath) : QString();
+        QString fullMeshPath = (!meshPath.isEmpty() && !meshPath.endsWith(".fps", Qt::CaseInsensitive))
+            ? AssetManager::instance().resolvePath(meshPath, segPath) : QString();
 
         QTableWidgetItem* diffItm = m_segmentTable->item(row, 5);
         QString diffPath = diffItm ? diffItm->data(Qt::UserRole).toString() : QString();
-        QString fullDiffPath = !diffPath.isEmpty() ? AssetManager::instance().resolvePath(diffPath, segPath) : QString();
+        QString fullDiffPath = (!diffPath.isEmpty() && !diffPath.endsWith(".fps", Qt::CaseInsensitive))
+            ? AssetManager::instance().resolvePath(diffPath, segPath) : QString();
 
         QTableWidgetItem* nsItm = m_segmentTable->item(row, 6);
         QString nsPath = nsItm ? nsItm->data(Qt::UserRole).toString() : QString();
-        QString fullNsPath = !nsPath.isEmpty() ? AssetManager::instance().resolvePath(nsPath, segPath) : QString();
+        QString fullNsPath = (!nsPath.isEmpty() && !nsPath.endsWith(".fps", Qt::CaseInsensitive))
+            ? AssetManager::instance().resolvePath(nsPath, segPath) : QString();
 
         QMenu menu(this);
 
@@ -404,19 +428,40 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
             actNs = menu.addAction(tr("📁 Show Normal/Spec Texture (\"%1\") in Explorer...").arg(QFileInfo(fullNsPath).fileName()));
         }
 
+        // Collect all textures associated with this segment
+        QStringList segTexPaths;
+        if (!fullDiffPath.isEmpty() && QFile::exists(fullDiffPath)) {
+            segTexPaths << fullDiffPath;
+        }
+        if (!fullNsPath.isEmpty() && QFile::exists(fullNsPath) && !segTexPaths.contains(fullNsPath)) {
+            segTexPaths << fullNsPath;
+        }
+        for (const auto& item : m_report.segmentItems) {
+            if (item.relPath.compare(segPath, Qt::CaseInsensitive) == 0) {
+                if (!item.normalPath.isEmpty()) {
+                    QString np = AssetManager::instance().resolvePath(item.normalPath, segPath);
+                    if (!np.isEmpty() && QFile::exists(np) && !segTexPaths.contains(np)) segTexPaths << np;
+                }
+                if (!item.specularPath.isEmpty()) {
+                    QString sp = AssetManager::instance().resolvePath(item.specularPath, segPath);
+                    if (!sp.isEmpty() && QFile::exists(sp) && !segTexPaths.contains(sp)) segTexPaths << sp;
+                }
+                break;
+            }
+        }
+
         menu.addSeparator();
-        QString segDir = QFileInfo(fullSegPath).absolutePath();
         QAction* actOptDiff = nullptr;
-        if (!fullDiffPath.isEmpty()) {
+        if (!fullDiffPath.isEmpty() && QFile::exists(fullDiffPath)) {
             actOptDiff = menu.addAction(tr("⚡ Optimize Diffuse Texture (\"%1\") [DXT/Mips]...").arg(QFileInfo(fullDiffPath).fileName()));
         }
         QAction* actOptNs = nullptr;
-        if (!fullNsPath.isEmpty()) {
+        if (!fullNsPath.isEmpty() && QFile::exists(fullNsPath)) {
             actOptNs = menu.addAction(tr("⚡ Optimize Normal/Spec Texture (\"%1\") [DXT/Mips]...").arg(QFileInfo(fullNsPath).fileName()));
         }
-        QAction* actOptSegDir = nullptr;
-        if (!segDir.isEmpty() && QDir(segDir).exists()) {
-            actOptSegDir = menu.addAction(tr("⚡ Optimize All Textures in Segment Folder..."));
+        QAction* actOptAllSeg = nullptr;
+        if (segTexPaths.size() > 1) {
+            actOptAllSeg = menu.addAction(tr("⚡ Optimize All Textures of This Segment (%1 files)...").arg(segTexPaths.size()));
         }
 
         QAction* chosen = menu.exec(m_segmentTable->viewport()->mapToGlobal(pos));
@@ -426,8 +471,8 @@ MemoryAnalyzerDialog::MemoryAnalyzerDialog(std::shared_ptr<FPSCMap> map, const M
             optimizeTarget(fullDiffPath, QFileInfo(fullDiffPath).fileName());
         } else if (chosen == actOptNs && !fullNsPath.isEmpty()) {
             optimizeTarget(fullNsPath, QFileInfo(fullNsPath).fileName());
-        } else if (chosen == actOptSegDir && !segDir.isEmpty()) {
-            optimizeTarget(segDir, QFileInfo(segDir).fileName() + " (Folder)");
+        } else if (chosen == actOptAllSeg && !segTexPaths.isEmpty()) {
+            optimizeTargets(segTexPaths, nameItm->text());
         } else if (chosen == actSeg) {
             AssetManager::showInExplorer(fullSegPath, segPath);
         } else if (chosen == actMesh) {
@@ -1029,11 +1074,45 @@ void MemoryAnalyzerDialog::onOptimizeSelected() {
         QTableWidgetItem* nameItm = m_entityTable->item(row, 1);
         if (!nameItm) return;
         QString entPath = nameItm->data(Qt::UserRole).toString();
-        QString fullEntPath = AssetManager::instance().resolvePath(entPath);
-        QString entDir = QFileInfo(fullEntPath).absolutePath();
-        if (!entDir.isEmpty() && QDir(entDir).exists()) {
-            optimizeTarget(entDir, nameItm->text());
+
+        QStringList texPaths;
+        for (const auto& item : m_report.entityItems) {
+            if (item.relPath.compare(entPath, Qt::CaseInsensitive) == 0) {
+                if (!item.texturePath.isEmpty()) {
+                    QString tp = AssetManager::instance().resolvePath(item.texturePath, entPath);
+                    if (!tp.isEmpty() && QFile::exists(tp)) texPaths << tp;
+                }
+                if (!item.normalPath.isEmpty()) {
+                    QString np = AssetManager::instance().resolvePath(item.normalPath, entPath);
+                    if (!np.isEmpty() && QFile::exists(np) && !texPaths.contains(np)) texPaths << np;
+                }
+                if (!item.specularPath.isEmpty()) {
+                    QString sp = AssetManager::instance().resolvePath(item.specularPath, entPath);
+                    if (!sp.isEmpty() && QFile::exists(sp) && !texPaths.contains(sp)) texPaths << sp;
+                }
+                break;
+            }
         }
+
+        if (texPaths.isEmpty()) {
+            QTableWidgetItem* texItm = m_entityTable->item(row, 5);
+            QString tData = texItm ? texItm->data(Qt::UserRole).toString() : QString();
+            if (!tData.isEmpty() && !tData.endsWith(".fpe", Qt::CaseInsensitive)) {
+                QString resolved = AssetManager::instance().resolvePath(tData, entPath);
+                if (!resolved.isEmpty() && QFile::exists(resolved)) {
+                    texPaths << resolved;
+                }
+            }
+        }
+
+        if (texPaths.isEmpty()) {
+            QMessageBox::information(this, tr("No Textures Found"),
+                tr("No textures found on disk for entity '%1'.").arg(nameItm->text()));
+            return;
+        }
+
+        optimizeTargets(texPaths, nameItm->text());
+
     } else if (currentTab == 1 && m_segmentTable) { // Segments
         int row = m_segmentTable->currentRow();
         if (row < 0 || row >= m_segmentTable->rowCount()) {
@@ -1043,11 +1122,49 @@ void MemoryAnalyzerDialog::onOptimizeSelected() {
         QTableWidgetItem* nameItm = m_segmentTable->item(row, 1);
         if (!nameItm) return;
         QString segPath = nameItm->data(Qt::UserRole).toString();
-        QString fullSegPath = AssetManager::instance().resolvePath(segPath);
-        QString segDir = QFileInfo(fullSegPath).absolutePath();
-        if (!segDir.isEmpty() && QDir(segDir).exists()) {
-            optimizeTarget(segDir, nameItm->text());
+
+        QStringList texPaths;
+        for (const auto& item : m_report.segmentItems) {
+            if (item.relPath.compare(segPath, Qt::CaseInsensitive) == 0) {
+                if (!item.diffusePath.isEmpty()) {
+                    QString dp = AssetManager::instance().resolvePath(item.diffusePath, segPath);
+                    if (!dp.isEmpty() && QFile::exists(dp)) texPaths << dp;
+                }
+                if (!item.normalPath.isEmpty()) {
+                    QString np = AssetManager::instance().resolvePath(item.normalPath, segPath);
+                    if (!np.isEmpty() && QFile::exists(np) && !texPaths.contains(np)) texPaths << np;
+                }
+                if (!item.specularPath.isEmpty()) {
+                    QString sp = AssetManager::instance().resolvePath(item.specularPath, segPath);
+                    if (!sp.isEmpty() && QFile::exists(sp) && !texPaths.contains(sp)) texPaths << sp;
+                }
+                break;
+            }
         }
+
+        if (texPaths.isEmpty()) {
+            QTableWidgetItem* diffItm = m_segmentTable->item(row, 5);
+            QString diffData = diffItm ? diffItm->data(Qt::UserRole).toString() : QString();
+            if (!diffData.isEmpty() && !diffData.endsWith(".fps", Qt::CaseInsensitive)) {
+                QString resolved = AssetManager::instance().resolvePath(diffData, segPath);
+                if (!resolved.isEmpty() && QFile::exists(resolved)) texPaths << resolved;
+            }
+            QTableWidgetItem* nsItm = m_segmentTable->item(row, 6);
+            QString nsData = nsItm ? nsItm->data(Qt::UserRole).toString() : QString();
+            if (!nsData.isEmpty() && !nsData.endsWith(".fps", Qt::CaseInsensitive)) {
+                QString resolved = AssetManager::instance().resolvePath(nsData, segPath);
+                if (!resolved.isEmpty() && QFile::exists(resolved) && !texPaths.contains(resolved)) texPaths << resolved;
+            }
+        }
+
+        if (texPaths.isEmpty()) {
+            QMessageBox::information(this, tr("No Textures Found"),
+                tr("No textures found on disk for segment '%1'.").arg(nameItm->text()));
+            return;
+        }
+
+        optimizeTargets(texPaths, nameItm->text());
+
     } else {
         QMessageBox::information(this, tr("No Selection"), tr("Please select an entity or segment row to optimize."));
     }
@@ -1055,6 +1172,28 @@ void MemoryAnalyzerDialog::onOptimizeSelected() {
 
 void MemoryAnalyzerDialog::optimizeTarget(const QString& targetPath, const QString& itemName) {
     if (targetPath.isEmpty()) return;
+    optimizeTargets(QStringList() << targetPath, itemName);
+}
+
+void MemoryAnalyzerDialog::optimizeTargets(const QStringList& targetPaths, const QString& itemName) {
+    QStringList validPaths;
+    for (const QString& p : targetPaths) {
+        if (p.isEmpty()) continue;
+        QString norm = QDir::fromNativeSeparators(p).toLower();
+        // Guard against any entitybank directory or icon path
+        if (norm.contains("/entitybank/")) {
+            continue;
+        }
+        if (QFile::exists(p) && !validPaths.contains(p)) {
+            validPaths << p;
+        }
+    }
+
+    if (validPaths.isEmpty()) {
+        QMessageBox::information(this, tr("Nothing to Optimize"),
+            tr("No valid texture files found to optimize for '%1'.").arg(itemName));
+        return;
+    }
 
     // 1. Locate optimizer executable
     QString exePath;
@@ -1101,58 +1240,99 @@ void MemoryAnalyzerDialog::optimizeTarget(const QString& targetPath, const QStri
         }
     }
 
-    // 2. Confirmation prompt
+    // 2. Confirmation prompt listing actual texture files
+    QString targetsListStr;
+    for (const QString& p : validPaths) {
+        targetsListStr += "• " + QDir::toNativeSeparators(p) + "\n";
+    }
+
     QMessageBox::StandardButton confirm = QMessageBox::question(
         this,
         tr("Optimize Textures — %1").arg(itemName),
-        tr("Run FPSC Texture Optimizer on:\n%1\n\n"
+        tr("Run FPSC Texture Optimizer on:\n%1\n"
            "Actions performed:\n"
            "• Automatic .bak backup copy creation before overwrite\n"
            "• Opaque textures forced to DXT1 (50% VRAM savings)\n"
            "• Mipmap pyramid generated down to 1x1\n"
            "• Strict DirectX 9 legacy DDS compliance (no DX10 headers)\n\n"
-           "Proceed with optimization?").arg(targetPath),
+           "Proceed with optimization?").arg(targetsListStr.trimmed()),
         QMessageBox::Yes | QMessageBox::Cancel
     );
 
     if (confirm != QMessageBox::Yes) return;
 
     // 3. Execution with modal progress dialog
-    QProgressDialog progress(tr("Optimizing textures with FPSC_TexOptimizer..."), QString(), 0, 0, this);
+    QProgressDialog progress(tr("Optimizing textures with FPSC_TexOptimizer..."), QString(), 0, validPaths.size(), this);
     progress.setWindowModality(Qt::WindowModal);
     progress.setCancelButton(nullptr);
+    progress.setValue(0);
     progress.show();
     QApplication::processEvents();
 
-    QProcess process;
-    QStringList args;
-    args << "-i" << targetPath << "-b" << "--max-size" << "2048" << "-V";
-    process.start(exePath, args);
-    process.waitForFinished(60000); // 60s timeout
+    QString exeDir = QFileInfo(exePath).absolutePath();
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    QString currentPath = env.value("PATH");
+    env.insert("PATH", appDir + ";" + exeDir + ";C:\\Qt5\\5.15.2\\mingw81_32\\bin;C:\\Qt5\\Tools\\mingw810_32\\bin;" + currentPath);
 
+    int totalSuccess = 0;
+    int totalFailed = 0;
+    QString aggregatedOutput;
+
+    for (int i = 0; i < validPaths.size(); ++i) {
+        const QString& target = validPaths[i];
+        progress.setLabelText(tr("Optimizing [%1/%2]: %3")
+            .arg(i + 1).arg(validPaths.size()).arg(QFileInfo(target).fileName()));
+        progress.setValue(i);
+        QApplication::processEvents();
+
+        QProcess process;
+        process.setWorkingDirectory(exeDir);
+        process.setProcessEnvironment(env);
+
+        QStringList args;
+        args << "-i" << target << "-b" << "--max-size" << "2048" << "-V";
+        process.start(exePath, args);
+        process.waitForFinished(60000); // 60s per texture
+
+        int exitCode = process.exitCode();
+        QString stdoutStr = QString::fromLocal8Bit(process.readAllStandardOutput());
+        QString stderrStr = QString::fromLocal8Bit(process.readAllStandardError());
+
+        if (exitCode == 0) {
+            totalSuccess++;
+            if (!stdoutStr.isEmpty()) {
+                aggregatedOutput += stdoutStr.trimmed() + "\n";
+            }
+        } else {
+            totalFailed++;
+            aggregatedOutput += QString("[Error on %1]: %2\n").arg(QFileInfo(target).fileName(), stderrStr.isEmpty() ? stdoutStr : stderrStr);
+        }
+    }
+
+    progress.setValue(validPaths.size());
     progress.close();
 
-    int exitCode = process.exitCode();
-    QString stdoutStr = QString::fromLocal8Bit(process.readAllStandardOutput());
-    QString stderrStr = QString::fromLocal8Bit(process.readAllStandardError());
-
-    if (exitCode == 0) {
+    if (totalSuccess > 0) {
         // Clear asset caches so updated textures and metrics reload freshly
         AssetManager::instance().clearCache();
         showLoadingState();
         emit requestReanalysis();
+    }
 
+    if (totalFailed == 0) {
         QMessageBox::information(
             this,
             tr("Optimization Complete"),
-            tr("Texture optimization finished successfully!\n\n%1").arg(stdoutStr.trimmed())
+            tr("Texture optimization finished successfully for %1 texture(s)!\n\n%2")
+                .arg(totalSuccess)
+                .arg(aggregatedOutput.trimmed())
         );
     } else {
         QMessageBox::warning(
             this,
-            tr("Optimization Failed"),
-            tr("Texture optimizer exited with error code %1:\n\n%2\n%3")
-                .arg(exitCode).arg(stdoutStr).arg(stderrStr)
+            tr("Optimization Completed with Errors"),
+            tr("Finished with %1 success(es) and %2 failure(s):\n\n%3")
+                .arg(totalSuccess).arg(totalFailed).arg(aggregatedOutput.trimmed())
         );
     }
 }

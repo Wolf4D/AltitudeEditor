@@ -37,6 +37,7 @@ private:
     void retranslateUi();
     void populateUI();
     void optimizeTarget(const QString& targetPath, const QString& itemName);
+    void optimizeTargets(const QStringList& targetPaths, const QString& itemName);
     QWidget* createCard(const QString& title, QLabel*& outValueLabel, QLabel*& outTitleLabel, const QString& color);
 
     std::shared_ptr<FPSCMap> m_map;
