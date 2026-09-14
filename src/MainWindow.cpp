@@ -134,7 +134,7 @@ static QIcon makeColorZonesIcon() {
     return QIcon(px);
 }
 
-static QIcon makeTracerIcon() {
+[[maybe_unused]] static QIcon makeTracerIcon() {
     QPixmap px(20, 20);
     px.fill(Qt::transparent);
     QPainter p(&px);
@@ -424,11 +424,10 @@ void MainWindow::createMenusAndToolbars() {
     m_toolsMenu = menuBar()->addMenu(QString());
     m_actMemoryAnalyzer = m_toolsMenu->addAction(QString(), this, &MainWindow::onOpenMemoryAnalyzer, QKeySequence(Qt::CTRL + Qt::Key_M));
     m_actLeakDetector = m_toolsMenu->addAction(QString(), this, &MainWindow::onOpenPortalLeakDetector);
-    m_actTraceVisibility = m_toolsMenu->addAction(makeTracerIcon(), QString(), this, [this]() { onOpenZoneVisibilityTracer(); }, QKeySequence(Qt::CTRL + Qt::Key_T));
+    // Note: ZoneVisibilityDialog is preserved in codebase, trace action temporarily removed per user request
     m_actSegmentEditor = m_toolsMenu->addAction(QString(), this, [this]() { onOpenSegmentEditor(); }, QKeySequence(Qt::CTRL + Qt::Key_E));
     m_toolsMenu->addSeparator();
     m_toolsMenu->addAction(m_actDichotomyDelete);
-    m_portalsMenu->addAction(m_actTraceVisibility);
 
     // Language Menu
     m_languageMenu = menuBar()->addMenu(QString());
@@ -566,12 +565,6 @@ void MainWindow::createMenusAndToolbars() {
     QToolButton* btnLeaks = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actLaunchLeaks));
     if (btnLeaks) {
         btnLeaks->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    }
-
-    m_actLaunchTracer = mainBar->addAction(makeTracerIcon(), QString(), this, [this]() { onOpenZoneVisibilityTracer(); });
-    QToolButton* btnTracer = qobject_cast<QToolButton*>(mainBar->widgetForAction(m_actLaunchTracer));
-    if (btnTracer) {
-        btnTracer->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     }
     mainBar->addSeparator();
 
