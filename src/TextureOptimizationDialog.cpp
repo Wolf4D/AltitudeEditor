@@ -46,7 +46,8 @@ TextureOptimizationDialog::TextureOptimizationDialog(const QString& itemName, co
 {
     setWindowTitle(tr("Texture Optimization Settings — %1").arg(itemName));
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
-    resize(820, 640);
+    resize(880, 700);
+    setMinimumSize(800, 540);
 
     inspectTargets(targetPaths);
     setupUI();
@@ -308,7 +309,9 @@ void TextureOptimizationDialog::setupUI() {
         }
     });
 
-    tableGroupLayout->addWidget(m_fileTable);
+    m_fileTable->setMinimumHeight(180);
+    m_fileTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    tableGroupLayout->addWidget(m_fileTable, 1);
 
     // Quick Select buttons below table
     auto* tableBtnLayout = new QHBoxLayout();
@@ -323,10 +326,11 @@ void TextureOptimizationDialog::setupUI() {
     tableBtnLayout->addStretch();
     tableGroupLayout->addLayout(tableBtnLayout);
 
-    mainLayout->addWidget(tableGroup);
+    mainLayout->addWidget(tableGroup, 1);
 
     // 4. Global Settings & Controls
     auto* paramsGroup = new QGroupBox(tr("Global Optimization Options"), this);
+    paramsGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
     auto* paramsLayout = new QGridLayout(paramsGroup);
     paramsLayout->setSpacing(8);
 
@@ -347,28 +351,28 @@ void TextureOptimizationDialog::setupUI() {
     m_globalScaleCombo->setItemData(5, tr("Custom target resolution selected individually per file in the table"), Qt::ToolTipRole);
     paramsLayout->addWidget(m_globalScaleCombo, 0, 1);
 
-    // Checkboxes
+    // Checkboxes (2 columns to save vertical space)
     m_mipsCheck = new QCheckBox(tr("Generate complete Mipmap pyramid (down to 1×1)"), this);
     m_mipsCheck->setToolTip(tr("Prevents specular flickering/shimmering on distance and fixes GPU texture cache thrashing (+33% over raw DXT level 0)."));
-    paramsLayout->addWidget(m_mipsCheck, 1, 0, 1, 2);
+    paramsLayout->addWidget(m_mipsCheck, 1, 0);
 
     m_pureAlphaCheck = new QCheckBox(tr("Pure Alpha Check: force opaque textures to DXT1 (4 bpp)"), this);
     m_pureAlphaCheck->setToolTip(tr("Scans alpha channel and encodes opaque textures into DXT1 instead of bulky DXT5, cutting VRAM by 50%."));
-    paramsLayout->addWidget(m_pureAlphaCheck, 2, 0, 1, 2);
+    paramsLayout->addWidget(m_pureAlphaCheck, 1, 1);
 
     m_forcePotCheck = new QCheckBox(tr("Force Power-of-Two (POT: 256, 512, 1024, 2048)"), this);
     m_forcePotCheck->setToolTip(tr("Required for legacy Direct3D 9 hardware texture addressing."));
-    paramsLayout->addWidget(m_forcePotCheck, 3, 0, 1, 2);
+    paramsLayout->addWidget(m_forcePotCheck, 2, 0);
 
     m_backupCheck = new QCheckBox(tr("Create .bak backup copies before overwriting original files"), this);
     m_backupCheck->setToolTip(tr("Safely preserves the original file so it can be restored anytime."));
-    paramsLayout->addWidget(m_backupCheck, 4, 0, 1, 2);
+    paramsLayout->addWidget(m_backupCheck, 2, 1);
 
     m_forceCheck = new QCheckBox(tr("Force recompression even if file already appears optimal"), this);
     m_forceCheck->setToolTip(tr("If unchecked, files with matching DXT format, full mipmaps, and optimal resolution are skipped."));
-    paramsLayout->addWidget(m_forceCheck, 5, 0, 1, 2);
+    paramsLayout->addWidget(m_forceCheck, 3, 0, 1, 2);
 
-    mainLayout->addWidget(paramsGroup);
+    mainLayout->addWidget(paramsGroup, 0);
 
     // 5. Dynamic Advice Banner
     m_adviceLabel = new QLabel(this);
