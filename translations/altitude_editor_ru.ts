@@ -1,4 +1,5 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
 <TS version="2.1" language="ru_RU">
 <context>
     <name>ConflictDiagramWidget</name>
@@ -471,8 +472,8 @@ Script: %3</source>
         <translation>О программе %1</translation>
     </message>
     <message>
-        <source>&lt;h3&gt;%1 v%2 - %3&lt;/h3&gt;&lt;p style='font-size: 13px;'&gt;&lt;b&gt;Version:&lt;/b&gt; %2&lt;br&gt;&lt;b&gt;Developer:&lt;/b&gt; %4&lt;br&gt;&lt;b&gt;Studio:&lt;/b&gt; %5&lt;/p&gt;&lt;hr&gt;&lt;p&gt;A professional tool for editing, visualizing, and analyzing &lt;b&gt;FPS Creator&lt;/b&gt; maps (.FPM).&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Doom-Style Segment Wall &amp; Floor Rendering:&lt;/b&gt; Visualizes segment walls, custom floors, ceilings, and gantry walkways.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Multi-Overlay Engine Architecture:&lt;/b&gt; Accurate overlay placement for doorways, CSG punch-outs, and corridors.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Floor-by-Floor Navigation:&lt;/b&gt; Full layer switching (0..20) via toolbar, shortcuts (PageUp/PageDown), and mouse wheel.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Entity Browser &amp; Inspector:&lt;/b&gt; Inspect, filter, search, and edit placed map entities.&lt;/li&gt;&lt;li&gt;&lt;b&gt;PVS Visibility Zones &amp; Portals:&lt;/b&gt; Complete room topology, portal leak detection, and culling visualization.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Memory Footprint Analyzer:&lt;/b&gt; Measures memory weight in MB for 3D meshes, textures, and audio buffers with 32-bit limit warnings.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Built with &lt;b&gt;Qt 5.15.2 (MinGW 32-bit)&lt;/b&gt;.&lt;/p&gt;</source>
-        <translation>&lt;h3&gt;%1 v%2 - %3&lt;/h3&gt;&lt;p style='font-size: 13px;'&gt;&lt;b&gt;Версия:&lt;/b&gt; %2&lt;br&gt;&lt;b&gt;Разработчик:&lt;/b&gt; %4&lt;br&gt;&lt;b&gt;Студия:&lt;/b&gt; %5&lt;/p&gt;&lt;hr&gt;&lt;p&gt;Профессиональный инструмент для редактирования, визуализации и анализа карт &lt;b&gt;FPS Creator&lt;/b&gt; (.FPM).&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Отрисовка стен и полов сегментов в стиле Doom:&lt;/b&gt; визуализация стен сегментов, полов, потолков и подвесных мостиков.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Архитектура многослойных оверлеев:&lt;/b&gt; точное позиционирование наложений для дверных проёмов, CSG-вырезов и коридоров.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Поэтажная навигация:&lt;/b&gt; переключение слоёв (0..20) через панель инструментов, горячие клавиши (PageUp/PageDown) и колёсико мыши.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Браузер и инспектор энтити:&lt;/b&gt; просмотр, фильтрация, поиск и редактирование установленных энтити карты.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Зоны видимости PVS и порталы:&lt;/b&gt; полная топология комнат, детектор утечек порталов и визуализация отсечения.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Анализатор расхода памяти:&lt;/b&gt; измерение веса памяти в МБ для 3D-моделей, текстур и аудио-буферов с контролем лимита 32-битного процесса.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Собрано с &lt;b&gt;Qt 5.15.2 (MinGW 32-bit)&lt;/b&gt;.&lt;/p&gt;</translation>
+        <source>&lt;h3&gt;%1 v%2 - %3&lt;/h3&gt;&lt;p style=&apos;font-size: 13px;&apos;&gt;&lt;b&gt;Version:&lt;/b&gt; %2&lt;br&gt;&lt;b&gt;Developer:&lt;/b&gt; %4&lt;br&gt;&lt;b&gt;Studio:&lt;/b&gt; %5&lt;/p&gt;&lt;hr&gt;&lt;p&gt;A professional tool for editing, visualizing, and analyzing &lt;b&gt;FPS Creator&lt;/b&gt; maps (.FPM).&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Doom-Style Segment Wall &amp; Floor Rendering:&lt;/b&gt; Visualizes segment walls, custom floors, ceilings, and gantry walkways.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Multi-Overlay Engine Architecture:&lt;/b&gt; Accurate overlay placement for doorways, CSG punch-outs, and corridors.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Floor-by-Floor Navigation:&lt;/b&gt; Full layer switching (0..20) via toolbar, shortcuts (PageUp/PageDown), and mouse wheel.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Entity Browser &amp; Inspector:&lt;/b&gt; Inspect, filter, search, and edit placed map entities.&lt;/li&gt;&lt;li&gt;&lt;b&gt;PVS Visibility Zones &amp; Portals:&lt;/b&gt; Complete room topology, portal leak detection, and culling visualization.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Memory Footprint Analyzer:&lt;/b&gt; Measures memory weight in MB for 3D meshes, textures, and audio buffers with 32-bit limit warnings.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Built with &lt;b&gt;Qt 5.15.2 (MinGW 32-bit)&lt;/b&gt;.&lt;/p&gt;</source>
+        <translation>&lt;h3&gt;%1 v%2 - %3&lt;/h3&gt;&lt;p style=&apos;font-size: 13px;&apos;&gt;&lt;b&gt;Версия:&lt;/b&gt; %2&lt;br&gt;&lt;b&gt;Разработчик:&lt;/b&gt; %4&lt;br&gt;&lt;b&gt;Студия:&lt;/b&gt; %5&lt;/p&gt;&lt;hr&gt;&lt;p&gt;Профессиональный инструмент для редактирования, визуализации и анализа карт &lt;b&gt;FPS Creator&lt;/b&gt; (.FPM).&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Отрисовка стен и полов сегментов в стиле Doom:&lt;/b&gt; визуализация стен сегментов, полов, потолков и подвесных мостиков.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Архитектура многослойных оверлеев:&lt;/b&gt; точное позиционирование наложений для дверных проёмов, CSG-вырезов и коридоров.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Поэтажная навигация:&lt;/b&gt; переключение слоёв (0..20) через панель инструментов, горячие клавиши (PageUp/PageDown) и колёсико мыши.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Браузер и инспектор энтити:&lt;/b&gt; просмотр, фильтрация, поиск и редактирование установленных энтити карты.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Зоны видимости PVS и порталы:&lt;/b&gt; полная топология комнат, детектор утечек порталов и визуализация отсечения.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Анализатор расхода памяти:&lt;/b&gt; измерение веса памяти в МБ для 3D-моделей, текстур и аудио-буферов с контролем лимита 32-битного процесса.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Собрано с &lt;b&gt;Qt 5.15.2 (MinGW 32-bit)&lt;/b&gt;.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -687,9 +688,9 @@ Script: %3</source>
         <translation>Несохранённые изменения</translation>
     </message>
     <message>
-        <source>The map '%1' has unsaved modifications.
+        <source>The map &apos;%1&apos; has unsaved modifications.
 Do you want to save your changes?</source>
-        <translation>Карта '%1' содержит несохранённые изменения.
+        <translation>Карта &apos;%1&apos; содержит несохранённые изменения.
 Сохранить изменения перед выходом?</translation>
     </message>
     <message>
@@ -761,8 +762,8 @@ Do you want to save your changes?</source>
         <translation>Отрисовка холста карты...</translation>
     </message>
     <message>
-        <source>Loaded "%1" (%2 entities, %3 segments) in %4 ms</source>
-        <translation>Загружено "%1" (%2 энтити, %3 сегментов) за %4 мс</translation>
+        <source>Loaded &quot;%1&quot; (%2 entities, %3 segments) in %4 ms</source>
+        <translation>Загружено &quot;%1&quot; (%2 энтити, %3 сегментов) за %4 мс</translation>
     </message>
     <message>
         <source>Open FPS Creator Map</source>
@@ -874,6 +875,14 @@ Do you want to save your changes?</source>
     <message>
         <source>👁️ Trace Visibility from Zone %1 (Ctrl+T)...</source>
         <translation>👁️ Трассировать видимость из Зоны %1 (Ctrl+T)...</translation>
+    </message>
+    <message>
+        <source>Visibility Zone %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>👁️ Trace Visibility from Zone %1 (Ctrl+T)</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1074,6 +1083,59 @@ Do you want to save your changes?</source>
         <source>Calculating level RAM memory footprint in background...</source>
         <translation>Подсчёт потребления RAM уровня в фоновом режиме...</translation>
     </message>
+    <message>
+        <source>📁 Show &quot;%1&quot; in Explorer...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>📁 Show Entity Profile (&quot;%1&quot;) in Explorer...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>📁 Show Model (&quot;%1&quot;) in Explorer...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>📁 Show Texture (&quot;%1&quot;) in Explorer...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>📁 Show Audio (&quot;%1&quot;) in Explorer...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>📁 Show Segment Profile (&quot;%1&quot;) in Explorer...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>📁 Show Mesh (&quot;%1&quot;) in Explorer...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>📁 Show Diffuse Texture (&quot;%1&quot;) in Explorer...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>📁 Show Normal/Spec Texture (&quot;%1&quot;) in Explorer...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>
+Double-click to reveal in Windows Explorer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>(None)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation type="unfinished">Нет</translation>
+    </message>
+    <message>
+        <source>(Built-in)</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>PortalLeakAnalyzer</name>
@@ -1150,12 +1212,12 @@ Do you want to save your changes?</source>
         <translation>Горизонтальный BSP-портал (%1×%2) пробивает сплошное перекрытие между %3 (Этаж %4) и %5 (Этаж %6) на (%7, %8). Камера ошибочно отрисовывает обе комнаты по вертикали.</translation>
     </message>
     <message>
-        <source> (Segment '%1' placed here does not seal BSP portals)</source>
-        <translation> (Сегмент '%1', установленный здесь, не перекрывает BSP-порталы)</translation>
+        <source> (Segment &apos;%1&apos; placed here does not seal BSP portals)</source>
+        <translation> (Сегмент &apos;%1&apos;, установленный здесь, не перекрывает BSP-порталы)</translation>
     </message>
     <message>
-        <source> (Entity '%1' placed here does not seal BSP portals)</source>
-        <translation> (Энтити '%1', установленный здесь, не перекрывает BSP-порталы)</translation>
+        <source> (Entity &apos;%1&apos; placed here does not seal BSP portals)</source>
+        <translation> (Энтити &apos;%1&apos;, установленный здесь, не перекрывает BSP-порталы)</translation>
     </message>
     <message>
         <source>Internal Wall Breach / Cross-Zone Leak</source>
@@ -1194,12 +1256,20 @@ Do you want to save your changes?</source>
         <translation>Микрощель в стене на Этаже %1 (%2, %3)</translation>
     </message>
     <message>
-        <source>Door/Window passage at Floor %1 (%2, %3)</source>
-        <translation>Дверной/оконный проем на Этаже %1 (%2, %3)</translation>
-    </message>
-    <message>
         <source>Open doorway at Floor %1 (%2, %3)</source>
         <translation>Открытый проем на Этаже %1 (%2, %3)</translation>
+    </message>
+    <message>
+        <source>Inter-floor ceiling window at Floor %1 (%2, %3)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Window passage at Floor %1 (%2, %3)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Doorway at Floor %1 (%2, %3)</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1269,8 +1339,8 @@ Do you want to save your changes?</source>
         <translation>Показывать подавленные (0)</translation>
     </message>
     <message>
-        <source>Select detection methods and click "Run Analysis".</source>
-        <translation>Выберите методы проверки и нажмите "Запустить анализ".</translation>
+        <source>Select detection methods and click &quot;Run Analysis&quot;.</source>
+        <translation>Выберите методы проверки и нажмите &quot;Запустить анализ&quot;.</translation>
     </message>
     <message>
         <source>Severity</source>
@@ -1375,14 +1445,6 @@ Estimated Portal Size: %1 × %2 (~%3 × %4 m)</source>
     <message>
         <source> (Suppressed: %1)</source>
         <translation> (Подавлено: %1)</translation>
-    </message>
-    <message>
-        <source>Showing issues: &lt;b&gt;%1&lt;/b&gt; of %2%3%4 (Both: %5, Physical: %6, Logical: %7). Double-click jumps camera to tile.</source>
-        <translation>Показано проблем: &lt;b&gt;%1&lt;/b&gt; из %2%3%4 (Оба источника: %5, Физический: %6, Логический: %7). Двойной клик наводит камеру на тайл.</translation>
-    </message>
-    <message>
-        <source>Showing issues: &lt;b&gt;%1&lt;/b&gt; of %2%3%4 (Physical: %5, Logical: %6). Double-click jumps camera to tile.</source>
-        <translation>Показано проблем: &lt;b&gt;%1&lt;/b&gt; из %2%3%4 (Физический: %5, Логический: %6). Двойной клик наводит камеру на тайл.</translation>
     </message>
     <message>
         <source>Outside / Void</source>
@@ -1514,6 +1576,24 @@ Estimated Portal Size: %1 × %2 (~%3 × %4 m)</source>
         <source>🧱 Inspect &amp; Edit Wall...</source>
         <translation>🧱 Осмотреть и исправить стену...</translation>
     </message>
+    <message>
+        <source>
+
+📁 Double-click row to reveal &quot;%1&quot; in Windows Explorer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Showing issues: &lt;b&gt;%1&lt;/b&gt; of %2%3%4 (Both: %5, Physical: %6, Logical: %7). Double-click reveals asset in Explorer / jumps camera.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Showing issues: &lt;b&gt;%1&lt;/b&gt; of %2%3%4 (Physical: %5, Logical: %6). Double-click reveals asset in Explorer / jumps camera.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>📁 Show &quot;%1&quot; in Explorer...</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>SegmentEditorDialog</name>
@@ -1566,8 +1646,8 @@ Choose how you want to resolve this boundary below:</source>
         <translation>🔍 Фильтр...</translation>
     </message>
     <message>
-        <source>&lt;b&gt;Interactive 4-Wall Topology:&lt;/b&gt;&lt;br/&gt;&lt;span style='color:#8c9dae;font-size:10px;'&gt;Click on any wall to toggle it on/off&lt;/span&gt;</source>
-        <translation>&lt;b&gt;Интерактивная топология 4 стен:&lt;/b&gt;&lt;br/&gt;&lt;span style='color:#8c9dae;font-size:10px;'&gt;Нажмите на любую стену, чтобы включить/выключить её&lt;/span&gt;</translation>
+        <source>&lt;b&gt;Interactive 4-Wall Topology:&lt;/b&gt;&lt;br/&gt;&lt;span style=&apos;color:#8c9dae;font-size:10px;&apos;&gt;Click on any wall to toggle it on/off&lt;/span&gt;</source>
+        <translation>&lt;b&gt;Интерактивная топология 4 стен:&lt;/b&gt;&lt;br/&gt;&lt;span style=&apos;color:#8c9dae;font-size:10px;&apos;&gt;Нажмите на любую стену, чтобы включить/выключить её&lt;/span&gt;</translation>
     </message>
     <message>
         <source>Wall Toggles:</source>
@@ -1722,15 +1802,15 @@ Choose how you want to resolve this boundary below:</source>
         <translation>Без зоны</translation>
     </message>
     <message>
-        <source>🟢 Keep Room A Wall — Remove %1 Wall from '%2' (%3, %4)
+        <source>🟢 Keep Room A Wall — Remove %1 Wall from &apos;%2&apos; (%3, %4)
    (Eliminates clashing wall from Room B, keeping Room A enclosed)</source>
-        <translation>🟢 Сохранить стену Комнаты A — Убрать %1 стену у '%2' (%3, %4)
+        <translation>🟢 Сохранить стену Комнаты A — Убрать %1 стену у &apos;%2&apos; (%3, %4)
    (Устраняет конфликтную стену в Комнате B, сохраняя Комнату A замкнутой)</translation>
     </message>
     <message>
-        <source>🟢 Keep Room B Wall — Remove %1 Wall from '%2' (%3, %4)
+        <source>🟢 Keep Room B Wall — Remove %1 Wall from &apos;%2&apos; (%3, %4)
    (Eliminates clashing wall from Room A, keeping Room B enclosed)</source>
-        <translation>🟢 Сохранить стену Комнаты B — Убрать %1 стену у '%2' (%3, %4)
+        <translation>🟢 Сохранить стену Комнаты B — Убрать %1 стену у &apos;%2&apos; (%3, %4)
    (Устраняет конфликтную стену в Комнате A, сохраняя Комнату B замкнутой)</translation>
     </message>
     <message>
@@ -1780,124 +1860,8 @@ Choose how you want to resolve this boundary below:</source>
 <context>
     <name>VisZoneDock</name>
     <message>
-        <source>🎲 Palette</source>
-        <translation>🎲 Палитра</translation>
-    </message>
-    <message>
-        <source>All Zones (Normal View)</source>
-        <translation>Все зоны (обычный вид)</translation>
-    </message>
-    <message>
-        <source>Floor %1</source>
-        <translation>Этаж %1</translation>
-    </message>
-    <message>
-        <source>Floors %1..%2</source>
-        <translation>Этажи %1..%2</translation>
-    </message>
-    <message>
         <source>Visibility Zones &amp; Portals (PVS)</source>
         <translation>Зоны видимости и порталы (PVS)</translation>
-    </message>
-    <message>
-        <source>Previous Zone</source>
-        <translation>Предыдущая зона</translation>
-    </message>
-    <message>
-        <source>Next Zone</source>
-        <translation>Следующая зона</translation>
-    </message>
-    <message>
-        <source>Center map camera on active zone</source>
-        <translation>Центрировать камеру на активной зоне</translation>
-    </message>
-    <message>
-        <source>Current Floor Only</source>
-        <translation>Только текущий этаж</translation>
-    </message>
-    <message>
-        <source>Recompute zones &amp; PVS graph</source>
-        <translation>Пересчитать зоны и граф PVS</translation>
-    </message>
-    <message>
-        <source>Show All</source>
-        <translation>Показать всё</translation>
-    </message>
-    <message>
-        <source>Reset culling / show all zones</source>
-        <translation>Сбросить отсечение / показать все зоны</translation>
-    </message>
-    <message>
-        <source>🎨 Color All</source>
-        <translation>🎨 Раскрасить все</translation>
-    </message>
-    <message>
-        <source>No zone selected.</source>
-        <translation>Зона не выбрана.</translation>
-    </message>
-    <message>
-        <source>Contained Entities:</source>
-        <translation>Объекты в зоне:</translation>
-    </message>
-    <message>
-        <source>Delete this entire room and all contained entities (Delete key)</source>
-        <translation>Удалить комнату и все её объекты (клавиша Delete)</translation>
-    </message>
-    <message>
-        <source>🧱 Edit Wall...</source>
-        <translation>🧱 Редактировать стену...</translation>
-    </message>
-    <message>
-        <source>Zone %1 (%2: %3 tiles)</source>
-        <translation>Зона %1 (%2: %3 тайлов)</translation>
-    </message>
-    <message>
-        <source>All zones visible. Normal display.</source>
-        <translation>Все зоны видимы. Обычный режим.</translation>
-    </message>
-    <message>
-        <source>Selected zone not found.</source>
-        <translation>Выбранная зона не найдена.</translation>
-    </message>
-    <message>
-        <source>&lt;b&gt;%1&lt;/b&gt;: %2 tiles across %3.&lt;br&gt;Contains %4 entities, connects %5 portals.</source>
-        <translation>&lt;b&gt;%1&lt;/b&gt;: %2 тайлов на %3.&lt;br&gt;Содержит %4 объектов, соединяет %5 порталов.</translation>
-    </message>
-    <message>
-        <source>Zone %1</source>
-        <translation>Зона %1</translation>
-    </message>
-    <message>
-        <source>🔍 Show on Map</source>
-        <translation>🔍 Показать на карте</translation>
-    </message>
-    <message>
-        <source>Visibility Isolation &amp; Colors</source>
-        <translation>Изоляция видимости и цвета</translation>
-    </message>
-    <message>
-        <source>Dim non-visible zones</source>
-        <translation>Затемнять невидимые зоны</translation>
-    </message>
-    <message>
-        <source>Dim opacity:</source>
-        <translation>Прозрачность затемнения:</translation>
-    </message>
-    <message>
-        <source>🚪 Portals &amp; Visibility</source>
-        <translation>🚪 Порталы и видимость</translation>
-    </message>
-    <message>
-        <source>✂️ Delete Room (Dichotomy) [Del]</source>
-        <translation>✂️ Удалить комнату (Дихотомия) [Del]</translation>
-    </message>
-    <message>
-        <source>📦 Zone Contents</source>
-        <translation>📦 Содержимое зоны</translation>
-    </message>
-    <message>
-        <source>All zones mode. Select a zone above to inspect its portals and visibility.</source>
-        <translation>Режим всех зон. Выберите зону выше для анализа её порталов и видимости.</translation>
     </message>
     <message>
         <source>Exterior window to outdoors</source>
@@ -1908,72 +1872,68 @@ Choose how you want to resolve this boundary below:</source>
         <translation>Дверь на улицу</translation>
     </message>
     <message>
-        <source>🚨 Пробоина перекрытия (Эт.%1: %2, %3) ➔ Зона %4</source>
-        <translation>🚨 Пробоина перекрытия (Эт.%1: %2, %3) ➔ Зона %4</translation>
+        <source>Предыдущая зона</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>🚨 Пробоина в стене (Эт.%1: %2, %3) ➔ Зона %4</source>
-        <translation>🚨 Пробоина в стене (Эт.%1: %2, %3) ➔ Зона %4</translation>
+        <source>Следующая зона</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Зона %1</source>
-        <translation>Зона %1</translation>
+        <source>Центрировать камеру на зоне</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>   ↳ ⚠️ УТЕЧКА: Ошибочно видно: %1</source>
-        <translation>   ↳ ⚠️ УТЕЧКА: Ошибочно видно: %1</translation>
+        <source>Удалить выбранную зону и все её энтити (Дихотомия) [Delete / Shift+Del]</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>нет</source>
-        <translation>нет</translation>
+        <source>Только текущий этаж</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>⚠️ Микрощель в стыке (Эт.%1: %2, %3) ➔ Зона %4</source>
-        <translation>⚠️ Микрощель в стыке (Эт.%1: %2, %3) ➔ Зона %4</translation>
+        <source>Пересчитать зоны и PVS-граф</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>   ↳ Видно: %1</source>
-        <translation>   ↳ Видно: %1</translation>
+        <source>🔍 Показать на карте</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>🚪 Выход наружу (Эт.%1: %2, %3) ➔ Улица</source>
-        <translation>🚪 Выход наружу (Эт.%1: %2, %3) ➔ Улица</translation>
+        <source>🧱 Редактировать стену...</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>   ↳ 🌲 Улица (Outdoors)</source>
-        <translation>   ↳ 🌲 Улица (Outdoors)</translation>
+        <source>Изоляция и цвета</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>🪟 Окно (Эт.%1: %2, %3) ➔ Зона %4</source>
-        <translation>🪟 Окно (Эт.%1: %2, %3) ➔ Зона %4</translation>
+        <source>Затемнять невидимые</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>🚪 Дверной проем (Эт.%1: %2, %3) ➔ Зона %4</source>
-        <translation>🚪 Дверной проем (Эт.%1: %2, %3) ➔ Зона %4</translation>
+        <source>Яркость: 50%</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>В этой зоне нет обнаруженных порталов.</source>
-        <translation>В этой зоне нет обнаруженных порталов.</translation>
+        <source>Яркость неактивных зон (0% = скрыть, 50% = полупрозрачно, 100% = полная яркость)</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>🚪 Порталов в зоне: %1  •  🚨 Утечек видимости: %2</source>
-        <translation>🚪 Порталов в зоне: %1  •  🚨 Утечек видимости: %2</translation>
+        <source>🎨 Раскрасить все</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>🚪 Порталов в зоне: %1  •  ✓ Утечек нет</source>
-        <translation>🚪 Порталов в зоне: %1  •  ✓ Утечек нет</translation>
+        <source>🎲 Палитра</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Dim non-visible</source>
-        <translation>Затемнять невидимые</translation>
+        <source>Window passage at Floor %1 (%2, %3)</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Opacity:</source>
-        <translation>Прозрачность:</translation>
-    </message>
-    <message>
-        <source>Dimming opacity</source>
-        <translation>Прозрачность затемнения</translation>
+        <source>Doorway at Floor %1 (%2, %3)</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
